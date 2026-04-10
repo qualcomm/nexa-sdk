@@ -1,21 +1,21 @@
-## 目录结构
+## Directory Structure
 
-- 所有对外发布的库和工具都放在根目录下
-- 依赖关系通过构建工具而不是目录来管理
-- 统一构建工具, 避免不同子项目使用不同的构建系统导致的复杂性
+- All libraries and tools intended for external release are placed in the repository root
+- Dependencies are managed through the build system rather than by directory layout
+- Use a single unified build system to avoid complexity caused by different subprojects using different build tools
 
 ## Bazel
 
-- 优点
-  - 支持 cpp/go/python/android, 支持 docker 镜像打包
-  - 整合 lint/test/build, ci 只需要调用 bazel 命令, 本地开发也可以直接使用 bazel, 保持一致性
-  - 使用自己维护的编译器, 不受系统环境影响
-  - 相比 cmake 更易于集成自定义构建规则
-- 缺点
-  - 对于小型项目可能过于复杂 (但我们项目涉及多语言多平台)
-  - 学习曲线较陡峭 (资料多,AI可以帮助解决)
+- Advantages
+  - Supports C++/Go/Python/Android and can package Docker images
+  - Integrates lint/test/build, so CI only needs to run Bazel commands; local development can also use Bazel to maintain consistency
+  - Uses a self-maintained toolchain, unaffected by the system environment
+  - Easier to integrate custom build rules compared to CMake
+- Disadvantages
+  - May be overly complex for small projects (but our project spans multiple languages and platforms)
+  - Steeper learning curve (there are plenty of resources; AI can help)
 
-### 常用命令
+### Common Commands
 
 - `bazel query //...` list all targets in the workspace
 - `bazel run //geniex-cli/cmd/geniex-cli` build and run the geniex-cli target, will not build full project.
@@ -94,3 +94,8 @@
 ├── MODULE.bazel.lock         #
 └── README.md                 #
 ```
+
+## Notes
+
+- should we keep `dlopen` plugins? there are only two plugins now, and both exist on windows/linux arm64.
+- since we will open source all the code, maybe we can static link everything for simplicity.
