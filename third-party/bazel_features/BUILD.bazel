@@ -1,4 +1,0 @@
-exports_files([
-    "features.bzl",
-    "private/util.bzl",
-])
