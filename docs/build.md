@@ -1,3 +1,9 @@
+# Env Setup
+
+1. Install Bazelist
+   - On Windows, `winget install -e Bazel-Bazelisk`
+   - On Linux, install `bazelisk` through your package manager, for example, on Ubuntu: `sudo apt install bazelisk`
+
 # Build
 
 ## SDK
