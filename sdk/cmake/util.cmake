@@ -1,0 +1,72 @@
+# ===============================================================================
+# Common Library Output Configuration
+# ===============================================================================
+# Define centralized library output directory under common/
+set(COMMON_LIB_REL_PATH "common/lib")
+set(COMMON_LIB_OUTPUT_DIR "out/${COMMON_LIB_REL_PATH}")
+add_compile_definitions(COMMON_LIB_RELATIVE_PATH="${COMMON_LIB_REL_PATH}")
+
+# ===============================================================================
+# Utility Functions
+# ===============================================================================
+
+function(copy_output dir)
+    set(COPY_OUTPUT_COMMANDS COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/${dir}/)
+
+    foreach(target ${ARGN})
+        if(TARGET ${target}) # is target
+            list(APPEND COPY_OUTPUT_COMMANDS
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${target}> ${CMAKE_BINARY_DIR}/${dir}/
+                DEPENDS ${target})
+        elseif(EXISTS ${target}) # is file path
+            list(APPEND COPY_OUTPUT_COMMANDS
+                COMMAND ${CMAKE_COMMAND} -E copy ${target} ${CMAKE_BINARY_DIR}/${dir}/
+                DEPENDS ${target})
+        else()
+            message(WARNING "copy_output Target ${target} does not exist.")
+        endif()
+    endforeach()
+
+    string(REPLACE "/" "_" name ${dir})
+    string(REPLACE "$<CONFIG>" "" name ${name}) # Remove $<CONFIG> for MSVC
+    add_custom_target(copy_output_${name} ALL ${COPY_OUTPUT_COMMANDS})
+endfunction()
+
+# Function to find common library files for the current platform
+# Returns the list of files in the output variable specified
+function(find_common_libs output_var)
+    # Determine platform-specific library folder and runtime library patterns
+    if(WIN32)
+        if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+            set(LIB_FOLDER "windows-arm64")
+        endif()
+        set(LIB_PATTERNS "*.dll")
+    elseif(UNIX)
+        if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+            set(LIB_FOLDER "linux-aarch64")
+        endif()
+        set(LIB_PATTERNS "*.so" "*.so.*")
+    else()
+        message(WARNING "Unknown platform for common libs")
+        return()
+    endif()
+
+    # Export folder name to parent scope for other targets to use
+    set(COMMON_LIB_FOLDER_NAME ${LIB_FOLDER} PARENT_SCOPE)
+
+    # Find all common library files recursively, excluding ortlib-* directories
+    set(GENIEX_COMMON_LIBS_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/${LIB_FOLDER}")
+    set(all_lib_files)
+    foreach(pattern ${LIB_PATTERNS})
+        file(GLOB_RECURSE lib_files "${GENIEX_COMMON_LIBS_SRC_DIR}/${pattern}")
+        # Filter out files from ortlib-* directories (plugin-specific ONNX Runtime libs)
+        list(FILTER lib_files EXCLUDE REGEX "/ortlib-[^/]+/")
+        list(APPEND all_lib_files ${lib_files})
+    endforeach()
+
+    # Return the list to parent scope
+    set(${output_var} ${all_lib_files} PARENT_SCOPE)
+    
+    # Also export the source directory for logging purposes
+    set(GENIEX_COMMON_LIBS_SRC_DIR ${GENIEX_COMMON_LIBS_SRC_DIR} PARENT_SCOPE)
+endfunction()
