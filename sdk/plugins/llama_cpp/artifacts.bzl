@@ -9,6 +9,13 @@ WINDOWS_CMAKE_OUTS = [
     "ggml.lib",
     "ggml-opencl.dll",
     "ggml-opencl.lib",
+    "llama.dll",
+    "llama.lib",
+    "mtmd.dll",
+    "mtmd.lib",
+]
+
+WINDOWS_CMAKE_OUTS_HEXAGON = [
     "ggml-hexagon.dll",
     "ggml-hexagon.lib",
     "libggml-htp-v68.so",
@@ -18,10 +25,6 @@ WINDOWS_CMAKE_OUTS = [
     "libggml-htp-v79.so",
     "libggml-htp-v81.so",
     "libggml-htp.cat",
-    "llama.dll",
-    "llama.lib",
-    "mtmd.dll",
-    "mtmd.lib",
 ]
 
 WINDOWS_RUNTIME_DLLS = [
@@ -29,6 +32,11 @@ WINDOWS_RUNTIME_DLLS = [
     "ggml-cpu.dll",
     "ggml.dll",
     "ggml-opencl.dll",
+    "llama.dll",
+    "mtmd.dll",
+]
+
+WINDOWS_RUNTIME_DLLS_HEXAGON = [
     "ggml-hexagon.dll",
     "libggml-htp-v68.so",
     "libggml-htp-v69.so",
@@ -37,12 +45,13 @@ WINDOWS_RUNTIME_DLLS = [
     "libggml-htp-v79.so",
     "libggml-htp-v81.so",
     "libggml-htp.cat",
-    "llama.dll",
-    "mtmd.dll",
 ]
 
 WINDOWS_BACKEND_RUNTIME_FILES = [
     "ggml-opencl.dll",
+]
+
+WINDOWS_BACKEND_RUNTIME_FILES_HEXAGON = [
     "ggml-hexagon.dll",
     "libggml-htp-v68.so",
     "libggml-htp-v69.so",
