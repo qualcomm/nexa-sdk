@@ -2,6 +2,11 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "srcs",
+    srcs = glob(["*.cpp"]),
+)
+
 COMMON_COPTS = select({
     "//sdk:windows": ["/std:c++17", "/utf-8"],
     "//conditions:default": ["-std=c++17"],
@@ -11,11 +16,16 @@ COMMON_DEFINES = [
     "GENIEX_DL",
 ]
 
+DEBUG_DEFINES = select({
+    "//sdk:enable_geniex_debug": ["GENIEX_DEBUG"],
+    "//conditions:default": [],
+})
+
 cc_library(
     name = "geniex_lib",
     srcs = glob(["*.cpp"]),
     copts = COMMON_COPTS,
-    defines = COMMON_DEFINES + [
+    local_defines = COMMON_DEFINES + DEBUG_DEFINES + [
         "ML_BUILD",
         "ML_SHARED",
     ],

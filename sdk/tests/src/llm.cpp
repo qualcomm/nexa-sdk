@@ -59,8 +59,8 @@ Setup<Param, ml_LLM> setup_guard(
               "/data/local/tmp/geniex/modelfiles/llama_cpp/Qwen3-4B-Q4_0.gguf",
               std::nullopt},
 #elif defined(_WIN32) | defined(unix)
-             {"Qwen3-0.6B-Q8", "Qwen3-0.6B-Q8",
-              "modelfiles/llama_cpp/Qwen3-0.6B-Q8_0.gguf", std::nullopt},
+             {"Qwen3-0.6B-Q4_0", "Qwen3-0.6B-Q4_0",
+              "modelfiles/llama_cpp/Qwen3-0.6B-Q4_0.gguf", std::nullopt},
 #endif
          }},
         {qnn::value,
@@ -147,6 +147,7 @@ Setup<Param, ml_LLM> setup_guard(
       input.config.n_gpu_layers = 0; // specify n_gpu_layers to 0 to use CPU
       input.config.enable_sampling = false;
       input.plugin_id = plugin;
+      input.device_id = "CPU";
       int32_t res = ml_llm_create(&input, &llm);
       CHECK_ML_ERROR(res);
       REQUIRE(llm != nullptr);

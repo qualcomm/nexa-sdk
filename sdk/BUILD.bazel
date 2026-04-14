@@ -1,6 +1,21 @@
 package(default_visibility = ["//visibility:public"])
 
 config_setting(
+    name = "enable_geniex_debug",
+    define_values = {"GENIEX_DEBUG": "1"},
+)
+
+config_setting(
+    name = "enable_ggml_hexagon",
+    define_values = {"GGML_HEXAGON": "1"},
+)
+
+config_setting(
+    name = "disable_ggml_hexagon",
+    define_values = {"GGML_HEXAGON": "0"},
+)
+
+config_setting(
     name = "windows_arm64",
     constraint_values = [
         "@platforms//os:windows",

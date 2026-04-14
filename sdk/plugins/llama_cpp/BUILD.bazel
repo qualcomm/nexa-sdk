@@ -22,6 +22,11 @@ COMMON_DEFINES = select({
     "GENIEX_DL",
 ]
 
+DEBUG_DEFINES = select({
+    "//sdk:enable_geniex_debug": ["GENIEX_DEBUG"],
+    "//conditions:default": [],
+})
+
 cc_library(
     name = "headers",
     hdrs = glob(["include/*.h"]),
@@ -36,7 +41,7 @@ cc_library(
     name = "plugin_lib",
     srcs = glob(["src/*.cpp"]) + ["//sdk/src:srcs"],
     copts = COMMON_COPTS,
-    defines = COMMON_DEFINES,
+    defines = COMMON_DEFINES + DEBUG_DEFINES,
     linkopts = select({
         "//sdk:windows": ["Advapi32.lib", "ws2_32.lib"],
         "//conditions:default": ["-ldl"],
@@ -59,11 +64,24 @@ genrule(
 
 cc_binary(
     name = "geniex_plugin",
+    srcs = glob(["src/*.cpp"]) + ["//sdk/src:srcs"],
+    copts = COMMON_COPTS,
     data = [
         ":backend_runtime_files",
         "@llama_cpp_src//:runtime_dlls",
     ],
-    deps = [":plugin_lib"],
+    defines = COMMON_DEFINES + DEBUG_DEFINES,
+    linkopts = select({
+        "//sdk:windows": ["Advapi32.lib", "ws2_32.lib"],
+        "//conditions:default": ["-ldl"],
+    }),
+    deps = [
+        ":headers",
+        "@llama_cpp_src//:common",
+        "@llama_cpp_src//:ggml",
+        "@llama_cpp_src//:llama",
+        "@llama_cpp_src//:mtmd",
+    ],
     linkshared = True,
     linkstatic = False,
 )

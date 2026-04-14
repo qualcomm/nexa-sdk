@@ -10,8 +10,12 @@ COMMON_COPTS = select({
 COMMON_DEFINES = [
     "DOCTEST_CONFIG_IMPLEMENT",
     "GENIEX_DL",
-    "ML_SHARED",
 ]
+
+DEBUG_DEFINES = select({
+    "//sdk:enable_geniex_debug": ["GENIEX_DEBUG"],
+    "//conditions:default": [],
+})
 
 MODEL_TESTS = [
     "asr",
@@ -33,7 +37,7 @@ MODEL_TEST_TARGETS = ["geniex_test_%s" % suite for suite in MODEL_TESTS]
         name = "geniex_test_%s" % suite,
         srcs = ["%s.cpp" % suite],
         copts = COMMON_COPTS,
-        defines = COMMON_DEFINES,
+        defines = COMMON_DEFINES + DEBUG_DEFINES,
         linkopts = select({
             "//sdk:windows": [],
             "//conditions:default": ["-ldl"],
@@ -51,7 +55,7 @@ cc_test(
     name = "geniex_test_version",
     srcs = ["version.cpp"],
     copts = COMMON_COPTS,
-    defines = COMMON_DEFINES,
+    defines = COMMON_DEFINES + DEBUG_DEFINES,
     linkopts = select({
         "//sdk:windows": [],
         "//conditions:default": ["-ldl"],

@@ -32,8 +32,12 @@ template <typename... Args>
 void geniex_log_internal(ml_LogLevel level, const char* file, int32_t line, const char* func,
     fmt::format_string<Args...> fmt, Args&&... args) {
     if (ml_log == nullptr) return;
+#ifdef PROJECT_SOURCE_DIR
     auto p        = std::strstr(file, PROJECT_SOURCE_DIR);
     auto filename = p ? p + std::strlen(PROJECT_SOURCE_DIR) + 1 : file;
+#else
+    auto filename = file;
+#endif
     ml_log(level,
         fmt::format("[{}:{}:{}] {}", filename, line, func, fmt::format(fmt, lp(std::forward<Args>(args))...)).c_str());
 }

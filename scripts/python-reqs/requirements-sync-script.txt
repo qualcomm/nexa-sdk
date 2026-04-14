@@ -1,6 +1,0 @@
-boto3
-botocore
-huggingface_hub
-hf_transfer
-tqdm
-
