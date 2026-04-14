@@ -15,6 +15,18 @@ WINDOWS_CMAKE_OUTS = [
     "mtmd.lib",
 ]
 
+LINUX_CMAKE_OUTS = [
+    "libcommon.a",
+    "libcpp-httplib.a",
+    "libggml-base.so",
+    "libggml-cpu.so",
+    "libggml.so",
+    "libllama.so",
+    "libmtmd.so",
+]
+
+ALL_CMAKE_OUTS = WINDOWS_CMAKE_OUTS + LINUX_CMAKE_OUTS
+
 WINDOWS_CMAKE_OUTS_HEXAGON = [
     "ggml-hexagon.dll",
     "ggml-hexagon.lib",
@@ -36,6 +48,14 @@ WINDOWS_RUNTIME_DLLS = [
     "mtmd.dll",
 ]
 
+LINUX_RUNTIME_DLLS = [
+    "libggml-base.so",
+    "libggml-cpu.so",
+    "libggml.so",
+    "libllama.so",
+    "libmtmd.so",
+]
+
 WINDOWS_RUNTIME_DLLS_HEXAGON = [
     "ggml-hexagon.dll",
     "libggml-htp-v68.so",
@@ -50,6 +70,8 @@ WINDOWS_RUNTIME_DLLS_HEXAGON = [
 WINDOWS_BACKEND_RUNTIME_FILES = [
     "ggml-opencl.dll",
 ]
+
+LINUX_BACKEND_RUNTIME_FILES = []
 
 WINDOWS_BACKEND_RUNTIME_FILES_HEXAGON = [
     "ggml-hexagon.dll",
@@ -75,4 +97,10 @@ def windows_copy_cmd(repo_prefix, artifacts):
                 artifact,
             ),
         )
+    return " && ".join(commands)
+
+def linux_copy_cmd(repo_prefix, artifacts):
+    commands = []
+    for artifact in artifacts:
+        commands.append("cp -f \"$(location %s:%s)\" \"$(@D)/%s\"" % (repo_prefix, artifact, artifact))
     return " && ".join(commands)
