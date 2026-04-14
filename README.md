@@ -50,18 +50,7 @@ NexaSDK supported latest models **weeks or months before anyone else** — Qwen3
 | [arm64 (Qualcomm NPU)](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) | [arm64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh) |
 | [x64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_windows_x86_64.exe) | [x64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_x86_64.sh)  |
 
-**Run your first model:**
 
-```bash
-# Chat with Qwen3
-nexa infer ggml-org/Qwen3-1.7B-GGUF
-
-# Multimodal: drag images into the CLI
-nexa infer NexaAI/Qwen3-VL-4B-Instruct-GGUF
-
-# NPU (Windows arm64 with Snapdragon X Elite)
-nexa infer NexaAI/OmniNeural-4B
-```
 
 **NPU Access Token (required for NPU models):**
 
@@ -75,6 +64,19 @@ $env:NEXA_TOKEN="key/eyJhY2NvdW50Ijp7ImlkIjoiNDI1Y2JiNWQtNjk1NC00NDYxLWJiOWMtYzh
 For Linux / Android adb shell:
 ```shell
 export NEXA_TOKEN="key/eyJhY2NvdW50Ijp7ImlkIjoiNDI1Y2JiNWQtNjk1NC00NDYxLWJiOWMtYzhlZjBiY2JlYzA2In0sInByb2R1Y3QiOnsiaWQiOiJkYjI4ZTNmYy1mMjU4LTQ4ZTctYmNkYi0wZmE4YjRkYTJhNWYifSwicG9saWN5Ijp7ImlkIjoiMmYyOWQyMjctNDVkZS00MzQ3LTg0YTItMjUwNTYwMmEzYzMyIiwiZHVyYXRpb24iOjMxMTA0MDAwMH0sInVzZXIiOnsiaWQiOiI3MGE2YzA4NS1jYjc3LTQ3YmEtOWUxNC1lNjFjYTA2ZThmZjUiLCJlbWFpbCI6ImFsYW40QG5leGE4YWkuY29tIn0sImxpY2Vuc2UiOnsiaWQiOiI4OTlhZGQ2NS1lOTI2LTQ2M2ItODllNi0xMjc0NzM3ZjA1MzYiLCJjcmVhdGVkIjoiMjAyNS0wOS0wNlQwMDo1MzozNi4yMDNaIiwiZXhwaXJ5IjoiMjAzNS0xMi0zMVQyMzo1OTo1OS4wMDBaIn19.BXoUHIEzFMuuZbBT7RvsKO9nTi5950C6kHO64blF7XBnfKvZ6ClA8a55tmszI1ZWdngzpNFTzMM5PV5euuzMCA=="
+```
+
+**Run your first model:**
+
+```bash
+# Chat with Qwen3
+nexa infer ggml-org/Qwen3-1.7B-GGUF
+
+# Multimodal: drag images into the CLI
+nexa infer NexaAI/Qwen3-VL-4B-Instruct-GGUF
+
+# NPU (Windows arm64 with Snapdragon X Elite)
+nexa infer NexaAI/OmniNeural-4B
 ```
 
 - **Models:** LLM, Multimodal, ASR, OCR, Rerank, Object Detection, Image Generation, Embedding
