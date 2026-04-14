@@ -27,3 +27,8 @@ cc_library(
         "vendor",
     ],
 )
+
+filegroup(
+    name = "srcs",
+    srcs = glob(["**"], allow_empty = True),
+)

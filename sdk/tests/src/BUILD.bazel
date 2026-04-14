@@ -40,7 +40,7 @@ MODEL_TEST_TARGETS = ["geniex_test_%s" % suite for suite in MODEL_TESTS]
         }),
         tags = ["manual", "integration"],
         deps = [
-            "//sdk/src:libgeniex_lib",
+            "//sdk/src:geniex_lib",
             "//sdk/tests:headers",
         ],
     )
@@ -57,7 +57,7 @@ cc_test(
         "//conditions:default": ["-ldl"],
     }),
     deps = [
-        "//sdk/src:libgeniex_lib",
+        "//sdk/src:geniex_lib",
         "//sdk/tests:headers",
     ],
 )
