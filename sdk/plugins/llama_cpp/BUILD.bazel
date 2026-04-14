@@ -49,9 +49,47 @@ cc_library(
     ],
 )
 
+genrule(
+    name = "backend_runtime_files",
+    srcs = [
+        "@llama_cpp_src//:ggml-opencl.dll",
+        "@llama_cpp_src//:ggml-hexagon.dll",
+        "@llama_cpp_src//:libggml-htp-v68.so",
+        "@llama_cpp_src//:libggml-htp-v69.so",
+        "@llama_cpp_src//:libggml-htp-v73.so",
+        "@llama_cpp_src//:libggml-htp-v75.so",
+        "@llama_cpp_src//:libggml-htp-v79.so",
+        "@llama_cpp_src//:libggml-htp-v81.so",
+        "@llama_cpp_src//:libggml-htp.cat",
+    ],
+    outs = [
+        "ggml-opencl.dll",
+        "ggml-hexagon.dll",
+        "libggml-htp-v68.so",
+        "libggml-htp-v69.so",
+        "libggml-htp-v73.so",
+        "libggml-htp-v75.so",
+        "libggml-htp-v79.so",
+        "libggml-htp-v81.so",
+        "libggml-htp.cat",
+    ],
+    cmd_bat = "copy /Y \"$(location @llama_cpp_src//:ggml-opencl.dll)\" \"$(@D)\\ggml-opencl.dll\" >NUL && " +
+              "copy /Y \"$(location @llama_cpp_src//:ggml-hexagon.dll)\" \"$(@D)\\ggml-hexagon.dll\" >NUL && " +
+              "copy /Y \"$(location @llama_cpp_src//:libggml-htp-v68.so)\" \"$(@D)\\libggml-htp-v68.so\" >NUL && " +
+              "copy /Y \"$(location @llama_cpp_src//:libggml-htp-v69.so)\" \"$(@D)\\libggml-htp-v69.so\" >NUL && " +
+              "copy /Y \"$(location @llama_cpp_src//:libggml-htp-v73.so)\" \"$(@D)\\libggml-htp-v73.so\" >NUL && " +
+              "copy /Y \"$(location @llama_cpp_src//:libggml-htp-v75.so)\" \"$(@D)\\libggml-htp-v75.so\" >NUL && " +
+              "copy /Y \"$(location @llama_cpp_src//:libggml-htp-v79.so)\" \"$(@D)\\libggml-htp-v79.so\" >NUL && " +
+              "copy /Y \"$(location @llama_cpp_src//:libggml-htp-v81.so)\" \"$(@D)\\libggml-htp-v81.so\" >NUL && " +
+              "copy /Y \"$(location @llama_cpp_src//:libggml-htp.cat)\" \"$(@D)\\libggml-htp.cat\" >NUL",
+)
+
 cc_binary(
     name = "geniex_plugin",
-    data = ["@llama_cpp_src//:runtime_dlls"],
+    data = [
+        ":backend_runtime_files",
+        "@llama_cpp_src//:runtime_dlls",
+    ],
     deps = [":plugin_lib"],
     linkshared = True,
     linkstatic = False,
