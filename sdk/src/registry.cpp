@@ -118,7 +118,7 @@ void PluginFactory::load_library(const std::filesystem::path& path) {
 
 void PluginFactory::load_symbol(const std::string& symbol_name, void*& symbol_ptr) {
 #if defined(_WIN32)
-    symbol_ptr = GetProcAddress(reinterpret_cast<HMODULE>(handle), symbol_name.c_str());
+    symbol_ptr = (void*)GetProcAddress(reinterpret_cast<HMODULE>(handle), symbol_name.c_str());
 #else
     symbol_ptr = dlsym(handle, symbol_name.c_str());
 #endif

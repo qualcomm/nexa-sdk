@@ -4,5 +4,12 @@ build --keep_going
 test --test_output=errors
 run --color=yes
 
+
+# hermetic toolchain
+common --enable_platform_specific_config
+build  --incompatible_disallow_empty_glob
+build  --worker_sandboxing
+build  --experimental_output_directory_naming_scheme=diff_against_dynamic_baseline
+
 # tests
 build  --verbose_failures
