@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -19,6 +20,36 @@ filegroup(
     srcs = glob(["src/*.cpp"]),
 )
 
+cmake(
+    name = "llama_cpp_foreign",
+    lib_source = "@llama_cpp_src//:srcs",
+    build_args = ["-j16"],
+    cache_entries = {
+        "BUILD_SHARED_LIBS": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "GGML_CCACHE": "OFF",
+        "LLAMA_BUILD_COMMON": "ON",
+        "LLAMA_BUILD_EXAMPLES": "OFF",
+        "LLAMA_BUILD_SERVER": "OFF",
+        "LLAMA_BUILD_TESTS": "OFF",
+        "LLAMA_BUILD_TOOLS": "OFF",
+    },
+    out_shared_libs = [
+        "libggml-base.so.0",
+        "libggml-cpu.so.0",
+        "libggml.so.0",
+        "libllama.so.0",
+    ],
+)
+
+cc_library(
+    name = "llama_cpp",
+    deps = [
+        ":llama_cpp_foreign",
+        "@llama_cpp_src//:headers",
+    ],
+)
+
 cc_library(
     name = "plugin_lib",
     srcs = [":srcs"],
@@ -29,8 +60,9 @@ cc_library(
     ],
     deps = [
         ":headers",
+        ":llama_cpp",
         "//sdk/include:headers",
-        "@llama_cpp_src//:headers",
+        "//sdk/src:geniex_lib",
     ],
 )
 
