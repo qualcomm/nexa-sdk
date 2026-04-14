@@ -24,6 +24,7 @@ DEBUG_DEFINES = select({
 cc_library(
     name = "geniex_lib",
     srcs = glob(["*.cpp"]),
+    alwayslink = True,
     copts = COMMON_COPTS,
     local_defines = COMMON_DEFINES + DEBUG_DEFINES + [
         "ML_BUILD",
@@ -40,5 +41,5 @@ cc_binary(
     name = "geniex",
     deps = [":geniex_lib"],
     linkshared = True,
-    linkstatic = False,
+    linkstatic = True,
 )
