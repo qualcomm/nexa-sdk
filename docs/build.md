@@ -9,6 +9,10 @@ Install Bazelisk:
 
 Then just build and run cli with `bazelisk run //cli -- infer Qwen/Qwen3-0.6B-GGUF`, all dependencies will be automatically downloaded and built by Bazel.
 
+> [!IMPORTANT]
+> Before running CLI with local SDK linkage, you must build and install the bridge first.
+> Bazel local mode expects `sdk/pkg-geniex/lib/geniex.dll` (Windows) or `sdk/pkg-geniex/lib/libgeniex.so` (Linux) to already exist.
+
 ## Build Flags
 
 There are also some optional flags for `bazelisk run`:
@@ -24,6 +28,12 @@ There are also some optional flags for `bazelisk run`:
 1. If you want to manually run the generated executable, you can find it in `bazel-bin/cli/cmd/geniex/geniex_/` and runtime files in `bazel-bin/cli/cmd/geniex/geniex_/geniex.runfiles/_main`.
 
 # Geniex SDK
+
+## Build Bridge/Plugin First (Required for local SDK)
+
+Build and install the SDK bridge and plugins into `sdk/pkg-geniex` first, then run CLI.
+
+Use the SDK subproject instructions in `sdk/README.md` and the platform-specific steps in the [Build & Install](#build--install) section below.
 
 Change `CMakeLists.txt:86` in `tokenizer-cpp`: 
 ```cmake
