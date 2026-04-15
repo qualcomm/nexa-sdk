@@ -1,3 +1,5 @@
+# gazelle:resolve go resty.dev/v3 @dev_resty_v3//:go_default_library
+
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(

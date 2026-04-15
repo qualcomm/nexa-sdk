@@ -1,5 +1,4 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("@rules_cc//cc:defs.bzl", "cc_import")
 
 alias(
     name = "go",
@@ -21,7 +20,7 @@ go_library(
         "tts.go",
         "vlm.go",
     ],
-    cdeps = ["//sdk/src:geniex_lib"],
+    cdeps = ["//bindings"],
     cgo = True,
     importpath = "github.com/qcom-it-nexa-ai/geniex/bindings/go",
     visibility = ["//visibility:public"],
