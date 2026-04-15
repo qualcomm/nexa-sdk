@@ -1,12 +1,9 @@
 BRIDGE_VERSION = "v1.0.45-rc1"
 
 def _sdk_s3_repo_impl(ctx):
-    # map Bazel ctx.os to our packaging names
     os_name_map = {
         "linux": "linux",
-        "darwin": "macos",
-        "macos": "macos",
-        "windows": "windows",
+        "windows 11": "windows",
     }
     os_name = os_name_map.get(ctx.os.name)
     if os_name == None:
@@ -21,18 +18,12 @@ def _sdk_s3_repo_impl(ctx):
         fail("unsupported host arch for sdk s3 repo: %s" % ctx.os.arch)
 
     bridge_version = ctx.attr.bridge_version
-    base_url = ctx.os.environ.get(
-        "GENIEX_SDK_S3_BASE_URL",
-        "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk",
-    ).rstrip("/")
-
+    base_url = "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk"
     url = "%s/%s/%s_%s/nexasdk-bridge.zip" % (base_url, bridge_version, os_name, os_arch)
-    ctx.download_and_extract(
-        url = url,
-        output = "build",
-    )
+    ctx.download_and_extract(url = url, output = "build")
 
-    ctx.file("BUILD.bazel", """load("@rules_cc//cc:defs.bzl", "cc_import", "cc_library")
+    ctx.file("BUILD.bazel", """
+load("@rules_cc//cc:defs.bzl", "cc_import", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -40,15 +31,17 @@ cc_import(
     name = "sdk_bridge",
     hdrs = ["build/ml.h"],
     includes = ["build"],
-    shared_library = "build/libnexa_bridge.so",
+    shared_library = select({
+        "@platforms//os:windows": "build/nexa_bridge.dll",
+        "@platforms//os:linux": "build/libnexa_bridge.so",
+    }),
 )
 
 filegroup(
     name = "sdk_runtime",
     srcs = glob([
-        "build/**/*.so",
-        "build/**/*.dll",
-    ], allow_empty = True),
+        "build/**/*",
+    ]),
 )
 
 cc_library(
