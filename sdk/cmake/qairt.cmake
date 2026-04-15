@@ -14,6 +14,10 @@ set(GENIEX_QAIRT_DIR "${CMAKE_SOURCE_DIR}/../third-party/geniex-qairt"
 # Disable examples when embedded; they require QNN SDK headers not present here
 set(BUILD_EXAMPLES OFF CACHE BOOL "Build geniex-qairt example executables" FORCE)
 
+# Build VLM backend by default for SDK QAIRT plugin so VLM is always available
+# just like LLM without requiring an extra user-facing option.
+set(GENIEX_BUILD_VLM ON CACHE BOOL "Build geniex_vlm backend" FORCE)
+
 # Keep Rust artifact paths short on Windows to avoid MAX_PATH linker failures
 # in third-party/tokenizers-cpp when building QAIRT dependencies.
 if(WIN32)

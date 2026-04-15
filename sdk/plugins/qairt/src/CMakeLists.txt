@@ -1,7 +1,11 @@
-file(GLOB_RECURSE QAIRT_SRCS *.cpp)
+option(GENIEX_QAIRT_ENABLE_VLM "Build QAIRT VLM support" OFF)
 
-if(WIN32)
-    list(FILTER QAIRT_SRCS EXCLUDE REGEX "[/\\]vlm\\.cpp$")
+set(QAIRT_SRCS
+    llm.cpp
+    plugin.cpp)
+
+if(GENIEX_QAIRT_ENABLE_VLM)
+    list(APPEND QAIRT_SRCS vlm.cpp)
 endif()
 
 add_library(geniex_qairt SHARED ${QAIRT_SRCS})
@@ -35,12 +39,7 @@ target_include_directories(geniex_qairt
     PUBLIC  ${COMMON_INCLUDE}
     PRIVATE ../include/)
 
-set(QAIRT_PLUGIN_LINK_DEPS geniex geniex_core)
-foreach(dep IN ITEMS geniex_vlm)
-    if(TARGET ${dep})
-        list(APPEND QAIRT_PLUGIN_LINK_DEPS ${dep})
-    endif()
-endforeach()
+set(QAIRT_PLUGIN_LINK_DEPS geniex geniex_core geniex-proc)
 
 target_link_libraries(geniex_qairt PRIVATE ${QAIRT_PLUGIN_LINK_DEPS})
 
