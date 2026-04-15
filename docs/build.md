@@ -9,13 +9,32 @@ Install Bazelisk:
 
 Then just build and run cli with `bazelisk run //cli -- infer Qwen/Qwen3-0.6B-GGUF`, all dependencies will be automatically downloaded and built by Bazel.
 
+## Build Flags
+
 There are also some optional flags for `bazelisk run`:
 
-- `--//sdk:sdk_type=s3` default behavior, WIP
-- `--//sdk:sdk_type=local` to force local build of sdk instead of using prebuilt binaries, you should manually build the sdk first, see [Build SDK](#build-sdk) section below
+- `--//sdk:sdk_type=s3` WIP
+- `--//sdk:sdk_type=local` default behavior, force local build of sdk instead of using prebuilt binaries, you should manually build the sdk first, see [Build SDK](#build-sdk) section below
 - `--//sdk:sdk_type=bazel` WIP
 
+## Tips
+
+1. Comment `startup --windows_enable_symlinks` in `.bazelrc` if you encounter issues with symbolic links on Windows, but be aware that this may cause other issues due to how the SDK is structured.
+1. It's better to enable `developer mode`, `long paths` on Windows.
+1. If you want to manually run the generated executable, you can find it in `bazel-bin/cli/cmd/geniex/geniex_/` and runtime files in `bazel-bin/cli/cmd/geniex/geniex_/geniex.runfiles/_main`.
+
 # Geniex SDK
+
+Change `CMakeLists.txt:86` in `tokenizer-cpp`: 
+```cmake
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+    set(TOKENIZERS_CPP_CARGO_TARGET aarch64-pc-windows-msvc)
+  else()
+    set(TOKENIZERS_CPP_CARGO_TARGET x86_64-pc-windows-msvc)
+  endif()
+endif()
+```
 
 ## Build & Install
 
