@@ -23,9 +23,22 @@ There are also some optional flags for `bazelisk run`:
 
 ## Tips
 
-1. Comment `startup --windows_enable_symlinks` in `.bazelrc` if you encounter issues with symbolic links on Windows, but be aware that this may cause other issues due to how the SDK is structured.
-1. It's better to enable `developer mode`, `long paths` on Windows.
-1. If you want to manually run the generated executable, you can find it in `bazel-bin/cli/cmd/geniex/geniex_/` and runtime files in `bazel-bin/cli/cmd/geniex/geniex_/geniex.runfiles/_main`.
+### Windows Symlink Requirements
+
+Bazel requires symlink support on Windows. To enable this:
+
+1. **Enable Developer Mode**: Settings → Privacy & Security → For developers → Developer Mode (toggle on)
+2. **Grant Create Symlink Permission**: 
+   - Open Group Policy Editor: `gpedit.msc`
+   - Navigate to: Computer Configuration → Windows Settings → Security Settings → Local Policies → User Rights Assignment
+   - Find "Create symbolic links" and add your user account
+   - Alternatively, set registry key: `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System` → `LocalAccountTokenFilterPolicy` = 1 (DWORD)
+3. **Enable Long Paths**: Settings → Privacy & Security → For developers → Long paths (toggle on)
+4. If you still encounter symlink issues, comment out `startup --windows_enable_symlinks` in `.bazelrc`, but be aware this may cause other issues due to how the SDK is structured.
+
+### Running the CLI
+
+If you want to manually run the generated executable, you can find it in `bazel-bin/cli/cmd/geniex/geniex_/` and runtime files in `bazel-bin/cli/cmd/geniex/geniex_/geniex.runfiles/_main`.
 
 # Geniex SDK
 
