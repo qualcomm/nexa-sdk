@@ -62,7 +62,15 @@ public:
     }
 #endif // _WIN32
     if (!plugin_base_path.empty()) {
-        auto path = (plugin_base_path / "llama_cpp").u8string();
+      auto backend_dir = plugin_base_path / "llama_cpp";
+    #if defined(_WIN32)
+      // LoadLibrary() does not reliably resolve transitive DLL dependencies
+      // from the DLL's own directory in this Bazel runfiles layout.
+      if (!SetDllDirectoryW(backend_dir.wstring().c_str())) {
+        GENIEX_LOG_WARN("Failed to set DLL search directory to {}", backend_dir.u8string());
+      }
+    #endif // _WIN32
+      auto path = backend_dir.u8string();
         GENIEX_LOG_DEBUG("Loading GGML backend from path: {}", path);
         ggml_backend_load_all_from_path(path.c_str());
     }
