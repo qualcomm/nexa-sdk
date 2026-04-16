@@ -20,7 +20,11 @@ config_setting(name = "local_sdk", flag_values = { ":sdk_type": "local" })
 sdk_local_bundle(
     name = "local_sdk_runtime",
     data = select({
-        "@platforms//os:windows": glob(["pkg-geniex/lib/**/*.dll"], allow_empty = True),
+        "@platforms//os:windows": glob([
+            "pkg-geniex/lib/**/*.dll",
+            "pkg-geniex/lib/llama_cpp/*.so",
+            "pkg-geniex/lib/llama_cpp/*.cat",
+        ], allow_empty = True),
         "@platforms//os:linux": glob(["pkg-geniex/lib/**/*.so"], allow_empty = True),
     }),
     strip_prefix = "sdk/pkg-geniex/lib/",
