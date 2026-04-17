@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from ctypes import POINTER, byref, c_void_p, cast, create_string_buffer
+from ctypes import POINTER, byref, c_void_p, pointer, string_at
 from typing import Iterator
 
 from .generation.output import GenerateOutput, ProfileData
@@ -93,7 +93,7 @@ def _build_gen_config(
     cfg = ml_GenerationConfig(
         max_tokens=max_new_tokens,
         stop_count=stop_count,
-        sampler_config=byref(sampler),
+        sampler_config=pointer(sampler),
         image_count=img_count,
         audio_count=aud_count,
     )
@@ -155,7 +155,7 @@ class GeniexLLM:
         )
         out = ml_LlmApplyChatTemplateOutput()
         _check(lib.ml_llm_apply_chat_template(self._handle, byref(inp), byref(out)))
-        result = out.formatted_text.decode() if out.formatted_text else ''
+        result = string_at(out.formatted_text).decode() if out.formatted_text else ''
         if out.formatted_text:
             lib.ml_free(out.formatted_text)
         return result
@@ -205,13 +205,13 @@ class GeniexLLM:
 
         inp = ml_LlmGenerateInput(
             prompt_utf8=prompt.encode(),
-            config=byref(cfg),
+            config=pointer(cfg),
             on_token=_noop,
             user_data=None,
         )
         out = ml_LlmGenerateOutput()
         _check(lib.ml_llm_generate(self._handle, byref(inp), byref(out)))
-        full = out.full_text.decode() if out.full_text else ''
+        full = string_at(out.full_text).decode() if out.full_text else ''
         profile = ProfileData.from_c(out.profile_data)
         if out.full_text:
             lib.ml_free(out.full_text)
@@ -225,13 +225,13 @@ class GeniexLLM:
             lib = load_library()
             inp = ml_LlmGenerateInput(
                 prompt_utf8=prompt.encode(),
-                config=byref(cfg),
+                config=pointer(cfg),
                 on_token=cb,
                 user_data=None,
             )
             out = ml_LlmGenerateOutput()
             _check(lib.ml_llm_generate(self._handle, byref(inp), byref(out)))
-            full = out.full_text.decode() if out.full_text else ''
+            full = string_at(out.full_text).decode() if out.full_text else ''
             profile = ProfileData.from_c(out.profile_data)
             if out.full_text:
                 lib.ml_free(out.full_text)
@@ -350,7 +350,7 @@ class GeniexVLM:
         )
         out = ml_VlmApplyChatTemplateOutput()
         _check(lib.ml_vlm_apply_chat_template(self._handle, byref(inp), byref(out)))
-        result = out.formatted_text.decode() if out.formatted_text else ''
+        result = string_at(out.formatted_text).decode() if out.formatted_text else ''
         if out.formatted_text:
             lib.ml_free(out.formatted_text)
         return result
@@ -403,13 +403,13 @@ class GeniexVLM:
 
         inp = ml_VlmGenerateInput(
             prompt_utf8=prompt.encode(),
-            config=byref(cfg),
+            config=pointer(cfg),
             on_token=_noop,
             user_data=None,
         )
         out = ml_VlmGenerateOutput()
         _check(lib.ml_vlm_generate(self._handle, byref(inp), byref(out)))
-        full = out.full_text.decode() if out.full_text else ''
+        full = string_at(out.full_text).decode() if out.full_text else ''
         profile = ProfileData.from_c(out.profile_data)
         if out.full_text:
             lib.ml_free(out.full_text)
@@ -423,13 +423,13 @@ class GeniexVLM:
             lib = load_library()
             inp = ml_VlmGenerateInput(
                 prompt_utf8=prompt.encode(),
-                config=byref(cfg),
+                config=pointer(cfg),
                 on_token=cb,
                 user_data=None,
             )
             out = ml_VlmGenerateOutput()
             _check(lib.ml_vlm_generate(self._handle, byref(inp), byref(out)))
-            full = out.full_text.decode() if out.full_text else ''
+            full = string_at(out.full_text).decode() if out.full_text else ''
             profile = ProfileData.from_c(out.profile_data)
             if out.full_text:
                 lib.ml_free(out.full_text)

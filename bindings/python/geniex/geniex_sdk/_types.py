@@ -174,7 +174,7 @@ class ml_LlmGenerateInput(Structure):
 
 class ml_LlmGenerateOutput(Structure):
     _fields_ = [
-        ('full_text', c_char_p),
+        ('full_text', c_void_p),
         ('profile_data', ml_ProfileData),
     ]
 
@@ -197,7 +197,7 @@ class ml_LlmApplyChatTemplateInput(Structure):
 
 
 class ml_LlmApplyChatTemplateOutput(Structure):
-    _fields_ = [('formatted_text', c_char_p)]
+    _fields_ = [('formatted_text', c_void_p)]
 
 
 # ---------------------------------------------------------------------------
@@ -246,7 +246,7 @@ class ml_VlmGenerateInput(Structure):
 
 class ml_VlmGenerateOutput(Structure):
     _fields_ = [
-        ('full_text', c_char_p),
+        ('full_text', c_void_p),
         ('profile_data', ml_ProfileData),
     ]
 
@@ -262,7 +262,7 @@ class ml_VlmApplyChatTemplateInput(Structure):
 
 
 class ml_VlmApplyChatTemplateOutput(Structure):
-    _fields_ = [('formatted_text', c_char_p)]
+    _fields_ = [('formatted_text', c_void_p)]
 
 
 # ---------------------------------------------------------------------------
