@@ -54,7 +54,21 @@ def _resolve_device(device_map: str) -> tuple[str | None, str | None]:
 
 
 def _resolve_model_path(model_name_or_path: str, quant: str | None) -> str:
-    """Resolve a local path or HuggingFace repo id to a local model path."""
+    """Resolve a local path or HuggingFace repo id to a local model path.
+
+    When given a directory (e.g. a QAIRT model folder), returns a file inside
+    it so the C++ side can derive the directory via parent_path().
+    """
+    if os.path.isdir(model_name_or_path):
+        # Prefer tokenizer.json as the anchor file; fall back to the first file.
+        anchor = os.path.join(model_name_or_path, 'tokenizer.json')
+        if not os.path.isfile(anchor):
+            entries = [e for e in os.listdir(model_name_or_path)
+                       if os.path.isfile(os.path.join(model_name_or_path, e))]
+            if not entries:
+                raise FileNotFoundError(f'No files found in model directory: {model_name_or_path}')
+            anchor = os.path.join(model_name_or_path, entries[0])
+        return anchor
     if os.path.exists(model_name_or_path):
         return model_name_or_path
 
@@ -106,6 +120,7 @@ class AutoModelForCausalLM:
         cls,
         model_name_or_path: str,
         *,
+        model_name: str | None = None,
         quant: str | None = None,
         device_map: str = 'auto',
         n_ctx: int = 0,
@@ -119,6 +134,8 @@ class AutoModelForCausalLM:
 
         Args:
             model_name_or_path: HuggingFace repo id or local path.
+            model_name: Override the registry model name (e.g. 'granite4' for QAIRT).
+                        Defaults to model_name_or_path when not set.
             quant: Quantization variant (e.g. 'Q4_K_M').  Used to filter files
                 when downloading from HuggingFace Hub.
             device_map: 'auto' | 'cpu' | '<plugin_id>:<device_id>'.
@@ -134,7 +151,7 @@ class AutoModelForCausalLM:
         config = _build_model_config(n_ctx, n_gpu_layers, **kwargs)
 
         inp = ml_LlmCreateInput(
-            model_name=model_name_or_path.encode(),
+            model_name=(model_name or model_name_or_path).encode(),
             model_path=model_path.encode(),
             config=config,
         )

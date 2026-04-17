@@ -1,18 +1,13 @@
 """Minimal geniex LLM example.
 
 Run from the repo root:
-
-    SDK_DIR=sdk/build-default
-    export GENIEX_LIB_PATH=$SDK_DIR/src/libgeniex.so
-    export GENIEX_PLUGIN_PATH=$SDK_DIR/plugins
-    export LD_LIBRARY_PATH=$SDK_DIR/bin:$SDK_DIR/plugins/llama_cpp
-    python bindings/python/examples/llm_basic.py --model /path/to/model.gguf
-
 Example with a local Qwen3 model:
 
     python bindings/python/examples/llm_basic.py \\
         --model ~/.cache/nexa.ai/nexa_sdk/models/ggml-org/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf \\
         --prompt "Explain gravity in one sentence." --stream
+
+    python bindings/python/examples/llm.py --model sdk/modelfiles/qairt/granite4_micro --model-name granite4 --prompt "What is 2+2?" --device qairt:NPU --stream
 """
 
 import argparse
@@ -28,6 +23,7 @@ from geniex import AutoModelForCausalLM
 def main():
     parser = argparse.ArgumentParser(description='geniex minimal LLM example')
     parser.add_argument('--model', required=True, help='Path to GGUF model file or HF repo id')
+    parser.add_argument('--model-name', default=None, help='Registry model name override (e.g. granite4 for QAIRT)')
     parser.add_argument('--prompt', default='Give me a short introduction to large language models.', help='User prompt')
     parser.add_argument('--max-tokens', type=int, default=256)
     parser.add_argument('--stream', action='store_true', help='Stream output token by token')
@@ -37,6 +33,7 @@ def main():
     print(f'Loading model: {args.model}')
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
+        model_name=args.model_name,
         device_map=args.device,
         n_ctx=2048,
     )
