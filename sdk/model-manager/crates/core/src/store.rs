@@ -137,8 +137,10 @@ mod tests {
     use std::collections::HashMap;
 
     fn make_store() -> Store {
+        // leak the TempDir so the directory persists for the test duration
         let tmp = tempfile::tempdir().unwrap();
-        let path = tmp.into_path();
+        let path = tmp.path().to_path_buf();
+        std::mem::forget(tmp);
         let cfg = StoreConfig::new(path, None);
         Store::new(cfg).unwrap()
     }

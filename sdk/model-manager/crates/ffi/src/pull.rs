@@ -89,6 +89,9 @@ pub extern "C" fn ml_model_pull(input: *const MlModelPullInput) -> i32 {
 
     match pull(store, req) {
         Ok(()) => ML_SUCCESS,
-        Err(e) => err_to_code(&e),
+        Err(e) => {
+            eprintln!("[model-manager] ml_model_pull error: {e}");
+            err_to_code(&e)
+        }
     }
 }

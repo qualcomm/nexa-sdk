@@ -10,5 +10,5 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 tokio = { version = "1", features = ["rt", "fs", "io-util"] }
-hf-hub = { version = "0.4", features = ["tokio"] }
+hf-hub = { version = "0.4", default-features = false, features = ["ureq"] }
 fs2 = "0.4"
