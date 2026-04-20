@@ -16,7 +16,7 @@ jobs:
     uses: ./.github/workflows/reusable-build.yml
     with:
       platform: linux-arm64
-      runner: sdk-linux-16-core-x64
+      runner: larger-runner
       upload_artifact: false
 
   build-windows-arm64:
@@ -24,5 +24,5 @@ jobs:
     uses: ./.github/workflows/reusable-build.yml
     with:
       platform: windows-arm64
-      runner: sdk-windows-16-core-x64
+      runner: Windows
       upload_artifact: false
