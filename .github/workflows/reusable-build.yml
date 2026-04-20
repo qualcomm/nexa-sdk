@@ -72,12 +72,6 @@ jobs:
         run: |
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
-          echo "=== git global config (url section) ==="
-          git config --global --list | grep -i "url\|insteadof" || true
-          echo "=== testing PAT access ==="
-          curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token ${TOKEN}" \
-            "https://api.github.com/repos/qcom-ai-hub/qnn-run" || true
-          echo ""
           git submodule update --init --recursive
 
       - name: Detect build version
