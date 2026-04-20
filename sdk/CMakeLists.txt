@@ -38,6 +38,7 @@ option(GENIEX_PLUGIN_QAIRT      "Enable QAIRT backend"           ON)
 option(GENIEX_DL                "Enable dynamic plugin loading"  ON)
 option(GENIEX_DEBUG             "Enable debug mode"              ON)
 option(GENIEX_TEST              "Enable unit tests"              ON)
+option(GENIEX_MODEL_MANAGER     "Enable model manager"           OFF)
 
 message(STATUS "=============== Options ===============")
 message(STATUS "GENIEX_VERSION:          ${GENIEX_VERSION}")
@@ -46,7 +47,35 @@ message(STATUS "GENIEX_PLUGIN_QAIRT:     ${GENIEX_PLUGIN_QAIRT}")
 message(STATUS "GENIEX_DL:               ${GENIEX_DL}")
 message(STATUS "GENIEX_DEBUG:            ${GENIEX_DEBUG}")
 message(STATUS "GENIEX_TEST:             ${GENIEX_TEST}")
+message(STATUS "GENIEX_MODEL_MANAGER:    ${GENIEX_MODEL_MANAGER}")
 message(STATUS "=======================================")
+
+# ===============================================================================
+# Rust Model Manager (optional)
+# ===============================================================================
+if(GENIEX_MODEL_MANAGER)
+    set(RUST_MM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/model-manager")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(RUST_PROFILE "debug")
+        set(RUST_BUILD_FLAG "")
+    else()
+        set(RUST_PROFILE "release")
+        set(RUST_BUILD_FLAG "--release")
+    endif()
+    set(RUST_TARGET_DIR "${RUST_MM_DIR}/target/${RUST_PROFILE}")
+
+    add_custom_command(
+        OUTPUT "${RUST_TARGET_DIR}/libgeniex_model.a"
+        COMMAND cargo build ${RUST_BUILD_FLAG}
+                --manifest-path "${RUST_MM_DIR}/Cargo.toml"
+        WORKING_DIRECTORY "${RUST_MM_DIR}"
+        COMMENT "Building model manager (${RUST_PROFILE})"
+        VERBATIM
+    )
+    add_custom_target(model_manager_build
+        DEPENDS "${RUST_TARGET_DIR}/libgeniex_model.a"
+    )
+endif()
 
 enable_testing()
 
