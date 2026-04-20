@@ -58,18 +58,19 @@ jobs:
           git config --global core.fscache true
           git config --global core.preloadindex true
 
-      - name: Configure git credentials for private submodules
-        shell: bash
-        run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT || github.token }}@github.com/".insteadOf "https://github.com/"
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT || github.token }}@github.com/".insteadOf "git@github.com:"
-
       - name: Checkout source
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          submodules: recursive
+          submodules: false
           token: ${{ secrets.GH_PAT || github.token }}
+
+      - name: Init submodules with PAT
+        shell: bash
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_PAT || github.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_PAT || github.token }}@github.com/".insteadOf "git@github.com:"
+          git submodule update --init --recursive
 
       - name: Detect build version
         id: version
