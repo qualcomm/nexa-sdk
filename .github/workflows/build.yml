@@ -27,6 +27,7 @@ jobs:
     name: build-linux-arm64
     needs: [lint]
     uses: ./.github/workflows/reusable-build.yml
+    secrets: inherit
     with:
       platform: linux-arm64
       runner: larger-runner
@@ -36,6 +37,7 @@ jobs:
     name: build-windows-arm64
     needs: [lint]
     uses: ./.github/workflows/reusable-build.yml
+    secrets: inherit
     with:
       platform: windows-arm64
       runner: Windows
