@@ -81,7 +81,7 @@ jobs:
         with:
           platform: ${{ inputs.platform }}
 
-      - name: Configure and build
+      - name: Configure and build SDK
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           export MAMBA_ROOT_PREFIX="${HOME}/micromamba"
@@ -101,36 +101,114 @@ jobs:
           )
 
           if [ "${{ inputs.platform }}" = "linux-arm64" ]; then
-            cmake -B build \
-              -DCMAKE_TOOLCHAIN_FILE="cmake/arm64-linux-gnu.cmake" \
+            cmake -B sdk/build \
+              -S sdk \
+              -DCMAKE_TOOLCHAIN_FILE="sdk/cmake/arm64-linux-gnu.cmake" \
               -DGGML_OPENCL=OFF \
               "${common_flags[@]}" \
               ${{ inputs.extra_cmake_flags }}
 
-            cmake --build build -j
+            cmake --build sdk/build -j
           elif [ "${{ inputs.platform }}" = "windows-arm64" ]; then
-            cmake -B build -G "Ninja" \
-              -DCMAKE_TOOLCHAIN_FILE="cmake/arm64-windows-llvm.cmake" \
+            cmake -B sdk/build -G "Ninja" \
+              -S sdk \
+              -DCMAKE_TOOLCHAIN_FILE="sdk/cmake/arm64-windows-llvm.cmake" \
               -DGGML_OPENCL=ON \
               "${common_flags[@]}" \
               ${{ inputs.extra_cmake_flags }}
 
-            cmake --build build --config Release -j
+            cmake --build sdk/build --config Release -j
           else
             echo "Unsupported platform: ${{ inputs.platform }}"
             exit 1
           fi
 
-      - name: Package Linux artifact
-        if: inputs.upload_artifact && inputs.platform == 'linux-arm64'
-        uses: ./.github/actions/artifact
-        with:
-          os: linux
-          arch: arm64
+          cmake --install sdk/build --prefix sdk/pkg-geniex
 
-      - name: Package Windows artifact
-        if: inputs.upload_artifact && inputs.platform == 'windows-arm64'
-        uses: ./.github/actions/artifact
+      - name: Build CLI
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          export MAMBA_ROOT_PREFIX="${HOME}/micromamba"
+          eval "$(micromamba shell hook --shell bash --root-prefix "$MAMBA_ROOT_PREFIX")"
+          micromamba activate
+
+          cd cli
+          make build VERSION="${{ steps.version.outputs.bridge_version }}"
+
+      - name: Build Python wheel
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          export MAMBA_ROOT_PREFIX="${HOME}/micromamba"
+          eval "$(micromamba shell hook --shell bash --root-prefix "$MAMBA_ROOT_PREFIX")"
+          micromamba activate
+
+          cp -r sdk/pkg-geniex/lib bindings/python/geniex/lib
+          pip install build
+          python -m build --wheel bindings/python/ -o dist/
+
+      - name: Package SDK artifact
+        if: inputs.upload_artifact
+        run: |
+          if [ "${{ inputs.platform }}" = "linux-arm64" ]; then
+            os=linux
+          else
+            os=windows
+          fi
+          cd sdk/pkg-geniex
+          7z a "../../geniex-sdk-${os}-arm64.zip" ./*
+
+      - name: Package CLI artifact
+        if: inputs.upload_artifact
+        run: |
+          if [ "${{ inputs.platform }}" = "linux-arm64" ]; then
+            os=linux
+            exe=""
+          else
+            os=windows
+            exe=".exe"
+          fi
+          mkdir -p dist/cli-${os}-arm64
+          cp cli/build/geniex${exe} dist/cli-${os}-arm64/
+          cp -r sdk/pkg-geniex/lib dist/cli-${os}-arm64/lib
+          cd dist
+          7z a "../geniex-cli-${os}-arm64.zip" cli-${os}-arm64/
+
+      - name: Upload SDK artifact
+        if: inputs.upload_artifact && inputs.platform == 'linux-arm64'
+        uses: actions/upload-artifact@v5
         with:
-          os: windows
-          arch: arm64
+          name: geniex-sdk-linux-arm64
+          path: geniex-sdk-linux-arm64.zip
+          retention-days: 14
+
+      - name: Upload SDK artifact
+        if: inputs.upload_artifact && inputs.platform == 'windows-arm64'
+        uses: actions/upload-artifact@v5
+        with:
+          name: geniex-sdk-windows-arm64
+          path: geniex-sdk-windows-arm64.zip
+          retention-days: 14
+
+      - name: Upload CLI artifact
+        if: inputs.upload_artifact && inputs.platform == 'linux-arm64'
+        uses: actions/upload-artifact@v5
+        with:
+          name: geniex-cli-linux-arm64
+          path: geniex-cli-linux-arm64.zip
+          retention-days: 14
+
+      - name: Upload CLI artifact
+        if: inputs.upload_artifact && inputs.platform == 'windows-arm64'
+        uses: actions/upload-artifact@v5
+        with:
+          name: geniex-cli-windows-arm64
+          path: geniex-cli-windows-arm64.zip
+          retention-days: 14
+
+      - name: Upload Python wheel artifact
+        if: inputs.upload_artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: geniex-wheel-${{ inputs.platform }}
+          path: dist/*.whl
+          retention-days: 14

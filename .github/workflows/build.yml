@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "sdk/**"
+      - "cli/**"
+      - "bindings/python/**"
+      - "bindings/go/**"
+      - ".github/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    uses: ./.github/workflows/lint.yml
+
+  build-linux-arm64:
+    name: build-linux-arm64
+    needs: [lint]
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      platform: linux-arm64
+      runner: sdk-linux-16-core-x64
+      upload_artifact: false
+
+  build-windows-arm64:
+    name: build-windows-arm64
+    needs: [lint]
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      platform: windows-arm64
+      runner: sdk-windows-16-core-x64
+      upload_artifact: false
