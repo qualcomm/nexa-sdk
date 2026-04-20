@@ -2,7 +2,7 @@ name: Build
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - "sdk/**"
       - "cli/**"
