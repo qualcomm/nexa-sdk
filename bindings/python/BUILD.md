@@ -103,10 +103,10 @@ set `GENIEX_LIB_PATH` to the native library before use:
 
 ```bash
 # Linux
-export GENIEX_LIB_PATH=/path/to/sdk/pkg-geniex/lib/libgeniex.so
+export GENIEX_LIB_PATH=/path/to/sdk/pkg-geniex/lib/
 
 # Windows
-set GENIEX_LIB_PATH=C:\path\to\sdk\pkg-geniex\lib\geniex.dll
+set GENIEX_LIB_PATH=C:\path\to\sdk\pkg-geniex\lib\
 ```
 
 ```python

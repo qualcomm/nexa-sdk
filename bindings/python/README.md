@@ -11,10 +11,9 @@ in the wheel. You must provide it separately:
 ```bash
 pip install geniex
 
-# Point the package to your native library
-export GENIEX_LIB_PATH=/path/to/libgeniex.so   # Linux
-# or
-set GENIEX_LIB_PATH=C:\path\to\geniex.dll       # Windows
+# Point the package to the directory containing the native library
+export GENIEX_LIB_PATH=/path/to/sdk/pkg-geniex/lib/   # Linux
+set GENIEX_LIB_PATH=C:\path\to\sdk\pkg-geniex\lib\    # Windows
 ```
 
 The native library is obtained by building the SDK from source — see
@@ -24,7 +23,7 @@ The native library is obtained by building the SDK from source — see
 
 ```python
 import os
-os.environ["GENIEX_LIB_PATH"] = "/path/to/libgeniex.so"  # set before first import if not in env
+os.environ["GENIEX_LIB_PATH"] = "/path/to/sdk/pkg-geniex/lib/"  # set before first import if not in env
 
 from geniex import AutoModelForCausalLM
 
