@@ -67,9 +67,11 @@ jobs:
 
       - name: Init submodules with PAT
         shell: bash
+        env:
+          TOKEN: ${{ secrets.GH_PAT || github.token }}
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT || github.token }}@github.com/".insteadOf "https://github.com/"
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT || github.token }}@github.com/".insteadOf "git@github.com:"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git@github.com:"
           git submodule update --init --recursive
 
       - name: Detect build version
