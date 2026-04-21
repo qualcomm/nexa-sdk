@@ -403,7 +403,7 @@ func (v *VLM) Reset() error {
 	slog.Debug("Reset called", "ptr", v.ptr)
 
 	if v.ptr == nil {
-		return SDKError(C.ML_ERROR_COMMON_INVALID_INPUT)
+		return SDKError(C.GENIEX_ERROR_COMMON_INVALID_INPUT)
 	}
 
 	res := C.geniex_vlm_reset(v.ptr)

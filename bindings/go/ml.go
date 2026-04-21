@@ -57,11 +57,11 @@ func SDKErrorCode(err error) int32 {
 }
 
 var (
-	ErrCommonNotSupport             = SDKError(C.ML_ERROR_COMMON_NOT_SUPPORTED)
-	ErrCommonModelLoad              = SDKError(C.ML_ERROR_COMMON_MODEL_LOAD)
-	ErrCommonPluginLoad             = SDKError(C.ML_ERROR_COMMON_PLUGIN_LOAD)
-	ErrCommonPluginInvalid          = SDKError(C.ML_ERROR_COMMON_PLUGIN_INVALID)
-	ErrLlmTokenizationContextLength = SDKError(C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
+	ErrCommonNotSupport             = SDKError(C.GENIEX_ERROR_COMMON_NOT_SUPPORTED)
+	ErrCommonModelLoad              = SDKError(C.GENIEX_ERROR_COMMON_MODEL_LOAD)
+	ErrCommonPluginLoad             = SDKError(C.GENIEX_ERROR_COMMON_PLUGIN_LOAD)
+	ErrCommonPluginInvalid          = SDKError(C.GENIEX_ERROR_COMMON_PLUGIN_INVALID)
+	ErrLlmTokenizationContextLength = SDKError(C.GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
 )
 
 // Init initializes the GenieX-CLI by calling the underlying C library initialization
@@ -191,11 +191,11 @@ func GetDeviceList(input DeviceListInput) (*DeviceListOutput, error) {
 func go_log_wrap(level C.geniex_LogLevel, msg *C.char) {
 	msgStr := C.GoString(msg)
 	switch level {
-	case C.ML_LOG_LEVEL_INFO:
+	case C.GENIEX_LOG_LEVEL_INFO:
 		slog.Info("[ML] " + msgStr)
-	case C.ML_LOG_LEVEL_WARN:
+	case C.GENIEX_LOG_LEVEL_WARN:
 		slog.Warn("[ML] " + msgStr)
-	case C.ML_LOG_LEVEL_ERROR:
+	case C.GENIEX_LOG_LEVEL_ERROR:
 		slog.Error("[ML] " + msgStr)
 	default:
 		slog.Debug("[ML] " + msgStr)
