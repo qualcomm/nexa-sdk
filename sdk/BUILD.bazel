@@ -33,7 +33,7 @@ sdk_local_bundle(
 
 cc_library(
     name = "local_sdk_lib",
-    hdrs = ["pkg-geniex/include/ml.h"],
+    hdrs = ["pkg-geniex/include/geniex.h"],
     includes = ["pkg-geniex/include"],
     srcs = select({
         "@platforms//os:windows": ["pkg-geniex/lib/geniex.dll"],
