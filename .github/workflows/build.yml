@@ -53,21 +53,9 @@ jobs:
   #     runner: larger-runner
 
   # --- Windows pipeline ---
-  check-tools-windows:
-    name: check-tools-windows
-    needs: [lint]
-    runs-on: windows-arm64
-    timeout-minutes: 5
-    steps:
-      - name: Verify tools
-        shell: cmd
-        run: |
-          bazelisk version
-          go version
-
   build-sdk-windows:
     name: build-sdk-windows
-    needs: [check-tools-windows]
+    needs: [lint]
     uses: ./.github/workflows/reusable-build-sdk.yml
     secrets: inherit
     with:

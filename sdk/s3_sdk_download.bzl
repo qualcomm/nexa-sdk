@@ -29,7 +29,7 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "sdk",
-    hdrs = ["build/ml.h"],
+    hdrs = ["build/geniex.h"],
     includes = ["build"],
     srcs = select({
         "@platforms//os:windows": ["build/nexa_bridge.dll"],

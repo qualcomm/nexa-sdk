@@ -64,6 +64,11 @@ jobs:
             | grep -v -E '^sdk/plugins/qnn/libs/' \
             || true)
 
+          # Keep only files that still exist (skip deletes/renames)
+          if [ -n "$filtered" ]; then
+            filtered=$(echo "$filtered" | while IFS= read -r f; do [ -f "$f" ] && echo "$f"; done)
+          fi
+
           if [ -z "$filtered" ]; then
             echo "files=" >> "$GITHUB_OUTPUT"
             echo "No C/C++ files to check"

@@ -1,6 +1,6 @@
-#include "ml.h"
-
 #include <stdlib.h>
+
+#include "geniex.h"
 
 // keep geniex_plugin link openssl
 #ifdef GENIEX_VALIDATION
@@ -27,22 +27,22 @@ void* _crypto_dummy = (void*)OpenSSL_version;
 using namespace geniex;
 
 // Default log handler - colorized for debug builds, no-op for release builds
-static void default_log_handler(ml_LogLevel level, const char* msg) {
+static void default_log_handler(geniex_LogLevel level, const char* msg) {
 #ifdef GENIEX_DEBUG
     switch (level) {
-        case ML_LOG_LEVEL_TRACE:
+        case GENIEX_LOG_LEVEL_TRACE:
             std::cerr << "\033[90m[TRACE] " << msg << "\033[0m" << std::endl;
             break;
-        case ML_LOG_LEVEL_DEBUG:
+        case GENIEX_LOG_LEVEL_DEBUG:
             std::cerr << "\033[34m[DEBUG] " << msg << "\033[0m" << std::endl;
             break;
-        case ML_LOG_LEVEL_INFO:
+        case GENIEX_LOG_LEVEL_INFO:
             std::cerr << "\033[32m[ INFO] " << msg << "\033[0m" << std::endl;
             break;
-        case ML_LOG_LEVEL_WARN:
+        case GENIEX_LOG_LEVEL_WARN:
             std::cerr << "\033[33m[ WARN] " << msg << "\033[0m" << std::endl;
             break;
-        case ML_LOG_LEVEL_ERROR:
+        case GENIEX_LOG_LEVEL_ERROR:
             std::cerr << "\033[31m[ERROR] " << msg << "\033[0m" << std::endl;
             break;
     }
@@ -53,7 +53,7 @@ static void default_log_handler(ml_LogLevel level, const char* msg) {
 #endif
 }
 
-int32_t ml_init(void) {
+int32_t geniex_init(void) {
 #ifdef _WIN32
     // set console output to UTF-8 code page for Windows
     SetConsoleOutputCP(CP_UTF8);
@@ -65,50 +65,50 @@ int32_t ml_init(void) {
 #ifdef GENIEX_DL
         Registry::instance().scan_plugins();
 #endif
-        return ML_SUCCESS;
+        return GENIEX_SUCCESS;
     } catch (const std::exception& e) {
         GENIEX_LOG_ERROR("failed to initialize ml: {}", e.what());
-        return ML_ERROR_COMMON_UNKNOWN;
+        return GENIEX_ERROR_COMMON_UNKNOWN;
     }
 }
 
-int32_t ml_register_plugin(ml_plugin_id_func plugin_id_func, ml_create_plugin_func create_func) {
+int32_t geniex_register_plugin(geniex_plugin_id_func plugin_id_func, geniex_create_plugin_func create_func) {
     GENIEX_LOG_INFO("register plugin");
 
     try {
         void* plugin_id     = (void*)plugin_id_func;
         void* create_plugin = (void*)create_func;
         Registry::instance().register_plugin(plugin_id, create_plugin);
-        return ML_SUCCESS;
+        return GENIEX_SUCCESS;
     } catch (const std::exception& e) {
         GENIEX_LOG_ERROR("failed to register plugin: {}", e.what());
-        return ML_ERROR_COMMON_UNKNOWN;
+        return GENIEX_ERROR_COMMON_UNKNOWN;
     }
 }
 
-int32_t ml_deinit(void) {
+int32_t geniex_deinit(void) {
     GENIEX_LOG_INFO("deinitializing ml");
 
     try {
         // Clean up the registry to ensure proper plugin destruction
         geniex::Registry::instance().clear();
     } catch (const std::exception& e) {
-        GENIEX_LOG_ERROR("ml_deinit() - Error during registry cleanup: {}", e.what());
+        GENIEX_LOG_ERROR("geniex_deinit() - Error during registry cleanup: {}", e.what());
     }
 
-    return ML_SUCCESS;
+    return GENIEX_SUCCESS;
 }
 
 // Logging
 
-ml_log_callback ml_log = default_log_handler;
+geniex_log_callback geniex_log = default_log_handler;
 
-int32_t ml_set_log(ml_log_callback callback) {
-    ml_log = callback;
-    return ML_SUCCESS;
+int32_t geniex_set_log(geniex_log_callback callback) {
+    geniex_log = callback;
+    return GENIEX_SUCCESS;
 }
 
-void ml_free(void* ptr) {
+void geniex_free(void* ptr) {
     if (ptr) free(ptr);
 }
 
@@ -116,15 +116,15 @@ void ml_free(void* ptr) {
 
 constexpr const char* version = build_config::kBridgeVersion;
 
-const char* ml_version() { return version; }
+const char* geniex_version() { return version; }
 
 // Get Plugin List
 
-int32_t ml_get_plugin_list(ml_GetPluginListOutput* output) {
+int32_t geniex_get_plugin_list(geniex_GetPluginListOutput* output) {
     GENIEX_LOG_TRACE("getting plugin list: {}", output);
     if (!output) {
         GENIEX_LOG_ERROR("output is nullptr");
-        return ML_ERROR_COMMON_INVALID_INPUT;
+        return GENIEX_ERROR_COMMON_INVALID_INPUT;
     }
 
     try {
@@ -132,13 +132,13 @@ int32_t ml_get_plugin_list(ml_GetPluginListOutput* output) {
         if (plugin_list.empty()) {
             output->plugin_ids   = nullptr;
             output->plugin_count = 0;
-            return ML_SUCCESS;
+            return GENIEX_SUCCESS;
         }
 
-        output->plugin_ids = static_cast<ml_PluginId*>(malloc(plugin_list.size() * sizeof(ml_PluginId)));
+        output->plugin_ids = static_cast<geniex_PluginId*>(malloc(plugin_list.size() * sizeof(geniex_PluginId)));
         if (!output->plugin_ids) {
             GENIEX_LOG_ERROR("failed to allocate memory for plugin IDs");
-            return ML_ERROR_COMMON_MEMORY_ALLOCATION;
+            return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
         }
         output->plugin_count = static_cast<int32_t>(plugin_list.size());
 
@@ -152,23 +152,23 @@ int32_t ml_get_plugin_list(ml_GetPluginListOutput* output) {
                 std::free(output->plugin_ids);
                 output->plugin_ids   = nullptr;
                 output->plugin_count = 0;
-                return ML_ERROR_COMMON_MEMORY_ALLOCATION;
+                return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
             }
         }
-        return ML_SUCCESS;
+        return GENIEX_SUCCESS;
     } catch (const std::exception& e) {
         GENIEX_LOG_ERROR("failed to get plugin list: {}", e.what());
-        return ML_ERROR_COMMON_UNKNOWN;
+        return GENIEX_ERROR_COMMON_UNKNOWN;
     }
 }
 
 // Get Device List
 
-int32_t ml_get_device_list(const ml_GetDeviceListInput* input, ml_GetDeviceListOutput* output) {
+int32_t geniex_get_device_list(const geniex_GetDeviceListInput* input, geniex_GetDeviceListOutput* output) {
     GENIEX_LOG_TRACE("getting device list: {}", input);
     if (!input || !input->plugin_id || !output) {
         GENIEX_LOG_ERROR("input or input->plugin_id or output is nullptr");
-        return ML_ERROR_COMMON_INVALID_INPUT;
+        return GENIEX_ERROR_COMMON_INVALID_INPUT;
     }
 
     try {
@@ -177,11 +177,11 @@ int32_t ml_get_device_list(const ml_GetDeviceListInput* input, ml_GetDeviceListO
             return plugin->get_device_list(input, output);
         } else {
             GENIEX_LOG_ERROR("failed to get device list for plugin: {}", input->plugin_id);
-            return ML_ERROR_COMMON_UNKNOWN;
+            return GENIEX_ERROR_COMMON_UNKNOWN;
         }
-        return ML_SUCCESS;
+        return GENIEX_SUCCESS;
     } catch (const std::exception& e) {
         GENIEX_LOG_ERROR("failed to get device list: {}", e.what());
-        return ML_ERROR_COMMON_UNKNOWN;
+        return GENIEX_ERROR_COMMON_UNKNOWN;
     }
 }

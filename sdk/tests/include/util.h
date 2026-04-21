@@ -9,13 +9,13 @@
 
 #include "build_config.h"
 #include "doctest.h"
+#include "geniex.h"
 #include "logging.h"
-#include "ml.h"
 
 #define CHECK_ML_ERROR(res) \
-    CHECK_MESSAGE((res) >= 0, std::string_view(ml_get_error_message(static_cast<ml_ErrorCode>(res))))
+    CHECK_MESSAGE((res) >= 0, std::string_view(geniex_get_error_message(static_cast<geniex_ErrorCode>(res))))
 #define REQUIRE_ML_ERROR(res) \
-    REQUIRE_MESSAGE((res) >= 0, std::string_view(ml_get_error_message(static_cast<ml_ErrorCode>(res))))
+    REQUIRE_MESSAGE((res) >= 0, std::string_view(geniex_get_error_message(static_cast<geniex_ErrorCode>(res))))
 
 // Test Summary Infrastructure
 
@@ -123,9 +123,9 @@ class TestRegistry {
 
 // Setup
 
-#define PLUGIN_DEF(plugin_name, plugin_id)                                                                    \
-    inline constexpr auto plugin_name##_str        = plugin_id;                                               \
-    using plugin_name                               = std::integral_constant<const char*, plugin_name##_str>; \
+#define PLUGIN_DEF(plugin_name, plugin_id)                                                            \
+    inline constexpr auto plugin_name##_str = plugin_id;                                              \
+    using plugin_name                       = std::integral_constant<const char*, plugin_name##_str>; \
     TYPE_TO_STRING(plugin_name);
 
 // plugin id map - using string literals for plugin IDs
@@ -133,23 +133,23 @@ PLUGIN_DEF(llama_cpp, geniex::build_config::kPluginIdLlamaCpp);
 PLUGIN_DEF(qairt, geniex::build_config::kPluginIdQairt);
 
 template <typename P>
-using SetupMap = std::map<ml_PluginId, std::vector<P>>;
+using SetupMap = std::map<geniex_PluginId, std::vector<P>>;
 
 template <typename P, typename M>
 class Setup {
    private:
-    SetupMap<P>                                  param_map;
-    std::function<M*(ml_PluginId, P)>            create_func;
-    std::function<int32_t(M*)>                   reset_func;
-    std::function<int32_t(M*)>                   destroy_func;
-    std::map<std::pair<ml_PluginId, size_t>, M*> handlers;
-    ml_PluginId                                  current_plugin;
-    size_t                                       current_model_idx;
-    M*                                           current_handler;  // Track current active handler
+    SetupMap<P>                                      param_map;
+    std::function<M*(geniex_PluginId, P)>            create_func;
+    std::function<int32_t(M*)>                       reset_func;
+    std::function<int32_t(M*)>                       destroy_func;
+    std::map<std::pair<geniex_PluginId, size_t>, M*> handlers;
+    geniex_PluginId                                  current_plugin;
+    size_t                                           current_model_idx;
+    M*                                               current_handler;  // Track current active handler
 
    public:
-    Setup(SetupMap<P> param_map, std::function<M*(ml_PluginId, P)> create_func, std::function<int32_t(M*)> reset_func,
-        std::function<int32_t(M*)> destroy_func)
+    Setup(SetupMap<P> param_map, std::function<M*(geniex_PluginId, P)> create_func,
+        std::function<int32_t(M*)> reset_func, std::function<int32_t(M*)> destroy_func)
         : param_map(param_map),
           create_func(create_func),
           reset_func(reset_func),
@@ -158,7 +158,7 @@ class Setup {
           current_model_idx(0),
           current_handler(nullptr) {
         GENIEX_LOG_DEBUG("Setup: Constructor called");
-        ml_init();
+        geniex_init();
     }
 
     template <typename T>
@@ -252,7 +252,7 @@ class Setup {
             }
         }
         handlers.clear();
-        ml_deinit();
+        geniex_deinit();
     }
 
     ~Setup() { GENIEX_LOG_DEBUG("Setup: Destructor called"); }

@@ -9,8 +9,8 @@
  * can optionally inherit from this interface to add validation support.
  */
 
+#include "geniex.h"
 #include "logging.h"
-#include "ml.h"
 #ifdef GENIEX_VALIDATION
 #include "validation.h"
 #endif
@@ -23,7 +23,7 @@ namespace geniex {
 
 /**
  * @brief Generic interface for validation logic
- * @tparam CreateInput The type of creation input to validate (e.g., ml_LlmCreateInput)
+ * @tparam CreateInput The type of creation input to validate (e.g., geniex_LlmCreateInput)
  *
  * This interface encapsulates the validation concern and can be composed
  * with any plugin interface to add validation capabilities.
@@ -43,12 +43,12 @@ class IValidatable {
     /**
      * @brief Generic validation logic that can be used by all modalities
      * @param input The creation input to validate
-     * @return ML error code (ML_SUCCESS on success, negative on failure)
+     * @return ML error code (GENIEX_SUCCESS on success, negative on failure)
      */
     int32_t validate(const CreateInput* input) {
         if (!input) {
             GENIEX_LOG_ERROR("Create input is nullptr");
-            return ML_ERROR_COMMON_INVALID_INPUT;
+            return GENIEX_ERROR_COMMON_INVALID_INPUT;
         }
 
         // Check if validation is needed (entirely compiled out when validation is disabled)
@@ -62,7 +62,7 @@ class IValidatable {
         GENIEX_LOG_INFO("Validation skipped (validation disabled)");
 #endif
 
-        return ML_SUCCESS;
+        return GENIEX_SUCCESS;
     }
 };
 
