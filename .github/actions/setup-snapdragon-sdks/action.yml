@@ -77,7 +77,7 @@ runs:
           $size = (Get-Item $setup).Length
           Write-Host "Downloaded wdksetup.exe: $size bytes"
           if ($size -lt 1MB) {
-            throw "wdksetup.exe download too small ($size bytes) — URL likely returned HTML"
+            throw "wdksetup.exe download too small ($size bytes); URL likely returned HTML"
           }
           $p = Start-Process -FilePath $setup `
             -ArgumentList "/features","+","/quiet","/norestart","/log",$log `
