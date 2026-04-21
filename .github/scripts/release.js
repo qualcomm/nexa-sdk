@@ -6,7 +6,8 @@ module.exports = async ({ github, context, core }) => {
   const fs = require("fs");
   const path = require("path");
 
-  const isDraft = VERSION.includes("-rc");
+  // Any SemVer pre-release (e.g. v1.2.3-rc.1, v1.2.3-alpha.1) is published as draft.
+  const isDraft = VERSION.includes("-");
 
   let release;
   for await (const res of github.paginate.iterator(
@@ -51,7 +52,9 @@ module.exports = async ({ github, context, core }) => {
     const data = fs.readFileSync(path.join(process.cwd(), fileName));
     const contentType = fileName.endsWith(".txt")
       ? "text/plain"
-      : "application/zip";
+      : fileName.endsWith(".exe")
+        ? "application/octet-stream"
+        : "application/zip";
     await github.rest.repos.uploadReleaseAsset({
       owner,
       repo,
