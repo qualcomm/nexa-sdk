@@ -1,0 +1,163 @@
+name: Reusable SDK Build
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: "Target platform: linux-arm64 or windows-arm64"
+        required: true
+        type: string
+      runner:
+        description: "Runner label"
+        required: true
+        type: string
+      upload_artifact:
+        description: "Whether to upload SDK artifact"
+        required: false
+        type: boolean
+        default: false
+      extra_cmake_flags:
+        description: "Additional CMake flags"
+        required: false
+        type: string
+        default: ""
+      apt_mirror:
+        description: "Optional apt mirror URL"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build-sdk:
+    name: build-sdk
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+
+    steps:
+      - name: Configure Windows Git
+        if: inputs.platform == 'windows-arm64'
+        shell: cmd
+        run: |
+          echo C:\Program Files\Git\bin>>%GITHUB_PATH%
+          git config --global core.longpaths true
+          git config --global core.protectNTFS false
+          git config --global core.fscache true
+          git config --global core.preloadindex true
+
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Detect build version
+        id: version
+        uses: ./.github/actions/version
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-deps
+        with:
+          platform: ${{ inputs.platform }}
+          apt-mirror: ${{ inputs.apt_mirror }}
+
+      - name: Build SDK (Linux)
+        if: inputs.platform == 'linux-arm64'
+        shell: bash
+        run: |
+          cmake -B sdk/build \
+            -S sdk \
+            -DCMAKE_TOOLCHAIN_FILE="sdk/cmake/arm64-linux-gnu.cmake" \
+            -DGENIEX_VERSION="${{ steps.version.outputs.version }}" \
+            -DGENIEX_TEST=OFF \
+            -DGENIEX_DEBUG=OFF \
+            -DGENIEX_DL=ON \
+            -DGENIEX_PLUGIN_LLAMA_CPP=ON \
+            -DGENIEX_PLUGIN_QAIRT=ON \
+            -DGGML_OPENCL=OFF \
+            ${{ inputs.extra_cmake_flags }}
+
+          cmake --build sdk/build -j
+          cmake --install sdk/build --prefix sdk/pkg-geniex
+
+      - name: Build SDK (Windows)
+        if: inputs.platform == 'windows-arm64'
+        shell: powershell
+        run: |
+          # Import VS ARM64 native environment
+          $vcvars = Get-ChildItem "C:\Program Files*\Microsoft Visual Studio\*\*\VC\Auxiliary\Build\vcvarsarm64.bat" -ErrorAction SilentlyContinue |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $vcvars) {
+            $vcvars = Get-ChildItem "C:\Program Files*\Microsoft Visual Studio\*\*\VC\Auxiliary\Build\vcvarsall.bat" -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
+            $vcvarsArgs = "arm64"
+          }
+          Write-Host "Using vcvars: $vcvars $vcvarsArgs"
+          $envDump = cmd /c "`"$vcvars`" $vcvarsArgs && set"
+          foreach ($line in $envDump) {
+            if ($line -match "^(.*?)=(.*)$") {
+              [System.Environment]::SetEnvironmentVariable($matches[1], $matches[2])
+            }
+          }
+
+          # Find Llvm\bin (x64 clang, cross-compiles to arm64 via toolchain target)
+          $llvmBin = Get-ChildItem "C:\Program Files*\Microsoft Visual Studio\*\*\VC\Tools\Llvm\bin" `
+            -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          $clangExe = if ($llvmBin) { Join-Path $llvmBin "clang.exe" } else { "" }
+          $clangppExe = if ($llvmBin) { Join-Path $llvmBin "clang++.exe" } else { "" }
+
+          # Set CC/CXX env vars so cmake uses exact clang path regardless of toolchain file
+          # toolchain file does set(CMAKE_C_COMPILER clang) but cmake checks CC/CXX first
+          [System.Environment]::SetEnvironmentVariable("CC", $clangExe, "Process")
+          [System.Environment]::SetEnvironmentVariable("CXX", $clangppExe, "Process")
+          # Also prepend Llvm\bin to PATH as fallback
+          if ($llvmBin) {
+            $newPath = "$llvmBin;" + [System.Environment]::GetEnvironmentVariable("PATH", "Process")
+            [System.Environment]::SetEnvironmentVariable("PATH", $newPath, "Process")
+          }
+          # Use VS-bundled cmake + ninja
+          $vsCmake = Get-ChildItem "C:\Program Files*\Microsoft Visual Studio\*\*\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" `
+            -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $vsCmake) { $vsCmake = "cmake" }
+          # VS ninja is in sibling directory to cmake
+          $vsNinja = Get-ChildItem "C:\Program Files*\Microsoft Visual Studio\*\*\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" `
+            -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          Write-Host "cmake: $vsCmake"
+          Write-Host "ninja: $vsNinja"
+          Write-Host "clang: $clangExe"
+
+          $buildDir = "sdk/build-windows-arm64"
+          $toolchainFile = "$env:GITHUB_WORKSPACE/third-party/llama.cpp/cmake/arm64-windows-llvm.cmake"
+
+          # Remove stale cmake cache if present
+          Remove-Item -Recurse -Force $buildDir -ErrorAction SilentlyContinue
+
+          & $vsCmake -B $buildDir -G "Ninja" -S sdk --log-level=VERBOSE `
+            -DCMAKE_MAKE_PROGRAM="$vsNinja" `
+            -DCMAKE_C_COMPILER="$clangExe" `
+            -DCMAKE_CXX_COMPILER="$clangppExe" `
+            -DCMAKE_TOOLCHAIN_FILE="$toolchainFile" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DGENIEX_VERSION="${{ steps.version.outputs.version }}" `
+            -DGENIEX_TEST=OFF `
+            -DGENIEX_DEBUG=OFF `
+            -DGENIEX_DL=ON `
+            -DGENIEX_PLUGIN_LLAMA_CPP=ON `
+            -DGENIEX_PLUGIN_QAIRT=OFF `
+            -DGGML_OPENCL=OFF `
+            -DGGML_HEXAGON=OFF `
+            -DPREBUILT_LIB_DIR=windows_aarch64
+
+          & $vsCmake --build $buildDir -j 8
+          & $vsCmake --install $buildDir --prefix sdk/pkg-geniex
+
+      - name: Upload SDK artifact
+        if: inputs.upload_artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: sdk-pkg-${{ inputs.platform }}
+          path: sdk/pkg-geniex/
+          retention-days: 1

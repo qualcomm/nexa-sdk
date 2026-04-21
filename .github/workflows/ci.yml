@@ -14,15 +14,17 @@ jobs:
   build-linux-arm64:
     name: build-linux-arm64
     uses: ./.github/workflows/reusable-build.yml
+    secrets: inherit
     with:
       platform: linux-arm64
-      runner: sdk-linux-16-core-x64
+      runner: larger-runner
       upload_artifact: false
 
   build-windows-arm64:
     name: build-windows-arm64
     uses: ./.github/workflows/reusable-build.yml
+    secrets: inherit
     with:
       platform: windows-arm64
-      runner: sdk-windows-16-core-x64
+      runner: windows-arm64
       upload_artifact: false

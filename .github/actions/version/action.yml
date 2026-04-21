@@ -1,0 +1,31 @@
+name: "Detect build version"
+
+outputs:
+  version:
+    description: "Version string for SDK/CLI (e.g. v1.2.3 or sha-abc1234)"
+    value: ${{ steps.set-version.outputs.version }}
+  python_version:
+    description: "PEP 440 compliant version for Python wheel (e.g. 1.2.3 or 0.0.0.dev0+gitabc1234)"
+    value: ${{ steps.set-version.outputs.python_version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set version outputs
+      id: set-version
+      shell: bash
+      run: |
+        if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+          # Tag push: v1.2.3
+          version="${GITHUB_REF_NAME}"
+          python_version="${GITHUB_REF_NAME#v}"
+        else
+          # PR or push without tag: use short SHA
+          sha="${GITHUB_SHA::7}"
+          version="sha-${sha}"
+          python_version="0.0.0.dev0+git${sha}"
+        fi
+
+        echo "version=${version}" >> "$GITHUB_OUTPUT"
+        echo "python_version=${python_version}" >> "$GITHUB_OUTPUT"
+        echo "VERSION=${version}" >> "$GITHUB_ENV"

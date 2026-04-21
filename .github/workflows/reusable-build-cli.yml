@@ -1,0 +1,52 @@
+name: Reusable CLI Build
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: "Target platform: linux-arm64 or windows-arm64"
+        required: true
+        type: string
+      runner:
+        description: "Runner label"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-cli:
+    name: build-cli
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
+
+    steps:
+      - name: Configure Windows Git
+        if: inputs.platform == 'windows-arm64'
+        shell: cmd
+        run: |
+          echo C:\Program Files\Git\bin>>%GITHUB_PATH%
+          git config --global core.longpaths true
+
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: false
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Detect build version
+        id: version
+        uses: ./.github/actions/version
+
+      - name: Download SDK artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: sdk-pkg-${{ inputs.platform }}
+          path: sdk/pkg-geniex/
+
+      - name: Build CLI
+        shell: cmd
+        run: |
+          bazelisk build //cli:artifact --//sdk:sdk_type=local

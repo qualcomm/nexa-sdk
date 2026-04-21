@@ -13,7 +13,7 @@ runs:
       if: inputs.platform == 'linux-arm64'
       shell: bash
       run: |
-        for dir in plugins/llama_cpp/libs/linux-arm64 plugins/qnn/libs/linux-aarch64; do
+        for dir in sdk/plugins/llama_cpp/libs/linux-arm64 sdk/plugins/qnn/libs/linux-aarch64; do
           if [ -d "$dir" ]; then
             echo "Pulling LFS libraries from $dir"
             git lfs pull -I "$dir"
@@ -26,7 +26,7 @@ runs:
       if: inputs.platform == 'windows-arm64'
       shell: bash
       run: |
-        for dir in libs/windows-arm64 third-party/opencl/windows-arm64/lib plugins/llama_cpp/libs/windows-arm64 plugins/qnn/libs/windows-arm64; do
+        for dir in sdk/libs/windows-arm64 sdk/third-party/opencl/windows-arm64/lib sdk/plugins/llama_cpp/libs/windows-arm64 sdk/plugins/qnn/libs/windows-arm64; do
           if [ -d "$dir" ]; then
             echo "Pulling LFS libraries from $dir"
             git lfs pull -I "$dir"

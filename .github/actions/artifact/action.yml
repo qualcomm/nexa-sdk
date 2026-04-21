@@ -12,14 +12,14 @@ runs:
     - name: Prepare artifacts
       shell: bash
       run: |
-        cd build/out
+        cd sdk/build/out
         7z a "geniex-bridge.zip" ./*
-        mv "geniex-bridge.zip" ../
+        mv "geniex-bridge.zip" ../../..
 
     - name: Upload Release Artifact
       uses: actions/upload-artifact@v5
       with:
         name: geniex-bridge-${{ inputs.os }}-${{ inputs.arch }}
         path: |
-          build/geniex-bridge.zip
+          sdk/geniex-bridge.zip
         retention-days: 14

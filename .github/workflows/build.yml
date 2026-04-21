@@ -1,0 +1,94 @@
+name: Build
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - "sdk/**"
+      - "cli/**"
+      - "bindings/python/**"
+      - "bindings/go/**"
+      - ".github/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    uses: ./.github/workflows/lint.yml
+    secrets: inherit
+
+  # --- Linux pipeline (commented out until runner is available) ---
+  # build-sdk-linux:
+  #   name: build-sdk-linux
+  #   uses: ./.github/workflows/reusable-build-sdk.yml
+  #   secrets: inherit
+  #   with:
+  #     platform: linux-arm64
+  #     runner: larger-runner
+  #     upload_artifact: true
+  #
+  # build-cli-linux:
+  #   name: build-cli-linux
+  #   needs: [build-sdk-linux]
+  #   uses: ./.github/workflows/reusable-build-cli.yml
+  #   secrets: inherit
+  #   with:
+  #     platform: linux-arm64
+  #     runner: larger-runner
+  #
+  # build-python-linux:
+  #   name: build-python-linux
+  #   needs: [build-sdk-linux]
+  #   uses: ./.github/workflows/reusable-build-python.yml
+  #   secrets: inherit
+  #   with:
+  #     platform: linux-arm64
+  #     runner: larger-runner
+
+  # --- Windows pipeline ---
+  check-tools-windows:
+    name: check-tools-windows
+    needs: [lint]
+    runs-on: windows-arm64
+    timeout-minutes: 5
+    steps:
+      - name: Verify tools
+        shell: cmd
+        run: |
+          bazelisk version
+          go version
+
+  build-sdk-windows:
+    name: build-sdk-windows
+    needs: [check-tools-windows]
+    uses: ./.github/workflows/reusable-build-sdk.yml
+    secrets: inherit
+    with:
+      platform: windows-arm64
+      runner: windows-arm64
+      upload_artifact: true
+
+  build-cli-windows:
+    name: build-cli-windows
+    needs: [build-sdk-windows]
+    uses: ./.github/workflows/reusable-build-cli.yml
+    secrets: inherit
+    with:
+      platform: windows-arm64
+      runner: windows-arm64
+
+  # build-python-windows:
+  #   name: build-python-windows
+  #   needs: [build-sdk-windows]
+  #   uses: ./.github/workflows/reusable-build-python.yml
+  #   secrets: inherit
+  #   with:
+  #     platform: windows-arm64
+  #     runner: windows-arm64
