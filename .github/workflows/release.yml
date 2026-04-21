@@ -89,7 +89,7 @@ jobs:
           name: geniex-cli-installer-windows-arm64
           path: .
 
-      - name: Package artifacts and generate SHA256SUMS
+      - name: Package artifacts and write SHA256 sidecars
         id: assets
         run: |
           set -euo pipefail
@@ -98,12 +98,14 @@ jobs:
           # Ship the HTP signing public cert so end users can add it to
           # Trusted Root + Trusted Publishers on WoS devices.
           cp .github/certs/hexagon/ggml-htp-v1.cer ggml-htp-v1.cer
+          # Per-file .sha256 sidecars (one hash per file) — friendlier for
+          # winget manifests and download-script consumers than a combined sums file.
           files=$(ls *.zip *.exe *.cer)
-          sha256sum $files > "SHA256SUMS-${RELEASE_TAG}.txt"
+          for f in $files; do sha256sum "$f" > "$f.sha256"; done
           {
             echo "files<<EOF"
             echo "$files"
-            echo "SHA256SUMS-${RELEASE_TAG}.txt"
+            for f in $files; do echo "$f.sha256"; done
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
