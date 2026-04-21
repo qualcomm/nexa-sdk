@@ -171,17 +171,25 @@ jobs:
             -DWINDOWS_SDK_BIN="$env:WINDOWS_SDK_BIN" `
             -DPREBUILT_LIB_DIR=windows_aarch64
 
-          $buildExit = 0
+          # Two-phase build to avoid Inf2Cat racing with Hexagon ExternalProject
+          # workspaces: libggml-htp-cat DEPENDS only on the .so file paths, so
+          # ninja schedules it in parallel with htp-v* ExternalProject build
+          # steps; Inf2Cat then recursively scans the driver dir and trips over
+          # transient files like .ninja_lock under htp-v*-prefix/.
+          # Phase 1: build all Hexagon HTP skels first.
+          & $vsCmake --build $buildDir -j 8 --target htp-v68 htp-v69 htp-v73 htp-v75 htp-v79 htp-v81
+          if ($LASTEXITCODE -ne 0) { throw "cmake --build (htp skels) failed: $LASTEXITCODE" }
+          # Clean up ExternalProject workspaces so Inf2Cat's recursive scan of
+          # /driver: only sees finalised .so + .inf.
+          $hexDir = Join-Path $buildDir "third-party\llama.cpp\ggml\src\ggml-hexagon"
+          Get-ChildItem $hexDir -Directory -Filter "htp-v*-prefix" -ErrorAction SilentlyContinue |
+            ForEach-Object { Remove-Item -Recurse -Force $_.FullName }
+          # Phase 2: build everything else (cat signing + geniex itself).
           & $vsCmake --build $buildDir -j 8
-          $buildExit = $LASTEXITCODE
-          if ($buildExit -ne 0) {
-            $hexDir = Join-Path $buildDir "third-party\llama.cpp\ggml\src\ggml-hexagon"
+          if ($LASTEXITCODE -ne 0) {
             Write-Host "--- Contents of $hexDir after failed build ---"
             Get-ChildItem $hexDir -ErrorAction SilentlyContinue | Select-Object Name,Length,LastWriteTime | Format-Table | Out-String | Write-Host
-            Write-Host "--- libggml-htp.inf (in build dir) ---"
-            $infInBuild = Join-Path $hexDir "libggml-htp.inf"
-            if (Test-Path $infInBuild) { Get-Content $infInBuild | Write-Host }
-            throw "cmake --build failed with exit code $buildExit"
+            throw "cmake --build failed: $LASTEXITCODE"
           }
           & $vsCmake --install $buildDir --prefix sdk/pkg-geniex
 
