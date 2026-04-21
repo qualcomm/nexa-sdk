@@ -1,5 +1,5 @@
 #define MyAppName "GenieX CLI"
-#define MyAppVersion GetEnv('VERSION')
+#define MyAppVersion Version
 #define MyAppPublisher "GenieX"
 #define MyAppExeName "geniex.exe"
 #define MyAppServiceName "GenieXServer"
@@ -13,12 +13,12 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\..\
-OutputBaseFilename=geniex-cli
+OutputBaseFilename=geniex-cli-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 ChangesEnvironment=yes
-SetupIconFile=geniex_logo.ico
+SetupIconFile=geniex.ico
 PrivilegesRequired=lowest
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppLauncherName}
@@ -26,8 +26,10 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
 [Files]
-; Main executables
-Source: "..\..\artifacts\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; CLI executable (path injected via iscc /DCliExe=...)
+Source: "{#CliExe}"; DestDir: "{app}"; Flags: ignoreversion
+; SDK runtime libraries (path injected via iscc /DSdkDir=...)
+Source: "{#SdkDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Registry]
 ; Launcher registration (primary application)
@@ -49,6 +51,12 @@ const
 
 var
   VersionPage: TInputOptionWizardPage;
+
+
+procedure InitializeWizard;
+begin
+end;
+
 
 function InitializeSetup(): Boolean;
 var
@@ -87,10 +95,6 @@ begin
       Result := False;
     end;
   end;
-end;
-
-procedure InitializeWizard;
-begin
 end;
 
 procedure EnvAddPath(Path: string);
@@ -141,7 +145,6 @@ end;
 
 [UninstallRun]
 Filename: "taskkill.exe"; Parameters: "/F /IM geniex.exe"; Flags: runhidden
-Filename: "taskkill.exe"; Parameters: "/F /IM geniex-cli.exe"; Flags: runhidden
 
 [UninstallDelete]
 Type: files; Name: "{app}\*.exe"
