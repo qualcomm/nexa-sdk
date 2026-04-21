@@ -1,0 +1,81 @@
+name: "Setup Build Cache"
+description: >
+  Thin wrapper around actions/cache for the three CI cache scopes: mamba, pip, cmake.
+  Cache key layout: ${scope}-${platform}-${key-hash}${key-suffix}
+
+inputs:
+  platform:
+    description: "Platform identifier (e.g. linux-arm64, windows-arm64)"
+    required: true
+  scope:
+    description: "Cache scope: mamba | pip | cmake"
+    required: true
+  key-hash:
+    description: "Hash component mixed into the cache key (callers pass hashFiles(...))"
+    required: false
+    default: ""
+  key-suffix:
+    description: "Free-form suffix to bust cache manually"
+    required: false
+    default: ""
+  extra-paths:
+    description: "Newline-separated extra paths to cache (appended to scope default paths)"
+    required: false
+    default: ""
+
+outputs:
+  cache-hit:
+    description: "'true' if the cache was restored (passthrough from actions/cache)"
+    value: ${{ steps.cache.outputs.cache-hit }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve cache paths
+      id: paths
+      shell: bash
+      run: |
+        set -euo pipefail
+        scope="${{ inputs.scope }}"
+        platform="${{ inputs.platform }}"
+        case "$scope" in
+          mamba)
+            if [[ "$platform" == windows-* ]]; then
+              paths="$USERPROFILE/micromamba/envs"
+            else
+              paths="$HOME/micromamba/envs"
+            fi
+            ;;
+          pip)
+            if [[ "$platform" == windows-* ]]; then
+              paths="$LOCALAPPDATA/pip/Cache"
+            else
+              paths="$HOME/.cache/pip"
+            fi
+            ;;
+          cmake)
+            paths=$'sdk/build\nsdk/build-windows-arm64'
+            ;;
+          *)
+            echo "Unknown scope '$scope' (expected: mamba|pip|cmake)" >&2
+            exit 1
+            ;;
+        esac
+        extra="${{ inputs.extra-paths }}"
+        if [[ -n "$extra" ]]; then
+          paths="${paths}"$'\n'"${extra}"
+        fi
+        {
+          echo "paths<<__EOF__"
+          echo "$paths"
+          echo "__EOF__"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Cache
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.paths.outputs.paths }}
+        key: ${{ inputs.scope }}-${{ inputs.platform }}-${{ inputs.key-hash }}${{ inputs.key-suffix }}
+        restore-keys: |
+          ${{ inputs.scope }}-${{ inputs.platform }}-

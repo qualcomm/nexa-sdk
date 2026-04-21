@@ -1,0 +1,193 @@
+name: Reusable Build (v2)
+
+# Unified build workflow replacing reusable-build.yml + reusable-build-sdk.yml + reusable-build-cli.yml.
+# Single job, bool toggles for SDK / CLI / wheel. Platform + runner are separate inputs so
+# cross-compilation targets (android-arm64, linux-arm64-docker, ...) can be added later
+# without changing the input shape.
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: "Target platform id, e.g. linux-arm64, windows-arm64"
+        required: true
+        type: string
+      runner:
+        description: "Runner label the job runs on"
+        required: true
+        type: string
+      build_type:
+        description: "CMake build type"
+        required: false
+        type: string
+        default: "Release"
+      build_sdk:
+        description: "Build the SDK"
+        required: false
+        type: boolean
+        default: true
+      build_cli:
+        description: "Build the CLI (requires SDK)"
+        required: false
+        type: boolean
+        default: false
+      build_wheel:
+        description: "Build the Python wheel (requires SDK)"
+        required: false
+        type: boolean
+        default: false
+      upload_artifacts:
+        description: "Package and upload artifacts (7z zips) produced by this run"
+        required: false
+        type: boolean
+        default: false
+      extra_cmake_flags:
+        description: "Additional CMake flags appended to the SDK configure step"
+        required: false
+        type: string
+        default: ""
+      apt_mirror:
+        description: "Optional apt mirror URL (Linux)"
+        required: false
+        type: string
+        default: ""
+      pip_index_url:
+        description: "Optional pip index URL"
+        required: false
+        type: string
+        default: ""
+      micromamba_installer_url:
+        description: "Optional micromamba installer URL"
+        required: false
+        type: string
+        default: "https://micro.mamba.pm/install.sh"
+      cache_key_suffix:
+        description: "Suffix to bust caches when key-hash rules are insufficient"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+
+    steps:
+      # Inlined because a local composite action cannot be loaded before checkout,
+      # and long-paths / protectNTFS must be set before the submodule checkout below.
+      - name: Configure Windows Git (pre-checkout)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          echo C:\Program Files\Git\bin>>%GITHUB_PATH%
+          git config --global core.longpaths true
+          git config --global core.protectNTFS false
+          git config --global core.fscache true
+          git config --global core.preloadindex true
+
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Detect build version
+        id: version
+        uses: ./.github/actions/version
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-deps
+        with:
+          platform: ${{ inputs.platform }}
+          apt-mirror: ${{ inputs.apt_mirror }}
+
+      - name: Pull LFS libraries
+        uses: ./.github/actions/lfs-pull
+        with:
+          platform: ${{ inputs.platform }}
+
+      - name: Setup vcvars (Windows)
+        if: runner.os == 'Windows' && inputs.build_sdk
+        uses: ./.github/actions/setup-vcvars
+
+      # --- SDK ---
+      - name: Build SDK (Linux)
+        if: inputs.build_sdk && runner.os == 'Linux'
+        shell: bash
+        env:
+          GENIEX_VERSION: ${{ steps.version.outputs.version }}
+          BUILD_TYPE: ${{ inputs.build_type }}
+          EXTRA_CMAKE_FLAGS: ${{ inputs.extra_cmake_flags }}
+        run: bash scripts/ci/build-sdk.sh
+
+      - name: Build SDK (Windows)
+        if: inputs.build_sdk && runner.os == 'Windows'
+        shell: powershell
+        env:
+          GENIEX_VERSION: ${{ steps.version.outputs.version }}
+          BUILD_TYPE: ${{ inputs.build_type }}
+          EXTRA_CMAKE_FLAGS: ${{ inputs.extra_cmake_flags }}
+        run: powershell -ExecutionPolicy Bypass -File scripts/ci/build-sdk.ps1
+
+      # --- CLI ---
+      - name: Build CLI
+        if: inputs.build_cli
+        shell: bash
+        env:
+          GENIEX_VERSION: ${{ steps.version.outputs.version }}
+          ACTIVATE_MAMBA: ${{ runner.os == 'Linux' && '1' || '0' }}
+        run: bash scripts/ci/build-cli.sh
+
+      # --- Python wheel ---
+      - name: Build Python wheel
+        if: inputs.build_wheel
+        shell: bash
+        env:
+          ACTIVATE_MAMBA: ${{ runner.os == 'Linux' && '1' || '0' }}
+        run: bash scripts/ci/build-wheel.sh
+
+      # --- Packaging + upload ---
+      - name: Package SDK
+        if: inputs.upload_artifacts && inputs.build_sdk
+        shell: bash
+        env:
+          KIND: sdk
+          PLATFORM: ${{ inputs.platform }}
+        run: bash scripts/ci/package-artifact.sh
+
+      - name: Upload SDK artifact
+        if: inputs.upload_artifacts && inputs.build_sdk
+        uses: actions/upload-artifact@v5
+        with:
+          name: geniex-sdk-${{ inputs.platform }}
+          path: geniex-sdk-${{ inputs.platform }}.zip
+          retention-days: 14
+
+      - name: Package CLI
+        if: inputs.upload_artifacts && inputs.build_cli
+        shell: bash
+        env:
+          KIND: cli
+          PLATFORM: ${{ inputs.platform }}
+        run: bash scripts/ci/package-artifact.sh
+
+      - name: Upload CLI artifact
+        if: inputs.upload_artifacts && inputs.build_cli
+        uses: actions/upload-artifact@v5
+        with:
+          name: geniex-cli-${{ inputs.platform }}
+          path: geniex-cli-${{ inputs.platform }}.zip
+          retention-days: 14
+
+      - name: Upload Python wheel artifact
+        if: inputs.upload_artifacts && inputs.build_wheel
+        uses: actions/upload-artifact@v5
+        with:
+          name: geniex-wheel-${{ inputs.platform }}
+          path: dist/*.whl
+          retention-days: 14

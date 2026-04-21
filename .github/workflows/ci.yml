@@ -2,6 +2,12 @@ name: CI Manual Regression
 
 on:
   workflow_dispatch:
+    inputs:
+      use_v2:
+        description: "Use refactored reusable-build-v2.yml"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -11,8 +17,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-linux-arm64:
-    name: build-linux-arm64
+  # v2 path (Phase B shadow validation). Run this to compare against main CI output.
+  build-linux-arm64-v2:
+    if: inputs.use_v2
+    name: build-linux-arm64 (v2)
+    uses: ./.github/workflows/reusable-build-v2.yml
+    secrets: inherit
+    with:
+      platform: linux-arm64
+      runner: larger-runner
+      build_sdk: true
+      build_cli: true
+      build_wheel: true
+      upload_artifacts: true
+
+  build-windows-arm64-v2:
+    if: inputs.use_v2
+    name: build-windows-arm64 (v2)
+    uses: ./.github/workflows/reusable-build-v2.yml
+    secrets: inherit
+    with:
+      platform: windows-arm64
+      runner: windows-arm64
+      build_sdk: true
+      build_cli: true
+      build_wheel: false
+      upload_artifacts: true
+
+  # Legacy path — kept until Phase E cleanup so we can diff artifacts side-by-side.
+  build-linux-arm64-legacy:
+    if: ${{ !inputs.use_v2 }}
+    name: build-linux-arm64 (legacy)
     uses: ./.github/workflows/reusable-build.yml
     secrets: inherit
     with:
@@ -20,8 +55,9 @@ jobs:
       runner: larger-runner
       upload_artifact: false
 
-  build-windows-arm64:
-    name: build-windows-arm64
+  build-windows-arm64-legacy:
+    if: ${{ !inputs.use_v2 }}
+    name: build-windows-arm64 (legacy)
     uses: ./.github/workflows/reusable-build.yml
     secrets: inherit
     with:
