@@ -71,8 +71,9 @@ jobs:
           GH_PAT: ${{ secrets.GH_PAT || github.token }}
         run: |
           git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "git@github.com:"
           git submodule update --init --recursive
-          git config --global --unset "url.https://x-access-token:${GH_PAT}@github.com/.insteadOf" || true
+          git config --global --unset-all "url.https://x-access-token:${GH_PAT}@github.com/.insteadOf" || true
 
       - name: Detect build version
         id: version
