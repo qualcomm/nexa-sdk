@@ -76,7 +76,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Upload release assets
+      - name: Publish release
         uses: actions/github-script@v8
         env:
           VERSION: ${{ env.RELEASE_TAG }}
@@ -84,9 +84,4 @@ jobs:
         with:
           script: |
             const release = require('./.github/scripts/release.js');
-            const files = process.env.FILES.split('\n').filter(Boolean);
-            for (const f of files) {
-              process.env.FILE_NAME = f;
-              process.env.FILE_TYPE = f.endsWith('.txt') ? 'text/plain' : 'application/zip';
-              await release({ github, context, core });
-            }
+            await release({ github, context, core });
