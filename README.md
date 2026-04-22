@@ -67,6 +67,21 @@ WIP, see [build.md](./docs/build.md) and [run.md](./docs/run.md).
 └── README.md
 ```
 
+## Native dependency matrix
+
+Each native SDK gates a specific plugin/backend. They're all independent, so you can pick the subset that fits your hardware and goals.
+
+| Dep | Enabled by | Plugin affected | Hardware target | Bundled in repo? |
+|---|---|---|---|---|
+| **Hexagon SDK** | `-DGGML_HEXAGON=ON` (snapdragon preset) | `llama_cpp` only | Snapdragon NPU (HTP), via `ggml-hexagon` DSP skels | No — external install; `HEXAGON_SDK_ROOT` / `HEXAGON_TOOLS_ROOT` required |
+| **OpenCL SDK** | `-DGGML_OPENCL=ON` (snapdragon preset) | `llama_cpp` only | Adreno GPU | No — external; `OPENCL_SDK_ROOT` needed for headers + `OpenCL.lib`. Runtime ICD ships with the Snapdragon GPU driver |
+| **QAIRT / QNN** | `-DGENIEX_PLUGIN_QAIRT=ON` | `qairt` plugin only | Snapdragon NPU (HTP), via Qualcomm's QNN runtime | **Yes** — `third-party/geniex-qairt/third-party/{windows,android,linux-gcc11.2}/` bundles `QnnHtp.dll`, `Genie.dll`, HTP skels. An externally installed QAIRT is **not** required for building |
+| *(none)* | `-DGGML_HEXAGON=OFF -DGGML_OPENCL=OFF` | `llama_cpp` | CPU | Always works |
+
+The `llama_cpp` and `qairt` plugins can both drive the NPU, but via **two separate user-space stacks** (ggml-hexagon skels vs. QNN) that consume **different model formats** (GGUF vs. QAIRT `.bin` shards). They are not substitutes for each other.
+
+Minimal Snapdragon build that still exercises the NPU: disable `GGML_HEXAGON` and `GGML_OPENCL`, keep `GENIEX_PLUGIN_QAIRT=ON`. llama.cpp runs CPU-only; the QAIRT plugin drives the NPU through its bundled libs.
+
 ## Notes
 
 - All tutorials, cookbook and sample apps are in a separate repo [geniex-app](https://github.com/geniex-app).
