@@ -269,7 +269,7 @@ fun ModelData.getSupportPluginIds(): ArrayList<String> {
 fun ModelData.isNpuModel(): Boolean {
     return id.contains("NPU", ignoreCase = true) ||
             id.contains("npu", ignoreCase = true) ||
-            modelName.endsWith(".geniex", ignoreCase = true)
+            modelName.endsWith("geniex.json", ignoreCase = true)
 }
 
 /**

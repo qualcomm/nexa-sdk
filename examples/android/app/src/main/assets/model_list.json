@@ -15,7 +15,17 @@
     "type": "chat",
     "versionCode": 1,
     "pluginIds": 4,
-    "baseUrl": "https://localhost/",
+    "baseUrl": "https://nexa-public-storage.s3-us-west-2.amazonaws.com/models/paulzhuQCOM/Qwen3-4B-Instruct-2507/",
+    "modelUrl": "geniex.json"
+  },
+  {
+    "id": "Qwen3-4B-Instruct-NPU",
+    "displayName": "Qwen3-4B-Instruct-NPU",
+    "modelName": "geniex.json",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 4,
+    "baseUrl": "https://nexa-public-storage.s3-us-west-2.amazonaws.com/models/paulzhuQCOM/Qwen3-4B-Instruct-2507/",
     "modelUrl": "geniex.json"
   }
 ]
