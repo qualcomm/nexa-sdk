@@ -22,10 +22,12 @@ interface InputPluginBase {
 enum class DeviceIdValue(val value: String?) {
     /** Default CPU device */
     CPU(null),
+
     /** GPU device (OpenCL) */
-    GPU("gpu"),
+    GPU("GPUOpenCL"),
+
     /** NPU device (Hexagon) - uses all available NPU cores */
-    NPU("dev0")
+    NPU("HTP0")
 }
 
 enum class PluginIdValue(val value: String?) {

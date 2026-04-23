@@ -39,7 +39,7 @@ std::string jstring2str(JNIEnv* env, jstring jstr) {
  * This abstracts the internal device naming from SDK users.
  *
  * Mappings:
- *   - "dev0" (NPU)  -> "HTP0,HTP1,HTP2,HTP3" (all Hexagon cores)
+ *   - "npu" (NPU)  -> "HTP0" (all Hexagon cores)
  *   - "gpu"  (GPU)  -> "GPUOpenCL"
  *   - null/empty    -> null (default CPU)
  *   - other values  -> passed through unchanged

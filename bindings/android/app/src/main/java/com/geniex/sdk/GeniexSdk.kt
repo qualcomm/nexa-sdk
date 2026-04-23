@@ -26,9 +26,10 @@ class GeniexSdk private constructor() {
      */
     fun init(context: Context, callback: InitCallback? = null) {
         val nativeLibPath = context.applicationInfo.nativeLibraryDir
-        Os.setenv("ADSP_LIBRARY_PATH", nativeLibPath, true)
+        // Os.setenv("ADSP_LIBRARY_PATH", nativeLibPath, true)
+        // Log.d(TAG, "ADSP_LIBRARY_PATH set to $nativeLibPath")
 
-        extractHtpAssets(context)
+        // extractHtpAssets(context)
 
         val exceptionResult = StringBuilder()
         arrayOf(
@@ -51,10 +52,10 @@ class GeniexSdk private constructor() {
                 }
             }
         }
-        val soFile = checkSoFile(context, nativeLibPath)
-        if (soFile != null) {
-            exceptionResult.append("Cannot find $soFile in $nativeLibPath")
-        }
+        // val soFile = checkSoFile(context, nativeLibPath)
+        // if (soFile != null) {
+        //     exceptionResult.append("Cannot find $soFile in $nativeLibPath")
+        // }
 
         if (exceptionResult.isEmpty()) {
             callback?.onSuccess()

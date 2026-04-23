@@ -56,12 +56,15 @@ class LlamaPlugin : public Plugin {
             backend_dir = std::filesystem::path(env_plugin_path);
         }
 #endif  // _WIN32
+
+#if not defined(__ANDROID__)  // android has flattened directory
         if (!backend_dir.empty()) {
             backend_dir = backend_dir / "llama_cpp";
         }
+#endif  // not __ANDROID__
 
         GENIEX_LOG_DEBUG("Setting ADSP_LIBRARY_PATH to {}", backend_dir.u8string());
-#ifdef _WIN32
+#if defined(WIN32)
         _putenv_s("ADSP_LIBRARY_PATH", backend_dir.u8string().c_str());
 #else
         setenv("ADSP_LIBRARY_PATH", backend_dir.u8string().c_str(), 1);
