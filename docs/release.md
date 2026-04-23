@@ -40,9 +40,12 @@ or move published tags — retract via a new patch.
 The Windows-ARM64 SDK ships `libggml-htp.cat` + `libggml-htp-v{68,69,73,75,79,81}.so`,
 which Windows won't load unsigned. Release CI `curl`s
 `s3://qaihub-public-assets/llama-cpp/libggml-htp-<sha>.zip` (where `<sha>` is
-the `third-party/llama.cpp` short SHA):
+the `third-party/llama.cpp` short SHA) in an `overlay-htp` job that runs
+**before** `build-cli`, so both the installer and the SDK zip contain the same
+set of HTP files:
 
-- **Hit** → overlay the signed files into the SDK; release normally.
+- **Hit** → overlay the signed files into the SDK artifact; `build-cli` packages
+  them into the installer; release normally.
 - **Miss** → keep the self-signed build; SDK name gets a `-selfsigned` suffix,
   and the release also carries `ggml-htp-v1.cer` (users import) plus
   `libggml-htp-to-sign-<sha>.zip` (operators submit for signing).
