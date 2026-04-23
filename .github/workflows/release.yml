@@ -87,8 +87,9 @@ jobs:
           [[ "${RELEASE_TAG}" =~ $semver ]] || { echo "Invalid SemVer 2.0 tag: ${RELEASE_TAG}"; exit 1; }
 
       - uses: actions/checkout@v6
-        with:
-          submodules: recursive
+
+      - name: Init llama.cpp submodule
+        run: git submodule update --init --depth=1 third-party/llama.cpp
 
       - uses: actions/download-artifact@v5
         with:
