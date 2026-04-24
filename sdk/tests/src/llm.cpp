@@ -101,6 +101,10 @@ Setup<Param, geniex_LLM> setup_guard(
                     "llama_v3_2_1b_instruct-genie-w4-qualcomm_snapdragon_x_elite/"
                     "tokenizer.json",
                     std::nullopt},
+                {"granite4_micro",
+                    "granite4",
+                    "/data/local/tmp/geniex/modelfiles/granite4_micro/tokenizer.json",
+                    std::nullopt},
 #elif defined(_WIN32)
                 {"granite4_micro", "granite4", "modelfiles/qairt/granite4_micro/tokenizer.json", std::nullopt},
                 {"phi4", "phi4", "modelfiles/qairt/phi4/tokenizer.json", std::nullopt},

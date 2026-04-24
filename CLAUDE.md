@@ -308,9 +308,21 @@ Other presets live in `sdk/CMakePresets.json` (`arm64-linux-snapdragon-*`, `arm6
 
 CI enforces three checks; run them locally on changed files before pushing:
 
-- **C/C++**: `clang-format-20 -i <files>` — config in `.clang-format` (Google base, 120 col, 4-space indent). Excludes `sdk/include/external/`, `third-party/`, `sdk/plugins/qnn/libs/`.
+- **C/C++**: `clang-format-20 -i <files>` — config in `.clang-format` (Google base, 120 col, 4-space indent). Excludes `sdk/include/external/`, `third-party/`, `sdk/plugins/qnn/libs/`. On Windows the installed binary is `"C:\Program Files\LLVM\bin\clang-format.exe"` (LLVM 22 is config-compatible with the v20 CI pin). Quick check on a single file: `"/c/Program Files/LLVM/bin/clang-format.exe" --style=file --dry-run --Werror <file>` — empty output = clean.
 - **Python**: `ruff==0.6.9 check <file>` and `ruff format --check --diff <file>` (only `bindings/python/**.py`).
 - **Go**: `cd cli && go mod tidy` must leave `go.mod`/`go.sum` clean.
+
+#### Two clang-format traps that bite when editing by hand
+
+CI fails on *any* diff, so these are worth internalising before you touch a C++ file:
+
+1. **Don't hand-align inside `{...}` initializer lists or map literals.** The Google base style does not align across rows. If you write
+   ```cpp
+   {"qwen3-4b",       {qwen3_4b::makePipeline}},
+   {"qwen3-4b-aihub", {qwen3_4b_aihub::makePipeline}},
+   ```
+   clang-format collapses the padding to a single space after the comma. Just write one space and move on — don't try to make the columns line up.
+2. **Don't hand-order `#include` lines.** `SortIncludes` is on, so clang-format alphabetises within each include group regardless of any "logical" ordering (e.g. most-important first, or source-file order). Newly-added headers will get re-sorted into the group — accept it.
 
 ## Native dependency matrix
 
