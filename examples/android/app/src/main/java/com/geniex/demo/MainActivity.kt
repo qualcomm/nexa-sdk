@@ -56,7 +56,7 @@ import com.geniex.demo.bean.DownloadableFileWithFallback
 import com.geniex.demo.bean.DownloadState
 import com.geniex.demo.bean.ModelData
 import com.geniex.demo.bean.downloadableFiles
-import com.geniex.demo.bean.downloadableFilesWithFallback
+import com.geniex.demo.bean.downloadableFilesWithArchFilter
 import com.geniex.demo.bean.getGeniexManifest
 import com.geniex.demo.bean.getNonExistModelFile
 import com.geniex.demo.bean.getSupportPluginIds
@@ -66,6 +66,7 @@ import com.geniex.demo.bean.modelDir
 import com.geniex.demo.bean.modelFile
 import com.geniex.demo.bean.tokenFile
 import com.geniex.demo.bean.withFallbackUrls
+import com.geniex.demo.utils.HtpArchDetector
 import com.geniex.demo.utils.ModelFileListingUtil
 import com.geniex.demo.databinding.ActivityMainBinding
 import com.geniex.demo.databinding.DialogSelectPluginIdBinding
@@ -761,9 +762,17 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         val useHfUrls = result.source == ModelFileListingUtil.FileListResult.Source.HUGGINGFACE
                         Log.d(TAG, "Found ${result.files.size} files from ${result.source}: ${result.files}")
 
-                        selectModelData.downloadableFilesWithFallback(
+                        // NPU (QAIRT) model repos publish one set of shards per HTP arch
+                        // (v73/, v79/, v81/, ...). Pick only the shards for this device's
+                        // arch and flatten the path so they land next to geniex.json.
+                        val arch = HtpArchDetector.detect()
+                        val archEntries =
+                            ModelFileListingUtil.filterAndFlattenForArch(result.files, arch)
+                        Log.d(TAG, "After arch=$arch filter: ${archEntries.size} entries")
+
+                        selectModelData.downloadableFilesWithArchFilter(
                             selectModelData.modelDir(this@MainActivity),
-                            result.files,
+                            archEntries,
                             useHfUrls
                         )
                     } else {

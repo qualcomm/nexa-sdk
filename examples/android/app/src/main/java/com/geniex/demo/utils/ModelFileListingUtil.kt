@@ -167,8 +167,10 @@ object ModelFileListingUtil {
      */
     suspend fun listFilesFromHuggingFace(repoId: String, client: OkHttpClient): List<String> = withContext(Dispatchers.IO) {
         try {
-            // HF API endpoint to list files in a repo
-            val apiUrl = "https://huggingface.co/api/models/$repoId/tree/main"
+            // HF API endpoint to list files in a repo. `recursive=true` descends
+            // into subdirectories (e.g. v73/, v79/, v81/ arch folders for QAIRT
+            // models) so the flattening pass downstream can pick the right shards.
+            val apiUrl = "https://huggingface.co/api/models/$repoId/tree/main?recursive=true"
             Log.d(TAG, "Listing HuggingFace repo: $apiUrl")
 
             val request = Request.Builder()
@@ -283,7 +285,7 @@ object ModelFileListingUtil {
     /**
      * Gets the HF download URL for a specific .gguf file from its S3 URL.
      * Used for non-NPU models that have direct file URLs.
-     * 
+     *
      * @param s3FileUrl Full S3 URL to the .gguf file
      * @return HF download URL for the same file
      */
@@ -292,4 +294,40 @@ object ModelFileListingUtil {
         val fileName = s3FileUrl.substringAfterLast("/")
         return getHfDownloadUrl(repoId, fileName)
     }
+
+    /**
+     * Pair of remote path (relative to baseUrl) and local flattened file name.
+     */
+    data class ArchFilteredEntry(val remotePath: String, val localName: String)
+
+    /**
+     * Filters a file listing for the device's HTP arch and flattens the paths.
+     *
+     * - Files inside "{arch}/..." are kept; the arch prefix is stripped from the local name.
+     * - Files inside some other known arch prefix ("v73/", "v79/", "v81/", ...) are dropped.
+     * - Files with no arch prefix (tokenizer.json, geniex.json, ...) are kept as-is.
+     *
+     * If [arch] is null (unknown SoC) the input is returned unchanged — the app will
+     * download every file it sees, matching pre-filter behavior.
+     */
+    fun filterAndFlattenForArch(files: List<String>, arch: String?): List<ArchFilteredEntry> {
+        if (arch == null) {
+            return files.map { ArchFilteredEntry(it, it) }
+        }
+        val archPrefix = "$arch/"
+        val otherArchPrefixes = KNOWN_ARCH_DIRS.filter { it != arch }.map { "$it/" }
+
+        return files.mapNotNull { path ->
+            when {
+                path.startsWith(archPrefix) ->
+                    ArchFilteredEntry(path, path.removePrefix(archPrefix))
+                otherArchPrefixes.any { path.startsWith(it) } ->
+                    null
+                else ->
+                    ArchFilteredEntry(path, path)
+            }
+        }
+    }
+
+    private val KNOWN_ARCH_DIRS: Set<String> = HtpArchDetector.KNOWN_ARCH_DIRS
 }

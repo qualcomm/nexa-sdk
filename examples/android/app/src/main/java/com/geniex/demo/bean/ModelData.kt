@@ -310,31 +310,46 @@ fun ModelData.downloadableFilesWithFallback(
     modelDir: File,
     npuFileNames: List<String>,
     useHfUrls: Boolean = false
+): List<DownloadableFileWithFallback> =
+    downloadableFilesWithArchFilter(
+        modelDir = modelDir,
+        entries = npuFileNames.map { ModelFileListingUtil.ArchFilteredEntry(it, it) },
+        useHfUrls = useHfUrls,
+    )
+
+/**
+ * Builds download entries from a list of arch-filtered file descriptors.
+ *
+ * Remote paths (`ArchFilteredEntry.remotePath`) are joined onto `baseUrl` / the
+ * HuggingFace repo root, while local files land at `modelDir/<localName>` — so
+ * shards under `v79/` on the server arrive flat next to `geniex.json`.
+ */
+fun ModelData.downloadableFilesWithArchFilter(
+    modelDir: File,
+    entries: List<ModelFileListingUtil.ArchFilteredEntry>,
+    useHfUrls: Boolean = false,
 ): List<DownloadableFileWithFallback> {
-    val npuFiles = arrayListOf<DownloadableFileWithFallback>()
     val repoId = if (!baseUrl.isNullOrEmpty()) {
         ModelFileListingUtil.getHfRepoId(baseUrl)
     } else {
         "GeniexAI/$id"
     }
 
-    npuFileNames.forEach { fileName ->
+    return entries.map { entry ->
         val s3Url = if (baseUrl.isNullOrEmpty()) {
-            fileName
+            entry.remotePath
         } else {
-            if (baseUrl.endsWith("/")) "$baseUrl$fileName" else "$baseUrl/$fileName"
+            if (baseUrl.endsWith("/")) "$baseUrl${entry.remotePath}" else "$baseUrl/${entry.remotePath}"
         }
-        val hfUrl = ModelFileListingUtil.getHfDownloadUrl(repoId, fileName)
+        val hfUrl = ModelFileListingUtil.getHfDownloadUrl(repoId, entry.remotePath)
+        val localFile = File(modelDir, entry.localName)
 
-        // If useHfUrls is true, swap primary and fallback
         if (useHfUrls) {
-            npuFiles.add(DownloadableFileWithFallback(File(modelDir, fileName), hfUrl, s3Url))
+            DownloadableFileWithFallback(localFile, hfUrl, s3Url)
         } else {
-            npuFiles.add(DownloadableFileWithFallback(File(modelDir, fileName), s3Url, hfUrl))
+            DownloadableFileWithFallback(localFile, s3Url, hfUrl)
         }
     }
-
-    return npuFiles
 }
 
 /**
