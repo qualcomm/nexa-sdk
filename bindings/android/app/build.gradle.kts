@@ -16,7 +16,6 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += "-std=c++17"
-                arguments += listOf("-DGENIEX_DL=OFF")
             }
         }
         ndk {

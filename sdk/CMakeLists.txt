@@ -35,7 +35,6 @@ set(GENIEX_VERSION "v0.0.0" CACHE STRING "Geniex library version")
 
 option(GENIEX_PLUGIN_LLAMA_CPP  "Enable llama.cpp backend"       ON)
 option(GENIEX_PLUGIN_QAIRT      "Enable QAIRT backend"           ON)
-option(GENIEX_DL                "Enable dynamic plugin loading"  ON)
 option(GENIEX_DEBUG             "Enable debug mode"              ON)
 option(GENIEX_TEST              "Enable unit tests"              ON)
 
@@ -43,7 +42,6 @@ message(STATUS "=============== Options ===============")
 message(STATUS "GENIEX_VERSION:          ${GENIEX_VERSION}")
 message(STATUS "GENIEX_PLUGIN_LLAMA_CPP: ${GENIEX_PLUGIN_LLAMA_CPP}")
 message(STATUS "GENIEX_PLUGIN_QAIRT:     ${GENIEX_PLUGIN_QAIRT}")
-message(STATUS "GENIEX_DL:               ${GENIEX_DL}")
 message(STATUS "GENIEX_DEBUG:            ${GENIEX_DEBUG}")
 message(STATUS "GENIEX_TEST:             ${GENIEX_TEST}")
 message(STATUS "=======================================")
@@ -63,10 +61,6 @@ set(GENIEX_PLUGIN_ID_QAIRT "qairt")
 add_compile_definitions(GENIEX_PLUGIN_ID_QAIRT="${GENIEX_PLUGIN_ID_QAIRT}")
 
 # compile definitions
-
-if(GENIEX_DL)
-    add_compile_definitions(GENIEX_DL)
-endif()
 
 if(GENIEX_DEBUG)
     add_compile_definitions(GENIEX_DEBUG)

@@ -26,10 +26,6 @@ class GeniexSdk private constructor() {
      */
     fun init(context: Context, callback: InitCallback? = null) {
         val nativeLibPath = context.applicationInfo.nativeLibraryDir
-        // Os.setenv("ADSP_LIBRARY_PATH", nativeLibPath, true)
-        // Log.d(TAG, "ADSP_LIBRARY_PATH set to $nativeLibPath")
-
-        // extractHtpAssets(context)
 
         val exceptionResult = StringBuilder()
         arrayOf(

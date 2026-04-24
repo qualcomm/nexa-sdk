@@ -248,7 +248,7 @@ fun ModelData.getSupportPluginIds(): ArrayList<String> {
         pluginIds.add("cpu")
     } else {
         if (this.pluginIds!! and 0b100 == 0b100) {
-            pluginIds.add("qairt")
+            pluginIds.add("npu")
         }
         if (this.pluginIds and 0b10 == 0b10) {
             pluginIds.add("gpu")

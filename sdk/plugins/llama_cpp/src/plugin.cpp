@@ -70,7 +70,6 @@ class LlamaPlugin : public Plugin {
         setenv("ADSP_LIBRARY_PATH", backend_dir.u8string().c_str(), 1);
 #endif
 
-#ifdef GENIEX_DL
         if (!backend_dir.empty()) {
 #if defined(_WIN32)
             // LoadLibrary() does not reliably resolve transitive DLL dependencies
@@ -83,7 +82,6 @@ class LlamaPlugin : public Plugin {
             GENIEX_LOG_DEBUG("Loading GGML backend from path: {}", path);
             ggml_backend_load_all_from_path(path.c_str());
         }
-#endif  // GENIEX_DL
 
         // #ifdef __ANDROID__
         // Harcoding to use 4 hexagon devices for Hexagon to make GPT-OSS work

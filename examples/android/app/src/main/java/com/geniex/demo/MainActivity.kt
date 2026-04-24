@@ -357,26 +357,6 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 Log.e(TAG, "GeniexSdk init failed: $reason")
             }
         })
-
-        val testLocalPath = false
-        if (testLocalPath) {
-            // FIXME: Set directory according to terminal format
-            val pluginNativeLibPath = filesDir.absolutePath
-            val pluginAdspLibPath = File(filesDir, "npu/htp-files").absolutePath
-            val pluginLdLibraryPath =
-                "$pluginNativeLibPath:$pluginNativeLibPath/npu:$pluginAdspLibPath:\$LD_LIBRARY_PATH"
-            // FIXME: Set directory with flattened .so files
-            val GENIEX_PLUGIN_PATH = pluginNativeLibPath
-            val LD_LIBRARY_PATH = pluginLdLibraryPath
-            val ADSP_LIBRARY_PATH = pluginAdspLibPath
-            Log.d("nfl", "GENIEX_PLUGIN_PATH:$GENIEX_PLUGIN_PATH")
-            Log.d("nfl", "LD_LIBRARY_PATH:$LD_LIBRARY_PATH")
-            Log.d("nfl", "ADSP_LIBRARY_PATH:$ADSP_LIBRARY_PATH")
-
-            Os.setenv("GENIEX_PLUGIN_PATH", GENIEX_PLUGIN_PATH, true)
-            Os.setenv("LD_LIBRARY_PATH", LD_LIBRARY_PATH, true)
-            Os.setenv("ADSP_LIBRARY_PATH", ADSP_LIBRARY_PATH, true)
-        }
     }
 
     /**
@@ -1165,7 +1145,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             dialogBinding.rbGpu.visibility = View.VISIBLE
                         }
 
-                        "qairt" -> {
+                        "npu" -> {
                             dialogBinding.rbNpu.visibility = View.VISIBLE
                             dialogBinding.rbNpu.isChecked = true
                         }
@@ -1226,8 +1206,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 alertDialog.show()
                 dialogOnClickListener.resetPositiveButton(alertDialog)
             } else {
-                if ("qairt" == supportPluginIds[0]) {
-                    modelDataPluginId = "qairt"
+                if ("npu" == supportPluginIds[0]) {
+                    modelDataPluginId = "npu"
                 }
                 loadModel(selectModelData, modelDataPluginId, nGpuLayers)
             }

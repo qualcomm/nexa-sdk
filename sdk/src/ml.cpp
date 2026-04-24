@@ -62,9 +62,7 @@ int32_t geniex_init(void) {
     GENIEX_LOG_INFO("initializing ml");
 
     try {
-#ifdef GENIEX_DL
         Registry::instance().scan_plugins();
-#endif
         return GENIEX_SUCCESS;
     } catch (const std::exception& e) {
         GENIEX_LOG_ERROR("failed to initialize ml: {}", e.what());
