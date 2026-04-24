@@ -116,6 +116,26 @@
       "inherits": ["base", "snapdragon", "arm64-windows-snapdragon", "release"]
     },
     {
+      "name": "arm64-windows-snapdragon-cpu-debug",
+      "displayName": "Windows ARM64 Snapdragon (llama.cpp CPU + QAIRT NPU, no Hexagon/OpenCL) - Debug",
+      "description": "Snapdragon build without Hexagon SDK or OpenCL SDK. llama.cpp runs CPU-only; QAIRT plugin still drives the NPU via its bundled QNN libs.",
+      "inherits": ["base", "snapdragon", "arm64-windows-snapdragon", "debug"],
+      "cacheVariables": {
+        "GGML_HEXAGON": "OFF",
+        "GGML_OPENCL": "OFF"
+      }
+    },
+    {
+      "name": "arm64-windows-snapdragon-cpu-release",
+      "displayName": "Windows ARM64 Snapdragon (llama.cpp CPU + QAIRT NPU, no Hexagon/OpenCL) - Release",
+      "description": "Snapdragon build without Hexagon SDK or OpenCL SDK. llama.cpp runs CPU-only; QAIRT plugin still drives the NPU via its bundled QNN libs.",
+      "inherits": ["base", "snapdragon", "arm64-windows-snapdragon", "release"],
+      "cacheVariables": {
+        "GGML_HEXAGON": "OFF",
+        "GGML_OPENCL": "OFF"
+      }
+    },
+    {
       "name": "arm64-android-snapdragon-debug",
       "inherits": ["base", "snapdragon", "arm64-android-snapdragon", "debug"]
     },
@@ -146,6 +166,16 @@
     {
       "name": "arm64-windows-snapdragon-release",
       "configurePreset": "arm64-windows-snapdragon-release",
+      "jobs": 0
+    },
+    {
+      "name": "arm64-windows-snapdragon-cpu-debug",
+      "configurePreset": "arm64-windows-snapdragon-cpu-debug",
+      "jobs": 0
+    },
+    {
+      "name": "arm64-windows-snapdragon-cpu-release",
+      "configurePreset": "arm64-windows-snapdragon-cpu-release",
       "jobs": 0
     },
     {
