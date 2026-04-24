@@ -39,7 +39,7 @@ std::string jstring2str(JNIEnv* env, jstring jstr) {
  * This abstracts the internal device naming from SDK users.
  *
  * Mappings:
- *   - "dev0" (NPU)  -> "HTP0,HTP1,HTP2,HTP3" (all Hexagon cores)
+ *   - "npu" (NPU)  -> "HTP0" (all Hexagon cores)
  *   - "gpu"  (GPU)  -> "GPUOpenCL"
  *   - null/empty    -> null (default CPU)
  *   - other values  -> passed through unchanged
@@ -48,9 +48,9 @@ std::string translate_device_id(const std::string& device_id) {
     if (device_id.empty()) {
         return device_id;
     }
-    if (device_id == "dev0") {
-        LOGi("[JNI] translate_device_id: 'dev0' -> 'HTP0,HTP1,HTP2,HTP3'");
-        return "HTP0,HTP1,HTP2,HTP3";
+    if (device_id == "npu") {
+        LOGi("[JNI] translate_device_id: 'npu' -> 'HTP0,HTP1,HTP2,HTP3'");
+        return "HTP0";
     }
     if (device_id == "gpu") {
         LOGi("[JNI] translate_device_id: 'gpu' -> 'GPUOpenCL'");
@@ -64,15 +64,15 @@ std::string translate_device_id(const std::string& device_id) {
 /**
  * Resolves the effective device_id string to set on a create-input struct.
  *
- * When device_id is unset (empty) and plugin_id is "cpu_gpu", the device
+ * When device_id is unset (empty) and plugin_id is "llama_cpp", the device
  * defaults to NPU ("HTP0,HTP1,HTP2,HTP3") instead of CPU.  For all other
  * cases the normal translate_device_id() mapping applies.
  */
-static std::string resolve_cpu_gpu_device_default(const char* plugin_id, const std::string& raw_device_id) {
+static std::string resolve_llama_cpp_device_default(const char* plugin_id, const std::string& raw_device_id) {
     if (raw_device_id.empty()) {
-        if (plugin_id && std::string(plugin_id) == "cpu_gpu") {
+        if (plugin_id && std::string(plugin_id) == "llama_cpp") {
             LOGi(
-                "[JNI] resolve_device: plugin_id='cpu_gpu', device_id unset -> defaulting to NPU "
+                "[JNI] resolve_device: plugin_id='llama_cpp', device_id unset -> defaulting to NPU "
                 "'HTP0,HTP1,HTP2,HTP3'");
             return "HTP0,HTP1,HTP2,HTP3";
         }
@@ -338,16 +338,6 @@ geniex_ModelConfig extract_model_config(JNIEnv* env, jobject configObj) {
     fid            = env->GetFieldID(cls, "verbose", "Z");
     config.verbose = env->GetBooleanField(configObj, fid);
 
-    // npu_model_folder_path -> qnn_model_folder_path (Java to C++ mapping)
-    fid                          = env->GetFieldID(cls, "npu_model_folder_path", "Ljava/lang/String;");
-    jstr                         = (jstring)env->GetObjectField(configObj, fid);
-    config.qnn_model_folder_path = jstr ? hold_c_str(jstring2str(env, jstr)) : nullptr;
-
-    // npu_lib_folder_path -> qnn_lib_folder_path (Java to C++ mapping)
-    fid                        = env->GetFieldID(cls, "npu_lib_folder_path", "Ljava/lang/String;");
-    jstr                       = (jstring)env->GetObjectField(configObj, fid);
-    config.qnn_lib_folder_path = jstr ? hold_c_str(jstring2str(env, jstr)) : nullptr;
-
     return config;
 }
 jobject extract_profiling_data(JNIEnv* env, const geniex_ProfileData& data) {
@@ -519,7 +509,7 @@ geniex_LlmCreateInput extract_llm_create_input(JNIEnv* env, jobject inputObj) {
     } else {
         jstr = (jstring)env->GetObjectField(inputObj, fid);
         if (checkAndLogJniException(env, "GetObjectField(device_id)") || !jstr) {
-            std::string resolved = resolve_cpu_gpu_device_default(out.plugin_id, "");
+            std::string resolved = resolve_llama_cpp_device_default(out.plugin_id, "");
             if (!resolved.empty()) {
                 out.device_id = hold_c_str(resolved);
                 LOGi("[JNI] [extract] device_id = %s (defaulted)", resolved.c_str());
@@ -604,7 +594,7 @@ geniex_VlmCreateInput extract_vlm_create_input(JNIEnv* env, jobject inputObj) {
             LOGi("[JNI] [extract_vlm] device_id = %s", translated.c_str());
             env->DeleteLocalRef(jstr);
         } else {
-            std::string resolved = resolve_cpu_gpu_device_default(out.plugin_id, "");
+            std::string resolved = resolve_llama_cpp_device_default(out.plugin_id, "");
             if (!resolved.empty()) {
                 out.device_id = hold_c_str(resolved);
                 LOGi("[JNI] [extract_vlm] device_id = %s", resolved.c_str());
@@ -710,7 +700,7 @@ geniex_EmbedderCreateInput extract_embedder_create_input(JNIEnv* env, jobject in
             LOGi("[JNI] [extract_embedder] device_id = %s (translated from %s)", translated.c_str(), s.c_str());
             env->DeleteLocalRef(jstr);
         } else {
-            std::string resolved = resolve_cpu_gpu_device_default(out.plugin_id, "");
+            std::string resolved = resolve_llama_cpp_device_default(out.plugin_id, "");
             if (!resolved.empty()) {
                 out.device_id = hold_c_str(resolved);
                 LOGi("[JNI] [extract_embedder] device_id = %s (defaulted)", resolved.c_str());
@@ -815,7 +805,7 @@ geniex_RerankerCreateInput extract_reranker_create_input(JNIEnv* env, jobject in
             LOGi("[JNI] [extract_reranker] device_id = %s (translated from %s)", translated.c_str(), s.c_str());
             env->DeleteLocalRef(jstr);
         } else {
-            std::string resolved = resolve_cpu_gpu_device_default(out.plugin_id, "");
+            std::string resolved = resolve_llama_cpp_device_default(out.plugin_id, "");
             if (!resolved.empty()) {
                 out.device_id = hold_c_str(resolved);
                 LOGi("[JNI] [extract_reranker] device_id = %s (defaulted)", resolved.c_str());

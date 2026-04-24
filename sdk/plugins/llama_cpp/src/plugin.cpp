@@ -56,18 +56,20 @@ class LlamaPlugin : public Plugin {
             backend_dir = std::filesystem::path(env_plugin_path);
         }
 #endif  // _WIN32
+
+#if not defined(__ANDROID__)  // android has flattened directory
         if (!backend_dir.empty()) {
             backend_dir = backend_dir / "llama_cpp";
         }
+#endif  // not __ANDROID__
 
         GENIEX_LOG_DEBUG("Setting ADSP_LIBRARY_PATH to {}", backend_dir.u8string());
-#ifdef _WIN32
+#if defined(WIN32)
         _putenv_s("ADSP_LIBRARY_PATH", backend_dir.u8string().c_str());
 #else
         setenv("ADSP_LIBRARY_PATH", backend_dir.u8string().c_str(), 1);
 #endif
 
-#ifdef GENIEX_DL
         if (!backend_dir.empty()) {
 #if defined(_WIN32)
             // LoadLibrary() does not reliably resolve transitive DLL dependencies
@@ -80,13 +82,12 @@ class LlamaPlugin : public Plugin {
             GENIEX_LOG_DEBUG("Loading GGML backend from path: {}", path);
             ggml_backend_load_all_from_path(path.c_str());
         }
-#endif  // GENIEX_DL
 
-#ifdef __ANDROID__
+        // #ifdef __ANDROID__
         // Harcoding to use 4 hexagon devices for Hexagon to make GPT-OSS work
-        setenv("GGML_HEXAGON_NDEV", "4", 1);
-        GENIEX_LOG_DEBUG("Set GGML_HEXAGON_NDEV=4 for Hexagon backend");
-#endif  // __ANDROID__
+        //         setenv("GGML_HEXAGON_NDEV", "4", 1);
+        //         GENIEX_LOG_DEBUG("Set GGML_HEXAGON_NDEV=4 for Hexagon backend");
+        // #endif  // __ANDROID__
 
         llama_backend_init();
     }

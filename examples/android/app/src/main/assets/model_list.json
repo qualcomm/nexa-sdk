@@ -1,0 +1,31 @@
+[
+  {
+    "id": "Qwen3-0.6B-GGUF",
+    "displayName": "Qwen3-0.6B-GGUF",
+    "modelName": "Qwen3-0.6B-Q8_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 7,
+    "modelUrl": "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf"
+  },
+  {
+    "id": "granite4_micro",
+    "displayName": "Granite4-Micro-NPU",
+    "modelName": "geniex.json",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 4,
+    "baseUrl": "https://nexa-public-storage.s3-us-west-2.amazonaws.com/models/paulzhuQCOM/Qwen3-4B-Instruct-2507/",
+    "modelUrl": "geniex.json"
+  },
+  {
+    "id": "Qwen3-4B-Instruct-NPU",
+    "displayName": "Qwen3-4B-Instruct-NPU",
+    "modelName": "geniex.json",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 4,
+    "baseUrl": "https://nexa-public-storage.s3-us-west-2.amazonaws.com/models/paulzhuQCOM/Qwen3-4B-Instruct-2507/",
+    "modelUrl": "geniex.json"
+  }
+]

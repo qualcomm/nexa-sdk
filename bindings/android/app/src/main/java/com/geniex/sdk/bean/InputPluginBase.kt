@@ -9,7 +9,7 @@ interface InputPluginBase {
 
     /**
      * Device to use for the model, NULL for default device.
-     * When using the [PluginIdValue.CPU_GPU] plugin, The default value is [DeviceIdValue.CPU],
+     * When using the [PluginIdValue.LLAMA_CPP] plugin, The default value is [DeviceIdValue.CPU],
      * you can use either the [DeviceIdValue.GPU] or the [DeviceIdValue.NPU].
      */
     val device_id: String?
@@ -22,12 +22,14 @@ interface InputPluginBase {
 enum class DeviceIdValue(val value: String?) {
     /** Default CPU device */
     CPU(null),
+
     /** GPU device (OpenCL) */
-    GPU("gpu"),
+    GPU("GPUOpenCL"),
+
     /** NPU device (Hexagon) - uses all available NPU cores */
-    NPU("dev0")
+    NPU("HTP0")
 }
 
 enum class PluginIdValue(val value: String?) {
-    CPU_GPU("cpu_gpu"), NPU("npu")
+    LLAMA_CPP("llama_cpp"), QAIRT("qairt")
 }
