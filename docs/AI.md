@@ -11,6 +11,8 @@ rediscovering the build/release flow every time.
   Wraps [build.md](build.md).
 - `/release` — cut and push a SemVer tag; watch the release workflow.
   Wraps [release.md](release.md).
+- Contributing rules (commits, branches, PR format) live in
+  [../CONTRIBUTING.md](../CONTRIBUTING.md).
 
 Both commands are playbooks: they describe the steps Claude should take.
 Trigger them with a leading slash in a Claude Code session.

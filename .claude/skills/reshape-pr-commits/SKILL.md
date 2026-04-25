@@ -49,14 +49,10 @@ same session.
 
 ## Commit message rules
 
-- **Subject line only, by default.** Imperative mood, ≤72 chars.
-  Format: `<type>(<scope>): <subject>` — match the types already used
-  in the repo's `git log` (check before writing).
-- **Only add a body when the "why" is non-obvious** — a constraint the
-  code doesn't show, a subtle bug's mechanism, a decision the reader
-  will question. Do not restate the diff in prose.
-- No co-authors.
-- No trailing summaries, no emojis.
+Follow the Commits section of
+[CONTRIBUTING.md](../../../CONTRIBUTING.md) — type set, scope
+enumeration, subject rules, banned subjects, and body policy. Do not
+restate them here.
 
 ## When in doubt
 
