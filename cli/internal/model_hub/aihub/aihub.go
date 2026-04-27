@@ -131,19 +131,20 @@ func (c *Client) LoadManifest(ctx context.Context, opts ...FetchOption) (*qaihm.
 
 	c.modelIndex = make(map[string]*qaihm.ManifestModelEntry, len(m.GetModels()))
 	for _, model := range m.GetModels() {
-		c.modelIndex[model.GetId()] = model
+		c.modelIndex[model.GetDisplayName()] = model
 	}
 
 	return &m, nil
 }
 
-// LookupModel returns the Model entry for id, or ErrModelNotFound.
+// LookupModelByDisplayName returns the manifest entry whose display_name
+// matches the given string, or ErrModelNotFound.
 // Must be called after LoadManifest has succeeded.
-func (c *Client) LookupModel(id string) (*qaihm.ManifestModelEntry, error) {
+func (c *Client) LookupModelByDisplayName(displayName string) (*qaihm.ManifestModelEntry, error) {
 	if c.modelIndex == nil {
-		return nil, errors.New("aihub: LookupModel called before LoadManifest")
+		return nil, errors.New("aihub: LookupModelByDisplayName called before LoadManifest")
 	}
-	m, ok := c.modelIndex[id]
+	m, ok := c.modelIndex[displayName]
 	if !ok {
 		return nil, ErrModelNotFound
 	}
@@ -194,9 +195,15 @@ func (c *Client) LoadPlatform(ctx context.Context, m *qaihm.ReleaseManifest, opt
 // LoadReleaseAssets fetches release-assets.json for a given model id.
 // Returns ErrNoReleaseAssets if the manifest entry lacks the URL.
 func (c *Client) LoadReleaseAssets(ctx context.Context, m *qaihm.ReleaseManifest, id string, opts ...FetchOption) (*qaihm.ModelReleaseAssets, error) {
-	model, err := c.LookupModel(id)
-	if err != nil {
-		return nil, err
+	var model *qaihm.ManifestModelEntry
+	for _, entry := range m.GetModels() {
+		if entry.GetId() == id {
+			model = entry
+			break
+		}
+	}
+	if model == nil {
+		return nil, ErrModelNotFound
 	}
 	if model.GetManifestUrls().GetReleaseAssets() == "" {
 		return nil, ErrNoReleaseAssets

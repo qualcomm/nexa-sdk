@@ -67,21 +67,23 @@ func pull() *cobra.Command {
 	pullCmd.Flags().StringVarP(&modelType, "model-type", "", "", "specify model type to use: [llm|vlm]")
 	pullCmd.Flags().BoolVar(&noConfigCache, "no-config-cache", false, "bypass local metadata cache and fetch the latest model index from remote")
 
+	// aiHubOrgs is the allowlist of HuggingFace org names that are routed to
+	// the AI Hub (S3/QAIRT) pull path instead of the standard HF path.
+	aiHubOrgs := []string{"qualcomm"}
+
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
-		// Try the AI Hub (qairt) path first for bare ids (no "/") that aren't
-		// registered as llama.cpp shortcuts. On miss, fall through to HF.
+		// Route to AI Hub when the user supplies "<allowlisted-org>/<repo>".
+		// The repo name is treated as the model's display_name in the manifest.
 		rawName, _ := splitQuant(args[0])
-		if !strings.Contains(rawName, "/") {
-			if _, isShortcut := config.GetModelMapping(rawName); !isShortcut {
-				err := tryPullAIHubModel(context.TODO(), rawName, noConfigCache)
-				if err == nil {
-					return
-				}
-				if !errors.Is(err, aihub.ErrModelNotFound) {
-					os.Exit(1)
-				}
-				slog.Debug("pull: not an AI Hub model, falling through", "id", rawName, "err", err)
+		if org, repo, ok := splitOrgRepo(rawName); ok && slices.Contains(aiHubOrgs, org) {
+			err := tryPullAIHubModel(context.TODO(), repo, noConfigCache)
+			if err == nil {
+				return
 			}
+			if !errors.Is(err, aihub.ErrModelNotFound) {
+				os.Exit(1)
+			}
+			slog.Debug("pull: not an AI Hub model, falling through", "org", org, "display_name", repo, "err", err)
 		}
 
 		name, quant := normalizeModelName(args[0])
@@ -102,6 +104,16 @@ func splitQuant(arg string) (string, string) {
 		return parts[0], strings.ToUpper(parts[1])
 	}
 	return parts[0], ""
+}
+
+// splitOrgRepo splits "org/repo" into (org, repo, true).
+// Returns ("", "", false) if the string does not contain exactly one slash.
+func splitOrgRepo(s string) (org, repo string, ok bool) {
+	parts := strings.SplitN(s, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
 }
 
 // remove creates a command to delete a cached model by name.
@@ -833,14 +845,14 @@ func detectMacOSBundles(files []model_hub.ModelFileInfo) []string {
 
 // =============== AI Hub (qairt) pull flow ===============
 
-// tryPullAIHubModel resolves the id against the AI Hub manifest and, on a
-// match, downloads the chipset-specific zip asset, unzips it flat, and
+// tryPullAIHubModel resolves the display_name against the AI Hub manifest and,
+// on a match, downloads the chipset-specific zip asset, unzips it flat, and
 // writes a synthesised geniex.json under qai-hub/<id>/.
 //
-// Returns aihub.ErrModelNotFound when the id is not published on AI Hub, so
-// the caller can fall back to the HuggingFace flow. All other errors are
-// terminal.
-func tryPullAIHubModel(ctx context.Context, id string, noConfigCache bool) error {
+// Returns aihub.ErrModelNotFound when the display_name is not published on AI
+// Hub, so the caller can fall back to the HuggingFace flow. All other errors
+// are terminal.
+func tryPullAIHubModel(ctx context.Context, displayName string, noConfigCache bool) error {
 	cacheDir := filepath.Join(store.Get().DataPath(), "aihub")
 	client := aihub.NewClient(cacheDir)
 	defer client.Close()
@@ -861,7 +873,7 @@ func tryPullAIHubModel(ctx context.Context, id string, noConfigCache bool) error
 		fmt.Println(render.GetTheme().Error.Sprintf("Failed to fetch AI Hub manifest: %s", err))
 		return err
 	}
-	model, err := client.LookupModel(id)
+	model, err := client.LookupModelByDisplayName(displayName)
 	spin.Stop()
 	if err != nil {
 		return err // ErrModelNotFound -> caller falls back to HF
@@ -870,7 +882,7 @@ func tryPullAIHubModel(ctx context.Context, id string, noConfigCache bool) error
 	if _, rerr := aihub.RuntimeForDomain(model.GetDomain()); rerr != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf(
 			"AI Hub model %s has domain %s, which the CLI doesn't support yet (LLM/VLM only).",
-			id, model.GetDomain()))
+			displayName, model.GetDomain()))
 		return rerr
 	}
 	if chipset == "" {
@@ -893,12 +905,12 @@ func tryPullAIHubModel(ctx context.Context, id string, noConfigCache bool) error
 		fmt.Println(render.GetTheme().Error.Sprintf("Failed to load platform.json: %s", err))
 		return err
 	}
-	ra, err := client.LoadReleaseAssets(ctx, manifest, id, fetchOpts...)
+	ra, err := client.LoadReleaseAssets(ctx, manifest, model.GetId(), fetchOpts...)
 	if err != nil {
 		spin.Stop()
 		if errors.Is(err, aihub.ErrNoReleaseAssets) {
 			fmt.Println(render.GetTheme().Error.Sprintf(
-				"AI Hub model %q has no downloadable release assets published.", id))
+				"AI Hub model %q has no downloadable release assets published.", displayName))
 		} else {
 			fmt.Println(render.GetTheme().Error.Sprintf("Failed to load release assets: %s", err))
 		}
@@ -922,8 +934,8 @@ func tryPullAIHubModel(ctx context.Context, id string, noConfigCache bool) error
 		modelTypeStr = types.ModelTypeVLM
 	}
 	mf := types.ModelManifest{
-		Name:          "qai-hub/" + id,
-		ModelName:     id,
+		Name:          "qai-hub/" + model.GetId(),
+		ModelName:     model.GetId(),
 		ModelType:     modelTypeStr,
 		PluginId:      "qairt",
 		DeviceId:      asset.GetChipset(),
@@ -946,7 +958,7 @@ func tryPullAIHubModel(ctx context.Context, id string, noConfigCache bool) error
 	}
 
 	slog.Info("AI Hub pull",
-		"id", id, "chipset", asset.GetChipset(), "runtime", asset.GetRuntime(),
+		"display_name", displayName, "id", model.GetId(), "chipset", asset.GetChipset(), "runtime", asset.GetRuntime(),
 		"precision", asset.GetPrecision(), "url", asset.GetDownloadUrl(), "size", zipSize)
 
 	infoCh, errCh := store.Get().PullZipAsset(ctx, mf, asset.GetDownloadUrl(), zipSize)
