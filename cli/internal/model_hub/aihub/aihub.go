@@ -50,7 +50,6 @@ type Client struct {
 	baseURL  string
 	version  string
 	cacheDir string
-	ttl      time.Duration
 	noCache  bool
 
 	http *resty.Client
@@ -79,7 +78,6 @@ func NewClient(cacheDir string) *Client {
 		baseURL:  base,
 		version:  version,
 		cacheDir: cacheDir,
-		ttl:      DefaultCacheTTL,
 		noCache:  cfg.AIHubNoCache,
 		http:     c,
 	}
@@ -100,7 +98,7 @@ func (c *Client) LoadManifest(ctx context.Context) (*qaihm.ReleaseManifest, erro
 	url := fmt.Sprintf("%s/releases/%s/manifest.json", c.baseURL, c.version)
 	cachePath := filepath.Join(c.cacheDir, fmt.Sprintf("manifest-%s.json", sanitizeForFilename(c.version)))
 
-	data, err := c.fetchJSON(ctx, url, cachePath)
+	data, err := c.fetchJSON(ctx, url, cachePath, DefaultCacheTTL)
 	if err != nil {
 		return nil, fmt.Errorf("load manifest: %w", err)
 	}
@@ -140,7 +138,7 @@ func (c *Client) LoadPlatform(ctx context.Context, m *qaihm.ReleaseManifest) (*q
 	cacheName := fmt.Sprintf("platform-%s.json", sanitizeForFilename(m.GetVersion()))
 	cachePath := filepath.Join(c.cacheDir, cacheName)
 
-	data, err := c.fetchJSON(ctx, m.GetPlatformUrl(), cachePath)
+	data, err := c.fetchJSON(ctx, m.GetPlatformUrl(), cachePath, DefaultCacheTTL)
 	if err != nil {
 		return nil, fmt.Errorf("load platform: %w", err)
 	}
@@ -167,7 +165,7 @@ func (c *Client) LoadReleaseAssets(ctx context.Context, m *qaihm.ReleaseManifest
 		sanitizeForFilename(id), sanitizeForFilename(m.GetVersion()))
 	cachePath := filepath.Join(c.cacheDir, cacheName)
 
-	data, err := c.fetchJSON(ctx, model.GetManifestUrls().GetReleaseAssets(), cachePath)
+	data, err := c.fetchJSON(ctx, model.GetManifestUrls().GetReleaseAssets(), cachePath, DefaultCacheTTL)
 	if err != nil {
 		return nil, fmt.Errorf("load release assets for %s: %w", id, err)
 	}
@@ -179,11 +177,11 @@ func (c *Client) LoadReleaseAssets(ctx context.Context, m *qaihm.ReleaseManifest
 	return &ra, nil
 }
 
-// fetchJSON returns the bytes of url, serving from cachePath if it's younger
-// than c.ttl. Cache write failures are logged and swallowed.
-func (c *Client) fetchJSON(ctx context.Context, url, cachePath string) ([]byte, error) {
+// fetchJSON returns the bytes of url, serving from cachePath if the cached
+// file is younger than ttl. Cache write failures are logged and swallowed.
+func (c *Client) fetchJSON(ctx context.Context, url, cachePath string, ttl time.Duration) ([]byte, error) {
 	if !c.noCache && cachePath != "" {
-		if info, err := os.Stat(cachePath); err == nil && time.Since(info.ModTime()) < c.ttl {
+		if info, err := os.Stat(cachePath); err == nil && time.Since(info.ModTime()) < ttl {
 			if data, err := os.ReadFile(cachePath); err == nil {
 				slog.Debug("aihub: cache hit", "url", url, "path", cachePath)
 				return data, nil
