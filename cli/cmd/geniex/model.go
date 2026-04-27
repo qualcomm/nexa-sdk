@@ -45,7 +45,6 @@ var (
 	modelHub      string
 	localPath     string
 	modelType     string
-	chipset       string
 	noConfigCache bool
 )
 
@@ -66,7 +65,6 @@ func pull() *cobra.Command {
 	pullCmd.Flags().StringVarP(&modelHub, "model-hub", "", "", "specify model hub to use: volces|modelscope|s3|hf|localfs")
 	pullCmd.Flags().StringVarP(&localPath, "local-path", "", "", "[localfs] path to local directory")
 	pullCmd.Flags().StringVarP(&modelType, "model-type", "", "", "specify model type to use: [llm|vlm]")
-	pullCmd.Flags().StringVarP(&chipset, "chipset", "", "", "[qairt] target chipset, e.g. qualcomm-snapdragon-x-elite (required for AI Hub qairt models)")
 	pullCmd.Flags().BoolVar(&noConfigCache, "no-config-cache", false, "bypass local metadata cache and fetch the latest model index from remote")
 
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
@@ -75,7 +73,7 @@ func pull() *cobra.Command {
 		rawName, _ := splitQuant(args[0])
 		if !strings.Contains(rawName, "/") {
 			if _, isShortcut := config.GetModelMapping(rawName); !isShortcut {
-				err := tryPullAIHubModel(context.TODO(), rawName, chipset, noConfigCache)
+				err := tryPullAIHubModel(context.TODO(), rawName, noConfigCache)
 				if err == nil {
 					return
 				}
@@ -842,10 +840,13 @@ func detectMacOSBundles(files []model_hub.ModelFileInfo) []string {
 // Returns aihub.ErrModelNotFound when the id is not published on AI Hub, so
 // the caller can fall back to the HuggingFace flow. All other errors are
 // terminal.
-func tryPullAIHubModel(ctx context.Context, id, chipset string, noConfigCache bool) error {
+func tryPullAIHubModel(ctx context.Context, id string, noConfigCache bool) error {
 	cacheDir := filepath.Join(store.Get().DataPath(), "aihub")
 	client := aihub.NewClient(cacheDir)
 	defer client.Close()
+
+	// Read the configured chipset from persistent config.
+	chipset, _, _ := store.Get().ConfigGet(store.ConfigKeyDevice)
 
 	var fetchOpts []aihub.FetchOption
 	if config.Get().AIHubNoCache || noConfigCache {
@@ -875,15 +876,15 @@ func tryPullAIHubModel(ctx context.Context, id, chipset string, noConfigCache bo
 	if chipset == "" {
 		if ra, rerr := client.LoadReleaseAssets(ctx, manifest, id, fetchOpts...); rerr == nil {
 			fmt.Println(render.GetTheme().Error.Sprintf(
-				"--chipset is required for AI Hub model %q. Supported chipsets:", id))
+				"Device not configured for AI Hub model %q. Run \"geniex config set device\" to select your device. Supported chipsets:", id))
 			for _, c := range aihub.SupportedChipsetsFor(ra) {
 				fmt.Println(render.GetTheme().Error.Sprintf("  - %s", c))
 			}
 		} else {
 			fmt.Println(render.GetTheme().Error.Sprintf(
-				"--chipset is required for AI Hub model %q.", id))
+				"Device not configured. Run \"geniex config set device\" to select your device."))
 		}
-		return fmt.Errorf("--chipset not provided")
+		return fmt.Errorf("device not configured")
 	}
 
 	spin = render.NewSpinner("resolving download asset...")
