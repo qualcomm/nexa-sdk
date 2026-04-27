@@ -195,6 +195,35 @@ jobs:
             const release = require('./.github/scripts/release.js');
             await release({ github, context, core });
 
+  publish-s3:
+    name: publish-s3-release
+    runs-on: ubuntu-latest
+    needs: [publish-github-release]
+
+    steps:
+      - name: Download packaged SDK release artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: sdk-pkg-windows-arm64
+          path: .
+
+      - name: Upload geniex-sdk-windows-arm64-${RELEASE_TAG}${sdk_suffix}.zip to S3
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-west-1
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          for suffix in "" "-selfsigned"; do
+            zipfile="geniex-sdk-windows-arm64-${RELEASE_TAG}${suffix}.zip"
+            if [ -f "$zipfile" ]; then
+              aws s3 cp "$zipfile" "s3://qaihub-public-assets/qai-hub-geniex/${RELEASE_TAG}/$zipfile"
+            fi
+          done
+
+      # Add additional upload steps for CLI and sdist if needed, or extend the composite action to handle all artifacts
+
   # Push the sdist to TestPyPI for pre-release tags (v*-alpha.*, v*-beta.*,
   # v*-rc.*). Stable tags skip this job — they go to production PyPI via a
   # separate flow (not yet wired up).
