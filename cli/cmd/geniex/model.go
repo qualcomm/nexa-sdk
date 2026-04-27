@@ -71,8 +71,6 @@ func pull() *cobra.Command {
 	pullCmd.Flags().StringVarP(&modelType, "model-type", "", "", "specify model type to use: [llm|vlm]")
 	pullCmd.Flags().BoolVar(&noConfigCache, "no-config-cache", false, "bypass local metadata cache and fetch the latest model index from remote")
 
-	// aiHubOrgs is the allowlist of HuggingFace org names that are routed to
-	// the AI Hub (S3/QAIRT) pull path instead of the standard HF path.
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
 		// Route to AI Hub when the user supplies "<allowlisted-org>/<repo>".
 		// The repo name is treated as the model's display_name in the manifest.
@@ -834,11 +832,7 @@ func detectMacOSBundles(files []model_hub.ModelFileInfo) []string {
 // tryPullAIHubModel resolves the display_name against the AI Hub manifest and,
 // on a match, downloads the chipset-specific zip asset, unzips it flat, and
 // writes a synthesised geniex.json keyed by storedName (the original org/repo
-// the user typed).
-//
-// Returns aihub.ErrModelNotFound when the display_name is not published on AI
-// Hub, so the caller can fall back to the HuggingFace flow. All other errors
-// are terminal.
+// the user typed). All errors are terminal.
 func tryPullAIHubModel(ctx context.Context, storedName, displayName string, noConfigCache bool) error {
 	cacheDir := filepath.Join(store.Get().DataPath(), "aihub")
 	client := aihub.NewClient(cacheDir)
@@ -863,7 +857,8 @@ func tryPullAIHubModel(ctx context.Context, storedName, displayName string, noCo
 	model, err := client.LookupModelByDisplayName(displayName)
 	spin.Stop()
 	if err != nil {
-		return err // ErrModelNotFound -> caller falls back to HF
+		fmt.Println(render.GetTheme().Error.Sprintf("Model %q not found in AI Hub manifest.", displayName))
+		return err
 	}
 
 	if _, rerr := aihub.RuntimeForDomain(model.GetDomain()); rerr != nil {
