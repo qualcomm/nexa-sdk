@@ -20,6 +20,7 @@ go_library(
         "//cli/internal/config",
         "//cli/internal/downloader",
         "//cli/internal/model_hub",
+        "//cli/gen/qaihm",
         "//cli/internal/model_hub/aihub",
         "//cli/internal/record",
         "//cli/internal/render",

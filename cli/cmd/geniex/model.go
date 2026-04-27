@@ -42,10 +42,11 @@ import (
 )
 
 var (
-	modelHub  string
-	localPath string
-	modelType string
-	chipset   string
+	modelHub      string
+	localPath     string
+	modelType     string
+	chipset       string
+	noConfigCache bool
 )
 
 // pull creates a command to download and cache a model by name.
@@ -66,6 +67,7 @@ func pull() *cobra.Command {
 	pullCmd.Flags().StringVarP(&localPath, "local-path", "", "", "[localfs] path to local directory")
 	pullCmd.Flags().StringVarP(&modelType, "model-type", "", "", "specify model type to use: [llm|vlm]")
 	pullCmd.Flags().StringVarP(&chipset, "chipset", "", "", "[qairt] target chipset, e.g. qualcomm-snapdragon-x-elite (required for AI Hub qairt models)")
+	pullCmd.Flags().BoolVar(&noConfigCache, "no-config-cache", false, "bypass local metadata cache and fetch the latest model index from remote")
 
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
 		// Try the AI Hub (qairt) path first for bare ids (no "/") that aren't
@@ -73,7 +75,7 @@ func pull() *cobra.Command {
 		rawName, _ := splitQuant(args[0])
 		if !strings.Contains(rawName, "/") {
 			if _, isShortcut := config.GetModelMapping(rawName); !isShortcut {
-				err := tryPullAIHubModel(context.TODO(), rawName, chipset)
+				err := tryPullAIHubModel(context.TODO(), rawName, chipset, noConfigCache)
 				if err == nil {
 					return
 				}
@@ -840,14 +842,19 @@ func detectMacOSBundles(files []model_hub.ModelFileInfo) []string {
 // Returns aihub.ErrModelNotFound when the id is not published on AI Hub, so
 // the caller can fall back to the HuggingFace flow. All other errors are
 // terminal.
-func tryPullAIHubModel(ctx context.Context, id, chipset string) error {
+func tryPullAIHubModel(ctx context.Context, id, chipset string, noConfigCache bool) error {
 	cacheDir := filepath.Join(store.Get().DataPath(), "aihub")
 	client := aihub.NewClient(cacheDir)
 	defer client.Close()
 
+	var fetchOpts []aihub.FetchOption
+	if config.Get().AIHubNoCache || noConfigCache {
+		fetchOpts = append(fetchOpts, aihub.WithNoCache())
+	}
+
 	spin := render.NewSpinner("fetching AI Hub manifest...")
 	spin.Start()
-	manifest, err := client.LoadManifest(ctx)
+	manifest, err := client.LoadManifest(ctx, fetchOpts...)
 	if err != nil {
 		spin.Stop()
 		fmt.Println(render.GetTheme().Error.Sprintf("Failed to fetch AI Hub manifest: %s", err))
@@ -866,7 +873,7 @@ func tryPullAIHubModel(ctx context.Context, id, chipset string) error {
 		return rerr
 	}
 	if chipset == "" {
-		if ra, rerr := client.LoadReleaseAssets(ctx, manifest, id); rerr == nil {
+		if ra, rerr := client.LoadReleaseAssets(ctx, manifest, id, fetchOpts...); rerr == nil {
 			fmt.Println(render.GetTheme().Error.Sprintf(
 				"--chipset is required for AI Hub model %q. Supported chipsets:", id))
 			for _, c := range aihub.SupportedChipsetsFor(ra) {
@@ -881,13 +888,13 @@ func tryPullAIHubModel(ctx context.Context, id, chipset string) error {
 
 	spin = render.NewSpinner("resolving download asset...")
 	spin.Start()
-	plat, err := client.LoadPlatform(ctx, manifest)
+	plat, err := client.LoadPlatform(ctx, manifest, fetchOpts...)
 	if err != nil {
 		spin.Stop()
 		fmt.Println(render.GetTheme().Error.Sprintf("Failed to load platform.json: %s", err))
 		return err
 	}
-	ra, err := client.LoadReleaseAssets(ctx, manifest, id)
+	ra, err := client.LoadReleaseAssets(ctx, manifest, id, fetchOpts...)
 	if err != nil {
 		spin.Stop()
 		if errors.Is(err, aihub.ErrNoReleaseAssets) {
