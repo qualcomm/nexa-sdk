@@ -3,6 +3,9 @@ load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_python//python:defs.bzl", "py_binary")
 
+# gazelle:exclude shared
+# gazelle:proto disable
+
 package(default_visibility = ["//cli:__subpackages__"])
 
 proto_library(
@@ -45,7 +48,7 @@ write_file(
 py_binary(
     name = "write_pb_go",
     srcs = [":_write_pb_go_src"],
-    data = [":_qaihm_pb_go_srcs"],
     args = ["$(rlocationpaths :_qaihm_pb_go_srcs)"],
+    data = [":_qaihm_pb_go_srcs"],
     deps = ["@rules_python//python/runfiles"],
 )

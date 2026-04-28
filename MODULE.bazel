@@ -48,10 +48,6 @@ go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//cli:go.mod")
 use_repo(
     go_deps,
-    "com_github_aws_aws_sdk_go_v2",
-    "com_github_aws_aws_sdk_go_v2_config",
-    "com_github_aws_aws_sdk_go_v2_service_s3",
-    "com_github_aws_smithy_go",
     "com_github_bytedance_sonic",
     "com_github_charmbracelet_huh",
     "com_github_charmbracelet_huh_spinner",
