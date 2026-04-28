@@ -164,7 +164,7 @@ func pickDevice(ctx context.Context, noConfigCache bool) error {
 
 	var fetchOpts []aihub.FetchOption
 	if noConfigCache {
-		fetchOpts = append(fetchOpts, aihub.WithNoCache())
+		fetchOpts = append(fetchOpts, aihub.WithSkipCache())
 	}
 
 	spin := render.NewSpinner("fetching device list...")

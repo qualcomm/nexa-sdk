@@ -852,7 +852,7 @@ func tryPullAIHubModel(ctx context.Context, storedName, displayName string, noCo
 
 	var fetchOpts []aihub.FetchOption
 	if config.Get().AIHubNoCache || noConfigCache {
-		fetchOpts = append(fetchOpts, aihub.WithNoCache())
+		fetchOpts = append(fetchOpts, aihub.WithSkipCache())
 	}
 
 	spin := render.NewSpinner("fetching AI Hub model index...")
