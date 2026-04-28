@@ -13,6 +13,9 @@ common --enable_platform_specific_config
 build  --worker_sandboxing
 build  --experimental_output_directory_naming_scheme=diff_against_dynamic_baseline
 
+# protoc
+build  --experimental_proto_descriptor_sets_include_source_info
+
 # windows
 startup --windows_enable_symlinks
 build --enable_runfiles
