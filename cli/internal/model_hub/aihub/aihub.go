@@ -41,8 +41,8 @@ const NeverExpireTTL = time.Duration(1<<63 - 1) // math.MaxInt64
 type FetchOption func(*fetchOptions)
 
 type fetchOptions struct {
-	ttl     time.Duration
-	noCache bool
+	ttl       time.Duration
+	skipCache bool
 }
 
 func defaultFetchOptions() fetchOptions {
@@ -54,9 +54,9 @@ func WithTTL(d time.Duration) FetchOption {
 	return func(o *fetchOptions) { o.ttl = d }
 }
 
-// WithNoCache disables the on-disk cache for a single fetch.
-func WithNoCache() FetchOption {
-	return func(o *fetchOptions) { o.noCache = true }
+// WithSkipCache disables the on-disk cache for a single fetch.
+func WithSkipCache() FetchOption {
+	return func(o *fetchOptions) { o.skipCache = true }
 }
 
 // ErrModelNotFound signals that an id was not present in the AI Hub manifest.
@@ -237,14 +237,14 @@ func (c *Client) fetchDirect(ctx context.Context, url string) ([]byte, error) {
 
 // fetchJSON returns the bytes of url, serving from cachePath if the cached
 // file is younger than the effective TTL. Defaults: TTL=DefaultCacheTTL,
-// noCache=false. Cache write failures are logged and swallowed.
+// skipCache=false. Cache write failures are logged and swallowed.
 func (c *Client) fetchJSON(ctx context.Context, url, cachePath string, opts ...FetchOption) ([]byte, error) {
 	fo := defaultFetchOptions()
 	for _, o := range opts {
 		o(&fo)
 	}
 
-	if !fo.noCache && cachePath != "" {
+	if !fo.skipCache && cachePath != "" {
 		if info, err := os.Stat(cachePath); err == nil && time.Since(info.ModTime()) < fo.ttl {
 			if data, err := os.ReadFile(cachePath); err == nil {
 				slog.Debug("aihub: cache hit", "url", url, "path", cachePath)
@@ -263,7 +263,7 @@ func (c *Client) fetchJSON(ctx context.Context, url, cachePath string, opts ...F
 	}
 	body := resp.Bytes()
 
-	if !fo.noCache && cachePath != "" {
+	if !fo.skipCache && cachePath != "" {
 		if err := os.MkdirAll(filepath.Dir(cachePath), 0o770); err == nil {
 			if werr := os.WriteFile(cachePath, body, 0o664); werr != nil {
 				slog.Warn("aihub: cache write failed", "path", cachePath, "err", werr)
