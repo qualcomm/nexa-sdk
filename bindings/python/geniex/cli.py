@@ -374,7 +374,7 @@ def _cmd_rm(args: argparse.Namespace) -> int:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog='geniex', description='GenieX CLI')
+    parser = argparse.ArgumentParser(prog='geniex-py', description='GenieX Python CLI')
     sub = parser.add_subparsers(dest='cmd', required=True)
 
     chat = sub.add_parser('chat', help='Interactive chat with a model')
@@ -393,7 +393,7 @@ def _build_parser() -> argparse.ArgumentParser:
     chat.add_argument(
         '--device',
         default='auto',
-        help="'auto' | '<plugin>' | '<plugin>:<device>' (run 'geniex devices' to list)",
+        help="'auto' | '<plugin>' | '<plugin>:<device>' (run 'geniex-py devices' to list)",
     )
     chat.set_defaults(func=_cmd_chat)
 

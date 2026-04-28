@@ -148,7 +148,7 @@ class AutoModelForCausalLM:
             quant: Quantization variant (e.g. 'Q4_K_M').  Used to filter files
                 when downloading from HuggingFace Hub.
             device_map: 'auto' | '<plugin_id>' | '<plugin_id>:<device_id>'.
-                Run ``geniex devices`` (or ``geniex._ffi.get_device_list``)
+                Run ``geniex-py devices`` (or ``geniex._ffi.get_device_list``)
                 to enumerate the device ids available on this machine.
             n_ctx: Context length (0 = model default).
             n_gpu_layers: Layers to offload to GPU (-1 = all).
@@ -209,7 +209,7 @@ class AutoModelForVision2Seq:
             model_name_or_path: HuggingFace repo id or local path.
             quant: Quantization variant.
             device_map: 'auto' | '<plugin_id>' | '<plugin_id>:<device_id>'.
-                Run ``geniex devices`` (or ``geniex._ffi.get_device_list``)
+                Run ``geniex-py devices`` (or ``geniex._ffi.get_device_list``)
                 to enumerate the device ids available on this machine.
             n_ctx: Context length (0 = model default).
             n_gpu_layers: Layers to offload to GPU (-1 = all).

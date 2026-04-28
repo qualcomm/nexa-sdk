@@ -20,7 +20,8 @@ classifiers = [
 ]
 
 [project.scripts]
-geniex = "geniex.cli:main"
+# Avoid clashing with the Go `geniex` binary when both are installed.
+geniex-py = "geniex.cli:main"
 
 [project.optional-dependencies]
 [project.urls]

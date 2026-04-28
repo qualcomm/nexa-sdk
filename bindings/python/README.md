@@ -98,22 +98,24 @@ vary per host (e.g. `CPU`, `CUDA0`, `Vulkan0`, `HTP` — see
 
 ## CLI
 
-After install, the `geniex` console script is on your `$PATH`:
+After install, the `geniex-py` console script is on your `$PATH` (the
+name avoids clashing with the Go `geniex` binary when both are
+installed):
 
 ```bash
-geniex chat qwen3                          # interactive chat (auto-downloads)
-geniex chat NexaAI/Qwen3-4B-GGUF --quant Q4_K_M
-geniex chat /path/to/model.gguf --system "You are a concise assistant."
+geniex-py chat qwen3                       # interactive chat (auto-downloads)
+geniex-py chat NexaAI/Qwen3-4B-GGUF --quant Q4_K_M
+geniex-py chat /path/to/model.gguf --system "You are a concise assistant."
 
-geniex pull qwen3                          # download into the cache only
-geniex ls                                  # list cached models (table)
-geniex ls qwen3                            # show one model's geniex.json
-geniex rm qwen3                            # remove from cache
-geniex devices                             # list plugins and their devices
+geniex-py pull qwen3                       # download into the cache only
+geniex-py ls                               # list cached models (table)
+geniex-py ls qwen3                         # show one model's geniex.json
+geniex-py rm qwen3                         # remove from cache
+geniex-py devices                          # list plugins and their devices
 ```
 
 Inside chat: `/reset` clears history, `/exit` or Ctrl-D quits, Ctrl-C
-interrupts the current reply. `geniex <cmd> --help` for all flags.
+interrupts the current reply. `geniex-py <cmd> --help` for all flags.
 
 ## Supported backends
 
