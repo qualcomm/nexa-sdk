@@ -1,0 +1,51 @@
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_python//python:defs.bzl", "py_binary")
+
+package(default_visibility = ["//cli:__subpackages__"])
+
+proto_library(
+    name = "qaihm_proto",
+    srcs = glob([
+        "*.proto",
+        "shared/*.proto",
+    ]),
+    strip_import_prefix = "/cli/internal/qaihm",
+)
+
+go_proto_library(
+    name = "qaihm",
+    importpath = "github.com/qcom-it-nexa-ai/geniex/cli/internal/qaihm",
+    proto = ":qaihm_proto",
+)
+
+# Run `bazelisk run //cli/internal/qaihm:write_pb_go` to generate .pb.go files for development use.
+# These are not used in the build, but are needed for development and debugging.
+filegroup(
+    name = "_qaihm_pb_go_srcs",
+    srcs = [":qaihm"],
+    output_group = "go_generated_srcs",
+)
+
+write_file(
+    name = "_write_pb_go_src",
+    out = "write_pb_go.py",
+    content = [
+        "import os, shutil, sys",
+        "from pathlib import Path",
+        "from python.runfiles import runfiles",
+        "dst = Path(os.environ['BUILD_WORKSPACE_DIRECTORY']) / 'cli/internal/qaihm'",
+        "for p in dst.glob('*.pb.go'): p.unlink()",
+        "r = runfiles.Create()",
+        "for a in sys.argv[1:]: shutil.copyfile(r.Rlocation(a), dst / Path(a).name)",
+    ],
+)
+
+py_binary(
+    name = "write_pb_go",
+    srcs = [":_write_pb_go_src"],
+    data = [":_qaihm_pb_go_srcs"],
+    args = ["$(rlocationpaths :_qaihm_pb_go_srcs)"],
+    deps = ["@rules_python//python/runfiles"],
+)
