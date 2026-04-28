@@ -209,10 +209,7 @@ func (c *Client) LoadReleaseAssets(ctx context.Context, m *qaihm.ReleaseManifest
 		return nil, ErrNoReleaseAssets
 	}
 
-	cacheName := fmt.Sprintf("release-assets-%s.json", sanitizeForFilename(id))
-	cachePath := filepath.Join(c.cacheDir, cacheName)
-
-	data, err := c.fetchJSON(ctx, model.GetManifestUrls().GetReleaseAssets(), cachePath, opts...)
+	data, err := c.fetchDirect(ctx, model.GetManifestUrls().GetReleaseAssets())
 	if err != nil {
 		return nil, fmt.Errorf("load release assets for %s: %w", id, err)
 	}
@@ -222,6 +219,20 @@ func (c *Client) LoadReleaseAssets(ctx context.Context, m *qaihm.ReleaseManifest
 		return nil, fmt.Errorf("parse release assets: %w", err)
 	}
 	return &ra, nil
+}
+
+// fetchDirect fetches url and returns the body bytes without touching disk.
+// Use this for resources that must never be cached (e.g. release-assets.json).
+func (c *Client) fetchDirect(ctx context.Context, url string) ([]byte, error) {
+	slog.Debug("aihub: fetching (no-cache)", "url", url)
+	resp, err := c.http.R().SetContext(ctx).Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("http %d from %s", resp.StatusCode(), url)
+	}
+	return resp.Bytes(), nil
 }
 
 // fetchJSON returns the bytes of url, serving from cachePath if the cached
