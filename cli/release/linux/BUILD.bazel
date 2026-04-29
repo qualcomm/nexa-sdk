@@ -1,3 +1,4 @@
+load("@aspect_bazel_lib//lib:copy_file.bzl", "copy_file")
 load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
@@ -18,6 +19,8 @@ platform(
     ],
 )
 
+# package geniex files
+
 pkg_tar(
     name = "_geniex_files",
     srcs = ["//cli:_artifact"],
@@ -32,13 +35,7 @@ pkg_tar(
     },
 )
 
-pkg_tar(
-    name = "geniex_layer",
-    deps = [
-        ":_geniex_files",
-        ":_geniex_symlinks",
-    ],
-)
+# package image
 
 platform_transition_filegroup(
     name = "apt_jammy_arm64",
@@ -63,15 +60,24 @@ oci_image(
     },
     tars = [
         ":apt_layer",
-        ":geniex_layer",
+        ":_geniex_files",
+        ":_geniex_symlinks",
     ],
+)
+
+genrule(
+    name = "_repo_tags",
+    outs = ["repo_tags.txt"],
+    cmd = "echo ghcr.io/qcom-ai-hub/geniex:latest > $@ && echo ghcr.io/qcom-ai-hub/geniex:$(VERSION) >> $@",
 )
 
 oci_load(
     name = "docker",
     image = ":image",
-    repo_tags = ["geniex4ai/geniex-cli:latest"],
+    repo_tags = ":_repo_tags",
 )
+
+# export tarball
 
 filegroup(
     name = "_docker_tarball",
@@ -79,10 +85,14 @@ filegroup(
     output_group = "tarball",
 )
 
-genrule(
+copy_file(
+    name = "docker_tarball",
+    src = ":_docker_tarball",
+    out = "geniex-cli-docker.tar",
+    allow_symlink = True,
+)
+
+alias(
     name = "linux",
-    srcs = [":_docker_tarball"],
-    outs = ["geniex-cli-docker.tar.gz"],
-    cmd = "$(BSDTAR_BIN) -cf $@ --gzip @$(location :_docker_tarball)",
-    toolchains = ["@bsd_tar_toolchains//:resolved_toolchain"],
+    actual = ":docker_tarball",
 )
