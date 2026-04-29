@@ -182,6 +182,11 @@ jobs:
 
       - uses: actions/download-artifact@v5
         with:
+          name: geniex-cli-linux-arm64
+          path: cli-linux-arm64/
+
+      - uses: actions/download-artifact@v5
+        with:
           name: geniex-python-sdist
           path: .
 
@@ -195,6 +200,17 @@ jobs:
           HTP_DIR=sdk-pkg-windows-arm64/lib/llama_cpp
 
           mv geniex-cli-setup.exe "geniex-cli-installer-windows-arm64-${RELEASE_TAG}.exe"
+
+          # Repackage the Linux CLI pkg_zip as a versioned tar.gz for the
+          # GitHub Release. Unpack into a named dir first so the archive
+          # root is `geniex-cli-linux-arm64-<tag>/` rather than a bag of
+          # loose .so files.
+          staged="geniex-cli-linux-arm64-${RELEASE_TAG}"
+          mkdir -p "${staged}"
+          unzip -q cli-linux-arm64/artifact.zip -d "${staged}"
+          chmod +x "${staged}/geniex"
+          tar -czf "${staged}.tar.gz" "${staged}"
+          rm -rf "${staged}"
 
           sdk_suffix=""
           if [[ "$HTP_SIGNED" != "true" ]]; then
