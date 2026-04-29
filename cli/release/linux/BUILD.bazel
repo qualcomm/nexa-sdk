@@ -1,0 +1,88 @@
+load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load(":dedup_tar.bzl", "dedup_tar")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "jammy.yaml",
+    "jammy.lock.json",
+])
+
+platform(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:arm64",
+    ],
+)
+
+pkg_tar(
+    name = "_geniex_files",
+    srcs = ["//cli:_artifact"],
+    package_dir = "/opt/geniex",
+)
+
+pkg_tar(
+    name = "_geniex_symlinks",
+    symlinks = {
+        "/usr/local/bin/geniex": "/opt/geniex/geniex",
+        "/root/.cache/geniex": "/data",
+    },
+)
+
+pkg_tar(
+    name = "geniex_layer",
+    deps = [
+        ":_geniex_files",
+        ":_geniex_symlinks",
+    ],
+)
+
+platform_transition_filegroup(
+    name = "apt_jammy_arm64",
+    srcs = ["@jammy//:jammy"],
+    target_platform = ":linux_arm64",
+)
+
+dedup_tar(
+    name = "apt_layer",
+    tars = [":apt_jammy_arm64"],
+)
+
+oci_image(
+    name = "image",
+    base = "@ubuntu_linux_arm64_v8",
+    entrypoint = ["/opt/geniex/geniex"],
+    exposed_ports = ["18181/tcp"],
+    labels = {
+        "org.opencontainers.image.title": "GenieX-CLI",
+        "org.opencontainers.image.description": "GenieX-CLI for running multi models",
+        "org.opencontainers.image.vendor": "GenieX",
+    },
+    tars = [
+        ":apt_layer",
+        ":geniex_layer",
+    ],
+)
+
+oci_load(
+    name = "docker",
+    image = ":image",
+    repo_tags = ["geniex4ai/geniex-cli:latest"],
+)
+
+filegroup(
+    name = "_docker_tarball",
+    srcs = [":docker"],
+    output_group = "tarball",
+)
+
+genrule(
+    name = "linux",
+    srcs = [":_docker_tarball"],
+    outs = ["geniex-cli-docker.tar.gz"],
+    cmd = "$(BSDTAR_BIN) -cf $@ --gzip @$(location :_docker_tarball)",
+    toolchains = ["@bsd_tar_toolchains//:resolved_toolchain"],
+)

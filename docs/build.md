@@ -25,10 +25,13 @@ There also some useful targets for testing and development:
 
 - `bazelisk run //cli:gen` Generates development files, like protobuf golang bindings.
 - `bazelisk run //cli:clean` Clean development files.
+- `bazelisk run //cli/release/linux:docker` Build and load docker image for linux release.
 
 ## Package Release
 
-Run `bazelisk build //cli/release/windows`, and release executable can be found in `bazel-bin/cli/release/windows/geniex-cli-setup.exe`.
+- `bazelisk build //cli:artifact -> bazel-bin/cli/artifact.zip`.
+- `bazelisk build //cli/release/windows -> bazel-bin/cli/release/windows/geniex-cli-setup.exe`.
+- `bazelisk build //cli/release/linux -> bazel-bin/cli/release/linux/geniex-cli-docker.tar.gz`.
 
 ## Tips
 
