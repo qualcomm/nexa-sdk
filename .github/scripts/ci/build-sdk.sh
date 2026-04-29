@@ -1,33 +1,50 @@
 #!/usr/bin/env bash
-# Build the GenieX SDK on Linux (cross-compile to linux-arm64 by default).
+# Build the GenieX SDK on Linux. Drives CMakePresets.json rather than passing
+# toolchain/options ad-hoc so the CI build stays in sync with the presets
+# documented in docs/build.md.
 #
 # Environment inputs:
 #   GENIEX_VERSION      (required)  Version string baked into binaries.
-#   TOOLCHAIN_FILE      (optional)  Default: sdk/cmake/arm64-linux-gnu.cmake.
-#   BUILD_DIR           (optional)  Default: sdk/build.
+#   PLATFORM            (optional)  linux-arm64 | android-arm64. Default:
+#                                   linux-arm64. Selects the CMake preset.
 #   INSTALL_PREFIX      (optional)  Default: sdk/pkg-geniex.
-#   EXTRA_CMAKE_FLAGS   (optional)  Appended verbatim to `cmake -B`.
+#   EXTRA_CMAKE_FLAGS   (optional)  Appended verbatim to `cmake --preset`.
 
 set -euo pipefail
 
 : "${GENIEX_VERSION:?GENIEX_VERSION is required}"
-TOOLCHAIN_FILE="${TOOLCHAIN_FILE:-sdk/cmake/arm64-linux-gnu.cmake}"
-BUILD_DIR="${BUILD_DIR:-sdk/build}"
+PLATFORM="${PLATFORM:-linux-arm64}"
 INSTALL_PREFIX="${INSTALL_PREFIX:-sdk/pkg-geniex}"
 EXTRA_CMAKE_FLAGS="${EXTRA_CMAKE_FLAGS:-}"
 
+case "$PLATFORM" in
+  linux-arm64)
+    PRESET="arm64-linux-snapdragon-release"
+    # Linux/arm64 runtime images (GHCR publish target) don't ship with the
+    # Hexagon NPU stack; disable the hexagon backend so the build doesn't
+    # demand HEXAGON_SDK_ROOT / Hexagon Tools on the ubuntu-latest runner.
+    # GENIEX_MODEL_MANAGER is disabled because the Rust crate has no
+    # cross-build wiring yet (same as android; tracked as #222).
+    EXTRA_CMAKE_FLAGS="$EXTRA_CMAKE_FLAGS -DGGML_HEXAGON=OFF -DGENIEX_MODEL_MANAGER=OFF"
+    ;;
+  android-arm64)
+    PRESET="arm64-android-snapdragon-release"
+    EXTRA_CMAKE_FLAGS="$EXTRA_CMAKE_FLAGS -DGENIEX_MODEL_MANAGER=OFF"
+    ;;
+  *)
+    echo "Unsupported PLATFORM: $PLATFORM" >&2
+    exit 1
+    ;;
+esac
+
+BUILD_DIR="sdk/build-${PRESET}"
+
 set -x
 # shellcheck disable=SC2086  # EXTRA_CMAKE_FLAGS is intentionally word-split.
-cmake -B "$BUILD_DIR" -S sdk \
-  -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
+cmake -S sdk --preset "$PRESET" \
   -DGENIEX_VERSION="$GENIEX_VERSION" \
   -DGENIEX_TEST=OFF \
-  -DGENIEX_DEBUG=OFF \
   -DGENIEX_DL=ON \
-  -DGENIEX_PLUGIN_LLAMA_CPP=ON \
-  -DGENIEX_PLUGIN_QAIRT=ON \
-  -DGENIEX_MODEL_MANAGER=ON \
-  -DGGML_OPENCL=OFF \
   -DCMAKE_C_COMPILER_LAUNCHER=ccache \
   -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
   $EXTRA_CMAKE_FLAGS
