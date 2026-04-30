@@ -19,11 +19,17 @@ concurrency:
   group: lint-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Opt every job in this workflow into Node.js 24 for JavaScript actions.
+# Required before GitHub's 2026-06-02 forced switch so we stop firing
+# a Node-20-deprecation annotation on every run.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   cpp-format:
     name: cpp-format
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
 
     steps:
       - name: Checkout source
@@ -32,6 +38,11 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
 
+      # Install clang-format 20 via apt on the runner. Third-party actions
+      # for clang-format exist (e.g. jidicula/clang-format-action) but the
+      # org allowlist does not include them, and getting a new action
+      # allowlisted is a multi-week review. apt-install is ~30s once the
+      # runner is cached.
       - name: Install clang-format
         run: |
           set -euo pipefail
@@ -40,84 +51,32 @@ jobs:
           clang-format-20 --version
 
       - name: Resolve C/C++ file list
-        id: file-list
-        env:
-          PUSH_BEFORE: ${{ github.event.before }}
-          PUSH_AFTER: ${{ github.event.after }}
-        run: |
-          # --diff-filter=d excludes deleted files so the linter isn't
-          # asked to scan paths that no longer exist in the working tree.
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            files=$(git diff --name-only --diff-filter=d ${{ github.event.pull_request.base.sha }}..HEAD)
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            git fetch --no-tags --depth=1 origin main
-            base_ref=$(git merge-base HEAD origin/main || true)
-            if [ -n "$base_ref" ]; then
-              files=$(git diff --name-only --diff-filter=d "$base_ref"..HEAD)
-            else
-              files=$(git ls-files)
-            fi
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            # Only scan files touched by the pushed commits. Falls back to
-            # ls-files on the first push or a force-push (before == all zeros
-            # or unreachable) — rare on main, which is protected.
-            if [ -n "${PUSH_BEFORE}" ] && [ "${PUSH_BEFORE}" != "0000000000000000000000000000000000000000" ] \
-               && git cat-file -e "${PUSH_BEFORE}" 2>/dev/null; then
-              files=$(git diff --name-only --diff-filter=d "${PUSH_BEFORE}..${PUSH_AFTER}")
-            else
-              files=$(git ls-files)
-            fi
-          else
-            files=$(git ls-files)
-          fi
-
-          filtered=$(echo "$files" \
-            | grep -E '\.(cpp|hpp|c|h|cc|cxx|hxx)$' \
-            | grep -v -E '^sdk/build/' \
-            | grep -v -E '^sdk/include/external/' \
-            | grep -v -E '^third-party/' \
-            | grep -v -E '^sdk/plugins/qnn/libs/' \
-            || true)
-
-          # Keep only files that still exist (skip deletes/renames)
-          if [ -n "$filtered" ]; then
-            filtered=$(echo "$filtered" | while IFS= read -r f; do [ -f "$f" ] && echo "$f"; done)
-          fi
-
-          if [ -z "$filtered" ]; then
-            echo "files=" >> "$GITHUB_OUTPUT"
-            echo "No C/C++ files to check"
-          else
-            echo "files<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$filtered" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-          fi
+        id: files
+        uses: ./.github/actions/changed-files
+        with:
+          include: '\.(cpp|hpp|c|h|cc|cxx|hxx)$'
+          exclude: '^sdk/build/|^sdk/include/external/|^third-party/|^sdk/plugins/qnn/libs/'
 
       - name: Check C/C++ formatting
-        if: steps.file-list.outputs.files != ''
+        if: steps.files.outputs.any == 'true'
+        env:
+          FILES: ${{ steps.files.outputs.files }}
         run: |
           set -euo pipefail
           failed=0
           while IFS= read -r file; do
             [ -z "$file" ] && continue
-            clang-format-20 "$file" > "$file.formatted"
-            if ! cmp -s "$file" "$file.formatted"; then
-              echo "Formatting mismatch: $file"
-              diff -u "$file" "$file.formatted" | head -100
+            if ! diff -u "$file" <(clang-format-20 "$file"); then
+              echo "::error file=$file::clang-format-20 diff — run 'clang-format-20 -i $file'"
               failed=1
             fi
-            rm -f "$file.formatted"
-          done <<< "${{ steps.file-list.outputs.files }}"
-
-          if [ "$failed" -ne 0 ]; then
-            echo "Run clang-format-20 -i on the listed files and push again."
-            exit 1
-          fi
+          done <<< "$FILES"
+          [ "$failed" -eq 0 ]
 
   python-format-lint:
     name: python-format-lint
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
 
     steps:
       - name: Checkout source
@@ -137,65 +96,31 @@ jobs:
           python -m pip install ruff==0.6.9
 
       - name: Resolve Python file list
-        id: py-file-list
-        env:
-          PUSH_BEFORE: ${{ github.event.before }}
-          PUSH_AFTER: ${{ github.event.after }}
-        run: |
-          # --diff-filter=d excludes deleted files so the linter isn't
-          # asked to scan paths that no longer exist in the working tree.
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            files=$(git diff --name-only --diff-filter=d ${{ github.event.pull_request.base.sha }}..HEAD)
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            git fetch --no-tags --depth=1 origin main
-            base_ref=$(git merge-base HEAD origin/main || true)
-            if [ -n "$base_ref" ]; then
-              files=$(git diff --name-only --diff-filter=d "$base_ref"..HEAD)
-            else
-              files=$(git ls-files)
-            fi
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            if [ -n "${PUSH_BEFORE}" ] && [ "${PUSH_BEFORE}" != "0000000000000000000000000000000000000000" ] \
-               && git cat-file -e "${PUSH_BEFORE}" 2>/dev/null; then
-              files=$(git diff --name-only --diff-filter=d "${PUSH_BEFORE}..${PUSH_AFTER}")
-            else
-              files=$(git ls-files)
-            fi
-          else
-            files=$(git ls-files)
-          fi
-
-          filtered=$(echo "$files" | grep -E '^bindings/python/.*\.py$' || true)
-
-          if [ -z "$filtered" ]; then
-            echo "files=" >> "$GITHUB_OUTPUT"
-            echo "No Python files to check"
-          else
-            echo "files<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$filtered" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-          fi
+        id: files
+        uses: ./.github/actions/changed-files
+        with:
+          include: '^bindings/python/.*\.py$'
 
       - name: Ruff check
-        if: steps.py-file-list.outputs.files != ''
+        if: steps.files.outputs.any == 'true'
         run: |
           while IFS= read -r file; do
             [ -z "$file" ] && continue
             python -m ruff check "$file"
-          done <<< "${{ steps.py-file-list.outputs.files }}"
+          done <<< "${{ steps.files.outputs.files }}"
 
       - name: Ruff format check
-        if: steps.py-file-list.outputs.files != ''
+        if: steps.files.outputs.any == 'true'
         run: |
           while IFS= read -r file; do
             [ -z "$file" ] && continue
             python -m ruff format --check --diff "$file"
-          done <<< "${{ steps.py-file-list.outputs.files }}"
+          done <<< "${{ steps.files.outputs.files }}"
 
   go-lint:
     name: go-lint
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
 
     steps:
       - name: Checkout source
@@ -214,3 +139,38 @@ jobs:
           cd cli
           go mod tidy
           git diff --exit-code go.mod go.sum
+
+  rust-format:
+    name: rust-format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Resolve Rust file list
+        id: files
+        uses: ./.github/actions/changed-files
+        with:
+          include: '^sdk/model-manager/.*\.rs$'
+
+      # Ubuntu runner ships rustup; install a fresh stable toolchain with
+      # rustfmt. A dedicated action (dtolnay/rust-toolchain) would be
+      # cleaner but isn't on the org allowlist. rustup is cheap.
+      - name: Install rustfmt
+        if: steps.files.outputs.any == 'true'
+        run: |
+          set -euo pipefail
+          rustup toolchain install stable --component rustfmt --profile minimal --no-self-update
+          rustup default stable
+          cargo fmt --version
+
+      # cargo fmt walks the whole workspace, so file-list only gates whether
+      # we bother running at all — once it's running, it checks everything.
+      - name: cargo fmt --check
+        if: steps.files.outputs.any == 'true'
+        run: cargo fmt --manifest-path sdk/model-manager/Cargo.toml --all --check
