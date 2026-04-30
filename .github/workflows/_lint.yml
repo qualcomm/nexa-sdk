@@ -1,29 +1,13 @@
 name: Lint
 
+# Reusable only: pr-check.yml is the single entry point that runs lint,
+# so keeping pull_request / workflow_dispatch triggers here would double
+# up (two 'Lint' runs on every push).
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "sdk/**"
-      - "cli/**"
-      - "bindings/python/**"
-      - "bindings/go/**"
-      - ".github/**"
-  workflow_dispatch:
   workflow_call:
 
 permissions:
   contents: read
-
-concurrency:
-  group: lint-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-# Opt every job in this workflow into Node.js 24 for JavaScript actions.
-# Required before GitHub's 2026-06-02 forced switch so we stop firing
-# a Node-20-deprecation annotation on every run.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   cpp-format:
