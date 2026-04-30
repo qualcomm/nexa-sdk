@@ -29,8 +29,7 @@ Setup<Param, geniex_VLM> setup_guard(
             }},
         {qairt::value,
             {
-                // QAIRT VLM models are temporarily removed. Re-add once the
-                // Qwen2.5-VL path is wired through the new vlm_model_registry.
+                // QAIRT VLM models are temporarily removed. Re-add once we have the artifacts to test them
             }},
     },
     [](geniex_PluginId plugin, Param param) {
