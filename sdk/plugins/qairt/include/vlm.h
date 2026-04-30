@@ -14,6 +14,12 @@ class QairtVlm : public IVlm {
     std::string model_name_;
     bool        enable_thinking_ = false;
 
+    // Incremental history tracking.
+    // history_size_         — messages already committed to the KV cache (advanced by generate()).
+    // pending_history_size_ — messages in the last apply_chat_template call (committed on next generate()).
+    size_t history_size_         = 0;
+    size_t pending_history_size_ = 0;
+
    public:
     virtual ~QairtVlm() override;
 

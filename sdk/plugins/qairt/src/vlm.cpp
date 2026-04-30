@@ -111,6 +111,8 @@ int32_t QairtVlm::create_impl(const geniex_VlmCreateInput* input) {
 int32_t QairtVlm::reset() {
     if (!pipeline_) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
     pipeline_->reset();
+    history_size_         = 0;
+    pending_history_size_ = 0;
     return GENIEX_SUCCESS;
 }
 
@@ -160,7 +162,23 @@ int32_t QairtVlm::apply_chat_template(
         messages.push_back(std::move(msg));
     }
 
-    std::string formatted = pipeline_->applyChatTemplate(messages, /*add_generation_prompt=*/true);
+    // If the caller passed fewer messages than we've already committed, they implicitly
+    // reset the conversation without calling reset() — treat it as a hard reset.
+    if (messages.size() < history_size_) {
+        GENIEX_LOG_WARN(
+            "VLM history shrank ({} → {}) without reset() — resetting KV cache", history_size_, messages.size());
+        pipeline_->reset();
+        history_size_         = 0;
+        pending_history_size_ = 0;
+    }
+
+    // Slice out only the new messages since the last committed generate().
+    std::vector<ChatMessage> new_messages(messages.begin() + static_cast<ptrdiff_t>(history_size_), messages.end());
+
+    // Record pending size — committed to history_size_ only after a successful generate().
+    pending_history_size_ = messages.size();
+
+    std::string formatted = pipeline_->applyChatTemplate(new_messages, /*add_generation_prompt=*/true);
 
     output->formatted_text = portable_strdup(formatted.c_str());
     if (!output->formatted_text) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
@@ -203,7 +221,10 @@ int32_t QairtVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
         on_token_fn = [cb, ud](const char* token) -> bool { return cb(token, ud); };
     }
 
-    // Run VLM pipeline (incremental — caller passes only the new turn's prompt)
+    // Commit pending history size before running — this turn is now in the KV cache.
+    history_size_ = pending_history_size_;
+
+    // Run VLM pipeline (incremental — only new messages since last generate() are in the prompt)
     GenerateResult result = pipeline_->generate(input->prompt_utf8, image_paths, gen_cfg, on_token_fn);
 
     // Map result to output
