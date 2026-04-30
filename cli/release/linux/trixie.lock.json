@@ -175,6 +175,33 @@
 					"version": "14.2.0-19"
 				}
 			],
+			"key": "libatomic1_14.2.0-19_amd64",
+			"name": "libatomic1",
+			"sha256": "212b399aae2f7299203d261a57e49372e09565a9a5ea971905f94a3960366c05",
+			"urls": [
+				"https://snapshot.debian.org/archive/debian/20260401T000000Z/pool/main/g/gcc-14/libatomic1_14.2.0-19_amd64.deb"
+			],
+			"version": "14.2.0-19"
+		},
+		{
+			"arch": "amd64",
+			"dependencies": [
+				{
+					"key": "libc6_2.41-12-p-deb13u2_amd64",
+					"name": "libc6",
+					"version": "2.41-12+deb13u2"
+				},
+				{
+					"key": "libgcc-s1_14.2.0-19_amd64",
+					"name": "libgcc-s1",
+					"version": "14.2.0-19"
+				},
+				{
+					"key": "gcc-14-base_14.2.0-19_amd64",
+					"name": "gcc-14-base",
+					"version": "14.2.0-19"
+				}
+			],
 			"key": "libgomp1_14.2.0-19_amd64",
 			"name": "libgomp1",
 			"sha256": "72b7a1a33c48f3195efeb044111b34ae684b1e640bb6495c832443b798601cd5",
@@ -338,6 +365,33 @@
 				"https://snapshot.debian.org/archive/debian/20260401T000000Z/pool/main/libz/libzstd/libzstd1_1.5.7+dfsg-1_arm64.deb"
 			],
 			"version": "1.5.7+dfsg-1"
+		},
+		{
+			"arch": "arm64",
+			"dependencies": [
+				{
+					"key": "libc6_2.41-12-p-deb13u2_arm64",
+					"name": "libc6",
+					"version": "2.41-12+deb13u2"
+				},
+				{
+					"key": "libgcc-s1_14.2.0-19_arm64",
+					"name": "libgcc-s1",
+					"version": "14.2.0-19"
+				},
+				{
+					"key": "gcc-14-base_14.2.0-19_arm64",
+					"name": "gcc-14-base",
+					"version": "14.2.0-19"
+				}
+			],
+			"key": "libatomic1_14.2.0-19_arm64",
+			"name": "libatomic1",
+			"sha256": "7ccff90234484bf21ae5ecb79d25b6a84b2f4038f65dd139085b2e3a937cd8dc",
+			"urls": [
+				"https://snapshot.debian.org/archive/debian/20260401T000000Z/pool/main/g/gcc-14/libatomic1_14.2.0-19_arm64.deb"
+			],
+			"version": "14.2.0-19"
 		},
 		{
 			"arch": "arm64",
