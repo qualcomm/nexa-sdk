@@ -23,7 +23,7 @@ jobs:
           #   runner: ubuntu-latest
           # - platform: android-arm64
           #   runner: ubuntu-latest
-    uses: ./.github/workflows/build-sdk.yml
+    uses: ./.github/workflows/_build-sdk.yml
     secrets: inherit
     with:
       platform: ${{ matrix.platform }}
@@ -39,7 +39,7 @@ jobs:
         include:
           - platform: windows-arm64
             runner: windows-arm64
-    uses: ./.github/workflows/build-cli.yml
+    uses: ./.github/workflows/_build-cli.yml
     secrets: inherit
     with:
       platform: ${{ matrix.platform }}

@@ -49,8 +49,7 @@ permissions:
   contents: read
 
 jobs:
-  build-docker:
-    name: build-docker
+  build:
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 30
 

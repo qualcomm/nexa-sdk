@@ -1,4 +1,4 @@
-name: Build
+name: PR Check
 
 on:
   pull_request:
@@ -28,7 +28,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-${{ github.workflow }}-${{ github.ref }}
+  group: pr-check-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -50,7 +50,7 @@ jobs:
             runner: ubuntu-latest
           - platform: android-arm64
             runner: ubuntu-latest
-    uses: ./.github/workflows/build-sdk.yml
+    uses: ./.github/workflows/_build-sdk.yml
     secrets: inherit
     with:
       platform: ${{ matrix.platform }}
@@ -60,7 +60,7 @@ jobs:
   build-python-sdist:
     name: build-python-sdist
     needs: [lint]
-    uses: ./.github/workflows/build-python-sdist.yml
+    uses: ./.github/workflows/_build-python-sdist.yml
     secrets: inherit
     with:
       runner: ubuntu-latest
@@ -77,7 +77,7 @@ jobs:
             runner: windows-arm64
           - platform: linux-arm64
             runner: linux-arm64
-    uses: ./.github/workflows/build-cli.yml
+    uses: ./.github/workflows/_build-cli.yml
     secrets: inherit
     with:
       platform: ${{ matrix.platform }}
@@ -87,7 +87,7 @@ jobs:
   build-android-aar:
     name: build-android-aar
     needs: [build-sdk]
-    uses: ./.github/workflows/build-android-aar.yml
+    uses: ./.github/workflows/_build-android-aar.yml
     secrets: inherit
     with:
       runner: ubuntu-latest
@@ -96,7 +96,7 @@ jobs:
   build-docker:
     name: build-docker (linux-arm64)
     needs: [build-cli]
-    uses: ./.github/workflows/build-docker.yml
+    uses: ./.github/workflows/_build-docker.yml
     secrets: inherit
     with:
       runner: linux-arm64

@@ -18,8 +18,7 @@ permissions:
   contents: read
 
 jobs:
-  build-python-sdist:
-    name: build-python-sdist
+  build:
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 20
 

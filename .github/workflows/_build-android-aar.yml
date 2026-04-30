@@ -18,8 +18,7 @@ permissions:
   contents: read
 
 jobs:
-  build-android-aar:
-    name: build-android-aar
+  build:
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 30
 
