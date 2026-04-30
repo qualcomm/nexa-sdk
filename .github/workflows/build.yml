@@ -11,6 +11,17 @@ on:
       - "bindings/go/**"
       - "bindings/android/**"
       - ".github/**"
+  # Seed per-platform ccache entries on main so first-time PR runs hit the
+  # restore-keys prefix (scoped to base branch) instead of cold-compiling.
+  push:
+    branches: [main]
+    paths:
+      - "sdk/**"
+      - "cli/**"
+      - "bindings/python/**"
+      - "bindings/go/**"
+      - "bindings/android/**"
+      - ".github/**"
   workflow_dispatch:
 
 permissions:

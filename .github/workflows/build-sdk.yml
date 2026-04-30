@@ -65,7 +65,11 @@ jobs:
         shell: bash
         run: |
           command -v ccache || sudo apt-get install -y ccache
-          echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
+          # Export in-process before calling ccache: $GITHUB_ENV only affects
+          # subsequent steps, so `ccache --max-size` here would otherwise edit
+          # the default per-user config instead of the workspace one.
+          export CCACHE_DIR="${{ github.workspace }}/.ccache"
+          echo "CCACHE_DIR=${CCACHE_DIR}" >> "$GITHUB_ENV"
           ccache --max-size=1G
 
       # Android builds run inside a docker container; ccache is installed there.
@@ -82,7 +86,11 @@ jobs:
           if (-not (Get-Command ccache -ErrorAction SilentlyContinue)) {
             choco install ccache --no-progress -y
           }
-          Add-Content $env:GITHUB_ENV "CCACHE_DIR=${{ github.workspace }}/.ccache"
+          # Set in-process before calling ccache: $GITHUB_ENV only affects
+          # subsequent steps, so `ccache --max-size` here would otherwise edit
+          # the default per-user config instead of the workspace one.
+          $env:CCACHE_DIR = "${{ github.workspace }}/.ccache"
+          Add-Content $env:GITHUB_ENV "CCACHE_DIR=$env:CCACHE_DIR"
           ccache --max-size=1G
 
       - name: Setup Snapdragon SDKs
@@ -158,6 +166,18 @@ jobs:
         env:
           GENIEX_VERSION: ${{ steps.version.outputs.version }}
         run: powershell -NoProfile -ExecutionPolicy Bypass -File .github/scripts/ci/build-sdk.ps1
+
+      # Observability for cache hit rate and the effective size cap. Never fail
+      # the job on a stats read.
+      - name: ccache stats (Linux)
+        if: inputs.platform == 'linux-arm64'
+        shell: bash
+        run: ccache --show-stats --verbose || true
+
+      - name: ccache stats (Windows)
+        if: inputs.platform == 'windows-arm64'
+        shell: powershell
+        run: ccache --show-stats --verbose; $true
 
       - name: Upload SDK artifact
         if: inputs.upload_artifact
