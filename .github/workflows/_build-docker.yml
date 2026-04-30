@@ -73,7 +73,7 @@ jobs:
       - name: Download linux-arm64 SDK artifact
         uses: actions/download-artifact@v5
         with:
-          name: sdk-pkg-linux-arm64
+          name: sdk-linux-arm64
           path: sdk/pkg-geniex/
 
       # Bazel disk cache — shared key prefix with _build-cli.yml since both

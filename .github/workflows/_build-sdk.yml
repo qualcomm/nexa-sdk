@@ -204,6 +204,6 @@ jobs:
         if: inputs.upload_artifact
         uses: actions/upload-artifact@v5
         with:
-          name: sdk-pkg-${{ inputs.platform }}
+          name: sdk-${{ inputs.platform }}
           path: sdk/pkg-geniex/
           retention-days: 1

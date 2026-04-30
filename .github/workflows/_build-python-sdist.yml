@@ -67,6 +67,6 @@ jobs:
         if: inputs.upload_artifact
         uses: actions/upload-artifact@v5
         with:
-          name: geniex-python-sdist
+          name: python-sdist
           path: dist/geniex-*.tar.gz
           retention-days: 7

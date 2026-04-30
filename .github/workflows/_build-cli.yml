@@ -52,7 +52,7 @@ jobs:
       - name: Download SDK artifact
         uses: actions/download-artifact@v5
         with:
-          name: sdk-pkg-${{ inputs.platform }}
+          name: sdk-${{ inputs.platform }}
           path: sdk/pkg-geniex/
 
       # Bazel disk cache (hot path for //cli builds). Key narrows to the
@@ -96,7 +96,7 @@ jobs:
         if: inputs.upload_artifact && inputs.build_installer && inputs.platform == 'windows-arm64'
         uses: actions/upload-artifact@v5
         with:
-          name: geniex-cli-installer-windows-arm64
+          name: cli-installer-windows-arm64
           path: bazel-bin/cli/release/windows/geniex-cli-setup.exe
           retention-days: 1
 
@@ -104,6 +104,6 @@ jobs:
         if: inputs.upload_artifact && inputs.platform == 'linux-arm64'
         uses: actions/upload-artifact@v5
         with:
-          name: geniex-cli-linux-arm64
+          name: cli-linux-arm64
           path: bazel-bin/cli/artifact.zip
           retention-days: 1

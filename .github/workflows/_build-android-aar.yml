@@ -32,7 +32,7 @@ jobs:
       - name: Download Android SDK package
         uses: actions/download-artifact@v5
         with:
-          name: sdk-pkg-android-arm64
+          name: sdk-android-arm64
           path: sdk/pkg-geniex
 
       - name: Set up JDK 17
@@ -91,7 +91,7 @@ jobs:
         if: inputs.upload_artifact
         uses: actions/upload-artifact@v5
         with:
-          name: geniex-android-aar
+          name: android-aar
           path: dist-aar/geniex-android-aar.aar
           if-no-files-found: error
           retention-days: 1

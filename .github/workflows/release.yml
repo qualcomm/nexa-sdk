@@ -120,7 +120,7 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
           name: sdk-windows-arm64
-          path: sdk-pkg-windows-arm64
+          path: sdk-windows-arm64
 
       - name: Overlay Microsoft-signed HTP bundle from S3 (if available)
         id: htp
@@ -129,7 +129,7 @@ jobs:
           sha=$(git -C third-party/llama.cpp rev-parse --short=6 HEAD)
           url="https://qaihub-public-assets.s3.us-west-2.amazonaws.com/llama-cpp/libggml-htp-${sha}.zip"
           if curl -fsSL -o htp-signed.zip "$url"; then
-            unzip -o htp-signed.zip -d sdk-pkg-windows-arm64/lib/llama_cpp/
+            unzip -o htp-signed.zip -d sdk-windows-arm64/lib/llama_cpp/
             signed=true
           else
             signed=false
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/upload-artifact@v5
         with:
           name: sdk-windows-arm64
-          path: sdk-pkg-windows-arm64/
+          path: sdk-windows-arm64/
           retention-days: 1
           overwrite: true
 
