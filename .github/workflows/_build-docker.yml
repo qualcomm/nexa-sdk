@@ -19,11 +19,6 @@ name: Build Docker
 on:
   workflow_call:
     inputs:
-      runner:
-        description: "Runner label (must be linux/arm64 native)"
-        required: false
-        type: string
-        default: linux-arm64
       push:
         description: "Push the image to ghcr.io (release-time only)"
         required: false
@@ -50,7 +45,10 @@ permissions:
 
 jobs:
   build:
-    runs-on: ${{ inputs.runner }}
+    # linux-arm64 self-hosted; image is linux/arm64 native so we need an
+    # arm64 host. The runner label is pinned here rather than exposed as
+    # an input — release and PR callers both require the same environment.
+    runs-on: linux-arm64
     timeout-minutes: 30
 
     steps:

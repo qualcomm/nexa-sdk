@@ -60,23 +60,11 @@ jobs:
 
   # ── Build fan-out ────────────────────────────────────────────────
   build-sdk:
-    name: build-sdk (${{ matrix.platform }})
+    name: build-sdk
     needs: [resolve-tag]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: windows-arm64
-            runner: windows-arm64
-          - platform: linux-arm64
-            runner: ubuntu-latest
-          - platform: android-arm64
-            runner: ubuntu-latest
     uses: ./.github/workflows/_build-sdk.yml
     secrets: inherit
     with:
-      platform: ${{ matrix.platform }}
-      runner: ${{ matrix.runner }}
       upload_artifact: true
 
   build-android-aar:
@@ -85,7 +73,6 @@ jobs:
     uses: ./.github/workflows/_build-android-aar.yml
     secrets: inherit
     with:
-      runner: ubuntu-latest
       upload_artifact: true
 
   build-python-sdist:
@@ -94,7 +81,6 @@ jobs:
     uses: ./.github/workflows/_build-python-sdist.yml
     secrets: inherit
     with:
-      runner: ubuntu-latest
       upload_artifact: true
 
   # Overlay the Microsoft-signed HTP bundle (if available on S3) onto the
@@ -147,24 +133,13 @@ jobs:
           overwrite: true
 
   build-cli:
-    name: build-cli (${{ matrix.platform }})
+    name: build-cli
     needs: [overlay-htp]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: windows-arm64
-            runner: windows-arm64
-            build_installer: true
-          - platform: linux-arm64
-            runner: linux-arm64
-            build_installer: false
     uses: ./.github/workflows/_build-cli.yml
     secrets: inherit
     with:
-      platform: ${{ matrix.platform }}
-      runner: ${{ matrix.runner }}
-      build_installer: ${{ matrix.build_installer }}
+      # Installer is windows-only; the linux matrix cell ignores this flag.
+      build_installer: true
       upload_artifact: true
 
   # Windows Authenticode signing for the CLI installer (not the HTP driver —
@@ -205,15 +180,14 @@ jobs:
       release_tag: ${{ needs.resolve-tag.outputs.tag }}
 
   publish-docker:
-    name: publish-docker (linux-arm64)
-    needs: [resolve-tag, build-cli, sign-windows]
+    name: publish-docker
+    needs: [resolve-tag, build-cli]
     permissions:
       contents: read
       packages: write
     uses: ./.github/workflows/_build-docker.yml
     secrets: inherit
     with:
-      runner: linux-arm64
       push: true
       image: ghcr.io/qcom-ai-hub/geniex-cli
       tag: ${{ needs.resolve-tag.outputs.tag }}
@@ -223,7 +197,7 @@ jobs:
   # via publish-pypi below.
   publish-testpypi:
     name: publish-testpypi
-    needs: [resolve-tag, build-python-sdist, sign-windows]
+    needs: [resolve-tag, build-python-sdist]
     if: needs.resolve-tag.outputs.is_prerelease == 'true'
     uses: ./.github/workflows/_publish-testpypi.yml
     secrets: inherit
@@ -233,7 +207,7 @@ jobs:
   # Production PyPI — stable tags only. Stub today.
   publish-pypi:
     name: publish-pypi
-    needs: [resolve-tag, build-python-sdist, sign-windows]
+    needs: [resolve-tag, build-python-sdist]
     if: needs.resolve-tag.outputs.is_prerelease == 'false'
     uses: ./.github/workflows/_publish-pypi.yml
     secrets: inherit
@@ -244,7 +218,7 @@ jobs:
   # wired up, distinguishing pre/stable via the artifact version.
   publish-maven:
     name: publish-maven
-    needs: [resolve-tag, build-android-aar, sign-windows]
+    needs: [resolve-tag, build-android-aar]
     uses: ./.github/workflows/_publish-maven.yml
     secrets: inherit
     with:

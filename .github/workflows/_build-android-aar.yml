@@ -3,11 +3,6 @@ name: Build Android AAR
 on:
   workflow_call:
     inputs:
-      runner:
-        description: "Runner label"
-        required: false
-        type: string
-        default: "ubuntu-latest"
       upload_artifact:
         description: "Whether to upload the AAR artifact"
         required: false
@@ -19,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:

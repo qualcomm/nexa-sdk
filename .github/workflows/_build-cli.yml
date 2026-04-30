@@ -3,21 +3,13 @@ name: Build CLI
 on:
   workflow_call:
     inputs:
-      platform:
-        description: "Target platform: linux-arm64 or windows-arm64"
-        required: true
-        type: string
-      runner:
-        description: "Runner label"
-        required: true
-        type: string
       build_installer:
-        description: "Also build the platform installer (//cli/release/<platform>)"
+        description: "Also build the platform installer (windows-arm64 only)"
         required: false
         type: boolean
         default: false
       upload_artifact:
-        description: "Upload the built installer as a workflow artifact"
+        description: "Upload the built artifact(s)"
         required: false
         type: boolean
         default: false
@@ -27,12 +19,21 @@ permissions:
 
 jobs:
   build:
-    runs-on: ${{ inputs.runner }}
+    name: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-arm64
+            runner: windows-arm64
+          - platform: linux-arm64
+            runner: linux-arm64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
 
     steps:
       - name: Configure Windows Git
-        if: inputs.platform == 'windows-arm64'
+        if: matrix.platform == 'windows-arm64'
         shell: cmd
         run: |
           echo C:\Program Files\Git\bin>>%GITHUB_PATH%
@@ -52,7 +53,7 @@ jobs:
       - name: Download SDK artifact
         uses: actions/download-artifact@v5
         with:
-          name: sdk-${{ inputs.platform }}
+          name: sdk-${{ matrix.platform }}
           path: sdk/pkg-geniex/
 
       # Bazel disk cache (hot path for //cli builds). Key narrows to the
@@ -71,19 +72,19 @@ jobs:
       # set because the installer target (//cli/release/windows) pulls in
       # //cli/cmd/geniex as a src and Bazel will build it transitively.
       - name: Build CLI (Windows)
-        if: inputs.platform == 'windows-arm64' && !inputs.build_installer
+        if: matrix.platform == 'windows-arm64' && !inputs.build_installer
         shell: cmd
         run: bazelisk build //cli:artifact --//sdk:sdk_type=local
 
       - name: Build CLI (Linux)
-        if: inputs.platform == 'linux-arm64'
+        if: matrix.platform == 'linux-arm64'
         shell: bash
         run: |
           set -euo pipefail
           bazelisk build //cli:artifact --//sdk:sdk_type=local
 
       - name: Build Windows installer
-        if: inputs.build_installer && inputs.platform == 'windows-arm64'
+        if: inputs.build_installer && matrix.platform == 'windows-arm64'
         shell: bash
         env:
           RAW_VERSION: ${{ steps.version.outputs.version }}
@@ -93,7 +94,7 @@ jobs:
           bazelisk build //cli/release/windows --//sdk:sdk_type=local "--define=VERSION=${bare}"
 
       - name: Upload Windows installer artifact
-        if: inputs.upload_artifact && inputs.build_installer && inputs.platform == 'windows-arm64'
+        if: inputs.upload_artifact && inputs.build_installer && matrix.platform == 'windows-arm64'
         uses: actions/upload-artifact@v5
         with:
           name: cli-installer-windows-arm64
@@ -101,7 +102,7 @@ jobs:
           retention-days: 1
 
       - name: Upload Linux CLI artifact
-        if: inputs.upload_artifact && inputs.platform == 'linux-arm64'
+        if: inputs.upload_artifact && matrix.platform == 'linux-arm64'
         uses: actions/upload-artifact@v5
         with:
           name: cli-linux-arm64
