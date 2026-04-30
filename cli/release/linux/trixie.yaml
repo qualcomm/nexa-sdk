@@ -23,6 +23,3 @@ archs:
 packages:
   - "ca-certificates"
   - "libgomp1"
-  - "curl"
-  - "ffmpeg"
-  - "sox"
