@@ -128,6 +128,14 @@ jobs:
               curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
               export PATH="$HOME/.cargo/bin:$PATH"
               rustup target add aarch64-unknown-linux-gnu
+              # Rust target triple is aarch64-unknown-linux-gnu, but Debian
+              # names its cross compiler aarch64-linux-gnu-* (no "unknown").
+              # Recent cc-rs versions stopped stripping "unknown", so point
+              # it at the Debian tools explicitly or onig_sys (pulled in via
+              # tokenizers-cpp) fails custom-build with ToolNotFound.
+              export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+              export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+              export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
               bash .github/scripts/sdk-linux-android.sh
               chown -R "$HOST_UID:$HOST_GID" sdk .ccache || true
             '
