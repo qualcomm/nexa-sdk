@@ -28,6 +28,10 @@ jobs:
     secrets: inherit
     with:
       upload_artifact: true
+      # AAR only consumes sdk-android-arm64 — skip the windows + linux legs to
+      # dodge the onig_sys cross-compile regression on linux-arm64 that's
+      # currently breaking _build-sdk.yml on that leg.
+      platforms: '[{"platform":"android-arm64","runner":"ubuntu-latest"}]'
 
   build-android-aar:
     name: build-android-aar
