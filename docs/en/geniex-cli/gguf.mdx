@@ -1,6 +1,6 @@
 ---
-title: "GGUF Models"
-description: "GGUF models are a popular open format for running large language models efficiently on a wide range of hardware, including Windows ARM64 and Linux ARM64. Enjoy fast, local inference with broad model compatibility!"
+title: "llama.cpp Plugin Supported Models"
+description: "Running Geniex through llama.cpp plugin on Snapdragon NPU."
 ---
 import Feedback from "/snippets/page-feedback.mdx";
 
@@ -36,37 +36,18 @@ geniex infer NexaAI/Qwen2.5-Omni-3B-GGUF
 
 ## **Supported Model List**
 We curated a list of top, high quality models in GGUF format.
-<Columns cols={2}>
-<Card
-  icon="text"
-  title="LLMs for GGUF"
-  href="https://huggingface.co/collections/NexaAI/llm-gguf-687edb7a94b7dda443a01f1d"
-  cta="View Huggingface Collection 🤗"
-></Card>
-<Card
-  icon="eye"
-  title="Multimodal for GGUF"
-  href="https://huggingface.co/collections/NexaAI/multimodal-gguf-687edb2e756650304c73d8da"
-  cta="View Huggingface Collection 🤗"
-></Card>
-</Columns>
 
-<Tip>To try other GGUF models, visit Hugging Face, copy the path of any compatible GGUF model (e.g., `unsloth/Qwen2.5-VL-3B-Instruct-GGUF`), and replace the model path in the command above.</Tip>
-
-For more advanced models, you may visit the [GenieX Model Hub](https://sdk.geniex.ai/model). Also, access token is required to download and use these models. To get access token:
-  - **Create an account** at [sdk.geniex.ai](https://sdk.geniex.ai)  
-  - **Generate a token**: Go to **Deployment → Create Token**  
-  - **Activate your SDK**: Run the following command on the terminal to set your license:
-  ```bash bash
-  geniex config set license '<your_token_here>'
-  ```
-
-## 🙋 **Request New Models**
-
-Missing a model? Vote for it on the **[GenieX Wishlist](/en/community/wishlist)** — we build the most-voted models fast!
-
-You can also submit an issue on the <a href="https://github.com/geniex-ai/geniex-sdk/issues" target="_blank">geniex-sdk GitHub</a> or request in our Discord/Slack community.
-
-<br />
-
-<Feedback/>
+| Model ID |
+|---|
+| Qwen3.5-0.8B |
+| Qwen3.5-2B |
+| Gemma4-E4B-it |
+| Gemma4-E2B-it |
+| Qwen3-0.6B |
+| Qwen3-1.7B |
+| Ministral-3-3B-Instruct-2507 |
+| GPT-OSS-20B |
+| Granite-4-Micro |
+| Phi-4-mini-instruct |
+| Qwen3-VL-2B |
+| Qwen3-VL-4B |
