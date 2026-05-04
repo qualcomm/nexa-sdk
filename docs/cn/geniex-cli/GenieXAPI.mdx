@@ -77,7 +77,13 @@ geniex serve
 
 - 远程 URL，例如 `https://example.com/photo.jpg`
 - Base64 编码字符串，例如 `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...`
-- 服务器本地文件路径（需服务器有访问权限），例如 `file:///C:/Users/Username/Pictures/photo.jpg`（Windows）或 `file:///home/username/Pictures/photo.jpg`（Linux），`file://` 前缀可选，直接提供路径即可，如 `C:/Users/Username/Pictures/photo.jpg` 或 `/home/username/Pictures/photo.jpg`。
+- 服务器本地文件路径（需服务器有访问权限），例如 `C:/Users/Username/Pictures/photo.jpg`。`file://` 前缀可选。
+
+首先，下载一张示例图片到当前目录：
+
+```bash
+curl -o demo.jpeg https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg
+```
 
 ```json Example Value
 {
@@ -87,7 +93,7 @@ geniex serve
       "role": "user",
       "content": [
         {"type": "text", "text": "Describe this image succinctly."},
-        {"type": "image_url", "image_url": {"url": "</path/to/image>"}}
+        {"type": "image_url", "image_url": {"url": "C:/Users/Username/demo.jpeg"}}
       ]
     }
   ]
@@ -98,31 +104,7 @@ geniex serve
 
 <CodeGroup>
   ```bash Windows (cmd)
-  curl -X POST http://127.0.0.1:18181/v1/chat/completions -H "Content-Type: application/json" -d "{\"model\": \"qualcomm/Qwen2.5-VL-7B-Instruct\", \"messages\": [{\"role\": \"user\", \"content\": [{\"type\": \"text\", \"text\": \"what is main color of the picture\"}, {\"type\": \"image_url\", \"image_url\": {\"url\": \"</path/to/image>\"}}]}], \"stream\": false}"
-  ```
-
-  ```bash Linux
-  curl -X POST http://127.0.0.1:18181/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "qualcomm/Qwen2.5-VL-7B-Instruct",
-    "messages": [
-      {
-        "role": "user",
-        "content": [
-          {
-            "type": "text",
-            "text": "what is main color of the picture"
-          },
-          {
-            "type": "image_url",
-            "image_url": {"url": "</path/to/image>"}
-          }
-        ]
-      }
-    ],
-    "stream": false
-  }'
+  curl -X POST http://127.0.0.1:18181/v1/chat/completions -H "Content-Type: application/json" -d "{\"model\": \"qualcomm/Qwen2.5-VL-7B-Instruct\", \"messages\": [{\"role\": \"user\", \"content\": [{\"type\": \"text\", \"text\": \"Describe this image succinctly.\"}, {\"type\": \"image_url\", \"image_url\": {\"url\": \"C:/Users/Username/demo.jpeg\"}}]}], \"stream\": false}"
   ```
 </CodeGroup>
 

@@ -69,6 +69,12 @@ Creates a model response for a given conversation. Supports LLM(text-only) and V
 - A base64-encoded string, e.g., `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...`
 - A local file path on the server machine (requires server access to the file), e.g., `C:/Users/Username/Pictures/photo.jpg`. The `file://` prefix is optional.
 
+First, download a sample image to the current directory:
+
+```bash
+curl -o demo.jpeg https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg
+```
+
 ```json Example Value
 {
   "model": "qualcomm/Qwen2.5-VL-7B-Instruct",
@@ -77,7 +83,7 @@ Creates a model response for a given conversation. Supports LLM(text-only) and V
       "role": "user",
       "content": [
         {"type": "text", "text": "Describe this image succinctly."},
-        {"type": "image_url", "image_url": {"url": "</path/to/image>"}}
+        {"type": "image_url", "image_url": {"url": "C:/Users/Username/demo.jpeg"}}
       ]
     }
   ]
@@ -88,7 +94,7 @@ Creates a model response for a given conversation. Supports LLM(text-only) and V
 
 <CodeGroup>
   ```bash Windows (cmd)
-  curl -X POST http://127.0.0.1:18181/v1/chat/completions -H "Content-Type: application/json" -d "{\"model\": \"qualcomm/Qwen2.5-VL-7B-Instruct\", \"messages\": [{\"role\": \"user\", \"content\": [{\"type\": \"text\", \"text\": \"what is the main color of the picture\"}, {\"type\": \"image_url\", \"image_url\": {\"url\": \"C:/Users/Username/Pictures/photo.jpg\"}}]}], \"stream\": false}"
+  curl -X POST http://127.0.0.1:18181/v1/chat/completions -H "Content-Type: application/json" -d "{\"model\": \"qualcomm/Qwen2.5-VL-7B-Instruct\", \"messages\": [{\"role\": \"user\", \"content\": [{\"type\": \"text\", \"text\": \"Describe this image succinctly.\"}, {\"type\": \"image_url\", \"image_url\": {\"url\": \"C:/Users/Username/demo.jpeg\"}}]}], \"stream\": false}"
   ```
 </CodeGroup>
 

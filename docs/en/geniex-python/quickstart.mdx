@@ -12,10 +12,13 @@ import Feedback from "/snippets/page-feedback.mdx";
 ### **Installation**
 
 ```bash
-pip install --index-url https://pypi.org/simple/ --extra-index-url https://test.pypi.org/simple/ geniex==0.1.1rc1
+pip install -i https://test.pypi.org/simple/ geniex
 ```
 This will download the python package from [test PyPI](https://test.pypi.org/project/geniex/)
 
+### **Follow Jupyter Notebook Guide**
+
+For quick onboarding, we recommend following the Jupyter Notebook guide [here](https://github.com/qualcomm/nexa-sdk/blob/main/examples/python/windows.ipynb). It provides a step-by-step walkthrough of setting up the environment and running inference with the GenieX Python SDK.
 
 ### **LLM Inference**
 
@@ -25,7 +28,7 @@ Here's a simple example to get you started:
 from geniex import AutoModelForCausalLM
 
 model = AutoModelForCausalLM.from_pretrained(
-    "qwen3",               # short alias, HF repo id, or local GGUF path
+    "qualcomm/Qwen3-4B-Instruct-2507",               # short alias, HF repo id, or local GGUF path
     device_map="auto",     # "auto" | "<plugin>" | "<plugin>:<device>"
 )
 
@@ -50,23 +53,32 @@ model.close()
 
 ### **VLM Inference**
 
-Here's a simple example to get you started:
+First, download a sample image:
+
+```bash
+curl -o demo.jpeg https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg
+```
+
+Then run inference using the full path to the downloaded image:
 
 ```python
+import os
 from geniex import AutoModelForVision2Seq
 
-model = AutoModelForVision2Seq.from_pretrained("qwen3vl", device_map="auto")
+image_path = os.path.abspath("demo.jpeg")
+
+model = AutoModelForVision2Seq.from_pretrained("qualcomm/Qwen2.5-VL-7B-Instruct", device_map="auto")
 messages = [{
     "role": "user",
     "content": [
-        {"type": "image", "image": "/path/to/image.jpg"},
+        {"type": "image", "image": image_path},
         {"type": "text", "text": "Describe the image."},
     ],
 }]
 prompt = model.tokenizer.apply_chat_template(
     messages, tokenize=False, add_generation_prompt=True,
 )
-print(model.generate(prompt, images=["/path/to/image.jpg"]).text)
+print(model.generate(prompt, images=[image_path]).text)
 ```
 
 ### **Model Management**
