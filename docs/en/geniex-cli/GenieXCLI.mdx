@@ -12,38 +12,26 @@ import Feedback from "/snippets/page-feedback.mdx";
 Download a model and store it locally.
 After entering the pull command, you will be guided through a setup process to choose the model type, main model file, tokenizer (optional), and extra files (optional).
 
-For QAIRT plugin models, no quantization precision selection is needed. For llama.cpp plugin models, after running `geniex pull <model-name>`, the CLI will prompt you to select a quantized version if multiple are available:
+For `QAIRT` plugin models, no quantization precision selection is needed. For `llama.cpp` plugin models, after running `geniex pull <model-name>`, the CLI will prompt you to select a quantized version if multiple are available:
 
-```bash bash
+```bash
 Choose a quant version to download
 > Q4_0       [1.2 GiB] (default)
   Q8_0       [2.0 GiB]
   F16        [3.8 GiB]
 ```
 
-**LLM**
-
-```bash bash
-geniex pull Qualcomm/Qwen3-4B-Instruct
-```
-
-**VLM**
-
-```bash bash
-geniex pull Qwen/Qwen3-VL-2B-Instruct-GGUF
-```
-
 ### **geniex infer — LLM**
 
 Launch an interactive chat session with a language model.
 
-```bash bash
-geniex infer unsloth/Qwen3-0.6B-GGUF
+```bash
+geniex infer Qualcomm/Qwen3-4B
 ```
 
 Use the `--think` / `--no-think` flag to control whether the model outputs its internal reasoning process before the final response:
 
-```bash bash
+```bash
 geniex infer Qualcomm/Qwen3-4B --think
 geniex infer Qualcomm/Qwen3-4B --no-think
 ```
@@ -55,24 +43,17 @@ geniex infer Qualcomm/Qwen3-4B --no-think
 
 Run vision-language inference with text-only or image input:
 
-```bash bash
+```bash
 geniex infer Qualcomm/Qwen2.5-VL-7B-Instruct-GGUF
 ```
 
 If you only want text input, simply launch the command and begin chatting.
-To have the model respond from an image, provide the **absolute path** to an image at the end of your message:
+To have the model respond from an image, provide the **absolute path** or simply drag the image file into your terminal, for example:
 
+```bash
+Describe this picture </full/path/to/image.png>
 ```
-Describe this picture </path/to/image.png>
-```
 
-### **geniex serve**
-
-Start a local inference server that exposes an OpenAI-compatible API. See the [Local Server](/en/geniex-cli/GenieXAPI) page for full endpoint documentation.
-
-```bash bash
-geniex serve --host 127.0.0.1:8080
-```
 
 ## **Utility Commands**
 
