@@ -5,148 +5,84 @@ description: "This page documents all available CLI commands with usage examples
 
 import Feedback from "/snippets/page-feedback.mdx";
 
-## **geniex pull**
+## **Model Inference**
+
+### **geniex pull**
 
 Download a model and store it locally.
 After entering the pull command, you will be guided through a setup process to choose the model type, main model file, tokenizer (optional), and extra files (optional).
 
-### **General Behavior**
+For QAIRT plugin models, no quantization precision selection is needed. For llama.cpp plugin models, after running `geniex pull <model-name>`, the CLI will prompt you to select a quantized version if multiple are available:
 
-For QAIRT plugin model, no quantization precision selection is needed. For llama.cpp plugin model, after running `geniex pull <model-name>`, the CLI will prompt:
+```bash bash
+Choose a quant version to download
+> Q4_0       [1.2 GiB] (default)
+  Q8_0       [2.0 GiB]
+  F16        [3.8 GiB]
+```
 
-1. **Quant version selection**\
-   If the model supports multiple quantized versions, you will see a menu like this:
-
-   ```bash Quant version selection
-   Choose a quant version to download
-   > Q4_0       [1.2 GiB] (default)
-     Q8_0       [2.0 GiB]
-     F16        [3.8 GiB]
-   ```
-
-   Select a quant version you prefer.
-
-2. **Download begins**\
-   After selection, the model files will start downloading automatically.
-
-### **LLM**
+**LLM**
 
 ```bash bash
 geniex pull Qualcomm/Qwen3-4B-Instruct
 ```
 
-### **VLM**
+**VLM**
 
 ```bash bash
-geniex infer Qwen/Qwen3-VL-2B-Instruct-GGUF
+geniex pull Qwen/Qwen3-VL-2B-Instruct-GGUF
 ```
 
-## **geniex list**
+### **geniex infer — LLM**
 
-Display all downloaded models in a table with their names and sizes.
-
-```bash bash
-geniex list
-```
-
-## **geniex remove**
-
-Remove a specific local model by name.
-
-```bash bash
-geniex remove unsloth/Qwen3-0.6B-GGUF
-```
-
-## **geniex clean**
-
-Delete all locally cached models.
-
-```bash bash
-geniex clean
-```
-
-## **geniex infer**
-
-Run inference with a specified model. The model must be downloaded and cached locally.
-
-### **Helper menu**
-
-```bash bash
-geniex infer -h
-```
-
-Show help menu for `geniex infer`.
-
-### **LLM**
-
-Launch an interactive chat session with the language model.
+Launch an interactive chat session with a language model.
 
 ```bash bash
 geniex infer unsloth/Qwen3-0.6B-GGUF
 ```
 
-Use the `--think` option to control whether the model outputs its internal reasoning process.
-- `--no-think` : The model responds directly without showing reasoning.
-- `--think` : The model displays its reasoning steps before the final response.
+Use the `--think` / `--no-think` flag to control whether the model outputs its internal reasoning process before the final response:
 
-Example with reasoning enabled:
 ```bash bash
 geniex infer Qualcomm/Qwen3-4B --think
 geniex infer Qualcomm/Qwen3-4B --no-think
 ```
 
-### **VLM**
+- `--think` — The model displays its reasoning steps before the final response.
+- `--no-think` — The model responds directly without showing reasoning.
 
-Text-only or response from image file (interactive image input):
+### **geniex infer — VLM**
+
+Run vision-language inference with text-only or image input:
 
 ```bash bash
 geniex infer Qualcomm/Qwen2.5-VL-7B-Instruct-GGUF
 ```
 
-If you only want text input, simply launch the command and begin chatting.\
-If you'd like the model to response from an image, provide the **absolute path** to an image at the end of your message.\
-Example prompt: `Describe this picture </path/to/image.png>`
+If you only want text input, simply launch the command and begin chatting.
+To have the model respond from an image, provide the **absolute path** to an image at the end of your message:
 
-## **geniex serve**
-
-Launch the GenieX inference server using REST API.
-
-### **Helper menu**
-
-```bash bash
-geniex serve -h
+```
+Describe this picture </path/to/image.png>
 ```
 
-Show help menu for `geniex serve`.
+### **geniex serve**
 
-### **Start serve**
-
-For example, start a local inference server bound to 127.0.0.1:8080. The server supports OpenAI-compatible APIs.
+Start a local inference server that exposes an OpenAI-compatible API. See the [Local Server](/en/geniex-cli/GenieXAPI) page for full endpoint documentation.
 
 ```bash bash
 geniex serve --host 127.0.0.1:8080
 ```
 
-You can test it via:
+## **Utility Commands**
 
-<CodeGroup>
-    ```bash Windows (cmd)
-    curl -X POST http://127.0.0.1:8080/v1/chat/completions -H "Content-Type: application/json" -d "{\"model\": \"Qualcomm/Qwen3-4B-Instruct\", \"messages\": [{\"role\": \"user\", \"content\": \"Hello!\"}], \"max_tokens\": 64}"
-    ```
-
-    ```bash Linux
-    curl -X POST http://127.0.0.1:8080/v1/chat/completions \
-    -H "Content-Type: application/json" \
-    -d '{
-      "model": "Qualcomm/Qwen3-4B-Instruct",
-      "messages": [{"role":"user","content":"Hello!"}],
-      "max_tokens": 64
-    }'
-    ```
-
-</CodeGroup>
-
-This will send a POST request to the local /v1/completions endpoint to prompt the Qualcomm/Qwen3-4B-Instruct model with "What is the capital of France?" and return a response with up to 100 tokens.
+| Command | Description | Example |
+|---|---|---|
+| `geniex list` | Display all downloaded models with their names and sizes. | `geniex list` |
+| `geniex remove <model>` | Remove a specific local model by name. | `geniex remove unsloth/Qwen3-0.6B-GGUF` |
+| `geniex clean` | Delete all locally cached models. | `geniex clean` |
+| `geniex infer -h` | Show help menu for `geniex infer`. | `geniex infer -h` |
+| `geniex serve -h` | Show help menu for `geniex serve`. | `geniex serve -h` |
 
 <br />
 
