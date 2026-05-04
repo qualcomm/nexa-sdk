@@ -3,6 +3,7 @@
 
 #include "vlm.h"
 
+#include <algorithm>
 #include <cstring>
 #include <filesystem>
 #include <string>
@@ -49,12 +50,33 @@ int32_t QairtVlm::create_impl(const geniex_VlmCreateInput* input) {
 
     QnnRuntimeConfig runtime_cfg = qairt::runtime::make_qnn_runtime_config(model_dir);
 
+    // Resolve vision encoder path first so we can exclude it from LLM shards.
+    std::string resolved_vision_bin;
+    if (input->mmproj_path && input->mmproj_path[0] != '\0') {
+        resolved_vision_bin = input->mmproj_path;
+    } else {
+        resolved_vision_bin = qairt::runtime::find_optional_file(model_dir, "vision_encoder.bin");
+    }
+
     // ── LLM config ────────────────────────────────────────────────────────────
     ModelConfig llm_cfg{};
 
     auto bin_shards = qairt::runtime::collect_bin_files(model_dir);
+    if (!resolved_vision_bin.empty()) {
+        const fs::path vision_path(resolved_vision_bin);
+        bin_shards.erase(
+            std::remove_if(bin_shards.begin(), bin_shards.end(), [&](const std::string& p) {
+                std::error_code ec;
+                // Primary: filesystem::equivalent handles separator/case/short-name differences
+                //          on Windows by comparing the underlying file identity.
+                if (fs::equivalent(fs::path(p), vision_path, ec)) return true;
+                // Fallback (in case equivalent() errors on a weird path): filename match.
+                return fs::path(p).filename() == vision_path.filename();
+            }),
+            bin_shards.end());
+    }
     if (bin_shards.empty()) {
-        GENIEX_LOG_ERROR("No .bin model shards found in: {}", model_dir.string());
+        GENIEX_LOG_ERROR("No .bin LLM shards found in: {}", model_dir.string());
         return GENIEX_ERROR_COMMON_FILE_NOT_FOUND;
     }
     GENIEX_LOG_DEBUG("Found {} LLM shards in {}", bin_shards.size(), model_dir.string());
@@ -78,14 +100,8 @@ int32_t QairtVlm::create_impl(const geniex_VlmCreateInput* input) {
     // ── Vision encoder config ─────────────────────────────────────────────────
     ModelConfig vision_cfg{};
 
-    if (input->mmproj_path && input->mmproj_path[0] != '\0') {
-        vision_cfg.model_paths = {std::string(input->mmproj_path)};
-    } else {
-        // Fallback: look for vision_encoder.bin alongside the LLM shards
-        std::string vision_bin = qairt::runtime::find_optional_file(model_dir, "vision_encoder.bin");
-        if (!vision_bin.empty()) {
-            vision_cfg.model_paths = {vision_bin};
-        }
+    if (!resolved_vision_bin.empty()) {
+        vision_cfg.model_paths = {resolved_vision_bin};
     }
     if (vision_cfg.model_paths.empty()) {
         GENIEX_LOG_WARN("No vision encoder found for VLM model '{}' — text-only mode", model_name_);
@@ -254,8 +270,3 @@ int32_t QairtVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
         output->profile_data.stop_reason = kStopUser;
     else
         output->profile_data.stop_reason = kStopEos;
-
-    return GENIEX_SUCCESS;
-}
-
-}  // namespace geniex
