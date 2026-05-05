@@ -270,3 +270,6 @@ int32_t QairtVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
         output->profile_data.stop_reason = kStopUser;
     else
         output->profile_data.stop_reason = kStopEos;
+}
+
+}  // namespace geniex
