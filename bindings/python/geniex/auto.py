@@ -20,20 +20,9 @@ import os
 from ctypes import byref, c_void_p
 
 from . import model_manager as _mm
-from ._ffi._api import (
-    _check,
-    ensure_init,
-    get_device_list,
-    get_plugin_list,
-    load_library,
-)
-from ._ffi._types import (
-    geniex_LlmCreateInput,
-    geniex_ModelConfig,
-    geniex_VlmCreateInput,
-)
+from ._ffi._api import _check, ensure_init, get_plugin_list, load_library
+from ._ffi._types import geniex_LlmCreateInput, geniex_ModelConfig, geniex_VlmCreateInput
 from .modeling import GeniexLLM, GeniexVLM
-
 
 # llama_cpp friendly-name mapping.
 #
