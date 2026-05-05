@@ -16,4 +16,4 @@ Build systems: Bazel (CLI) + CMake (SDK).
 
 - Build anything (CLI / SDK bridge / release installer) → run `/build`.
 - Cut a release / bump the version → run `/release`.
-- Onboarding the AI setup itself → see [docs/AI.md](docs/AI.md).
+- Onboarding the AI setup itself → see [notes/AI.md](notes/AI.md).
