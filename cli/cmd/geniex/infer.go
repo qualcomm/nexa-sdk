@@ -96,7 +96,7 @@ var (
 		llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
 		llmFlags.SortFlags = false
 		llmFlags.StringVarP(&device, "device", "d", "npu", "device to run on: cpu, gpu, or npu")
-		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
+		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "number of layers to offload to gpu/npu")
 		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size")
 		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
 		llmFlags.StringArrayVarP(&stop, "stop", "", nil, "stop sequences")
@@ -358,10 +358,8 @@ func resolveDevice(manifest *types.ModelManifest) (deviceID string, nglOverride 
 		nglOverride = 0
 		deviceID = ""
 	case "gpu":
-		nglOverride = 999
-		deviceID = ""
+		deviceID = "GPUOpenCL"
 	case "npu":
-		nglOverride = 999
 		if deviceID == "" {
 			deviceID = "HTP0"
 		}
