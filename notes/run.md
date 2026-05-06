@@ -11,12 +11,19 @@ They are not interchangeable; the plugin is chosen per model.
 
 ## Device mapping
 
-Friendly device aliases (`cpu` / `gpu` / `npu` / `hybrid`) live in
-[`bindings/go/device.go`](../bindings/go/device.go). CLI, Python bindings
-(`bindings/python/geniex/auto.py`), and Android/JNI
-(`bindings/android/app/src/main/cpp/jniutils.cpp` — `resolve_device`)
-all mirror the same table. Keep them in sync when changing any of the
-mappings.
+The alias table lives in the **SDK**, not in the bindings:
+[`sdk/src/device.cpp`](../sdk/src/device.cpp) exposes
+`geniex_resolve_device` via `sdk/include/geniex.h`. The Go wrapper
+([`bindings/go/device.go`](../bindings/go/device.go)), Python wrapper
+(`resolve_device` in
+[`bindings/python/geniex/_ffi/_api.py`](../bindings/python/geniex/_ffi/_api.py)),
+and Android/JNI wrapper (`resolve_device` in
+[`bindings/android/app/src/main/cpp/jniutils.cpp`](../bindings/android/app/src/main/cpp/jniutils.cpp))
+are all thin FFI shims over that one function. Editing alias semantics
+means editing `sdk/src/device.cpp`, rebuilding the SDK bridge
+(`/build`), and possibly updating all three FFI stubs if the struct
+shape changes (see [CONTRIBUTING.md](../CONTRIBUTING.md) for the
+FFI-sync rule).
 
 | Alias    | `device_id` sent to SDK | `n_gpu_layers` override | Use case                                                                                    |
 |----------|-------------------------|-------------------------|---------------------------------------------------------------------------------------------|
@@ -29,6 +36,15 @@ Defaults when the user passes nothing (`--device ""` / `device_map="auto"`):
 `hybrid` for `llama_cpp`, `npu` for `qairt`. QAIRT exposes only one
 device, so `cpu` / `gpu` / `hybrid` against a qairt model get coerced to
 `NPU` with a warning on stderr — the CLI does **not** exit early.
+
+**Model-specific default override**: the SDK also inspects the model
+name when the caller passes no device. Families listed in
+`is_llama_cpp_hybrid_incompatible` ([`sdk/src/device.cpp`](../sdk/src/device.cpp))
+— currently anything whose name contains `gpt-oss` — default to `npu`
+instead of `hybrid`, because the per-tensor hybrid scheduler can't
+place all of their ops on HTP end-to-end. Pass `--device hybrid`
+explicitly to override the override. Adding a new family means editing
+that one function and rebuilding the SDK bridge.
 
 Concrete ids (`HTP0,HTP1,HTP2,HTP3`, `GPUOpenCL`, etc.) pass through
 unchanged when supplied via `<plugin>:<device>` or manifest `DeviceId`.

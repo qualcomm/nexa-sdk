@@ -194,7 +194,7 @@ geniex_CVCreateInput extract_cv_create_input(JNIEnv* env, jobject inputObj) {
                 env->DeleteLocalRef(jstr);
             }
         }
-        ResolvedDevice rdev = resolve_device(out.plugin_id, raw_dev);
+        ResolvedDevice rdev = resolve_device(out.plugin_id, out.model_name, raw_dev);
         out.device_id       = rdev.device_id.empty() ? nullptr : hold_c_str(rdev.device_id);
         LOGd("extract_cv_create_input device_id = %s (from raw='%s')",
             rdev.device_id.empty() ? "(null)" : rdev.device_id.c_str(),

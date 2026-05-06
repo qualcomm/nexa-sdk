@@ -34,59 +34,37 @@ std::string jstring2str(JNIEnv* env, jstring jstr) {
     return result;
 }
 
-// Friendly device aliases mirrored across bindings/go/device.go and
-// bindings/python/geniex/auto.py. `npu` pins to a single HTP session;
-// `hybrid` leaves device_id empty with a high ngl so llama.cpp's
-// per-tensor scheduler runs (the fast path on Snapdragon).
-static constexpr const char* kPluginLlamaCpp = "llama_cpp";
-static constexpr const char* kPluginQairt    = "qairt";
+// Thin wrapper over the SDK's geniex_resolve_device. The SDK owns the
+// alias table — we just marshal strings and translate the output into
+// the Android-local ResolvedDevice struct so the 8 JNI call sites keep
+// their existing shape.
+ResolvedDevice resolve_device(const char* plugin_id, const char* model_name, const std::string& raw) {
+    ResolvedDevice r;
 
-std::string translate_device_id(const std::string& device_id) {
-    if (device_id.empty()) return device_id;
-    if (device_id == "cpu") return "";
-    if (device_id == "gpu") return "GPUOpenCL";
-    if (device_id == "npu") return "HTP0";
-    if (device_id == "hybrid") return "";
-    // Concrete id (e.g. "HTP0,HTP1,HTP2,HTP3") — pass through.
-    LOGi("[JNI] translate_device_id: '%s' passed through unchanged", device_id.c_str());
-    return device_id;
-}
+    geniex_ResolveDeviceInput in{};
+    in.plugin_id   = plugin_id;
+    in.model_name  = model_name;
+    in.mode        = raw.empty() ? nullptr : raw.c_str();
+    in.ngl_default = -1;  // sentinel: "no override" unless the SDK forces one
 
-ResolvedDevice resolve_device(const char* plugin_id, const std::string& raw) {
-    ResolvedDevice    r;
-    const std::string plugin = plugin_id ? plugin_id : "";
-
-    // Empty / "auto" → plugin-specific default.
-    std::string alias = raw;
-    if (alias.empty() || alias == "auto") {
-        alias = (plugin == kPluginQairt) ? std::string("npu") : std::string("hybrid");
-    }
-
-    // QAIRT is NPU-only; coerce other aliases with a warning.
-    if (plugin == kPluginQairt) {
-        if (alias != "npu") {
-            r.warning =
-                "qairt plugin only supports NPU inference; ignoring device_id='" + alias + "' and running on NPU";
-            LOGi("[JNI] resolve_device: %s", r.warning.c_str());
-        }
-        r.device_id = "NPU";
+    geniex_ResolveDeviceOutput out{};
+    int32_t                    rc = geniex_resolve_device(&in, &out);
+    if (rc != GENIEX_SUCCESS) {
+        LOGe("[JNI] geniex_resolve_device failed (rc=%d), falling back to empty device", rc);
         return r;
     }
 
-    if (alias == "cpu") {
-        r.device_id    = "";
-        r.ngl_override = 0;
-    } else if (alias == "gpu") {
-        r.device_id = "GPUOpenCL";
-    } else if (alias == "npu") {
-        r.device_id = "HTP0";
-    } else if (alias == "hybrid") {
-        r.device_id    = "";
-        r.ngl_override = 999;
-    } else {
-        // Concrete id — pass through.
-        r.device_id = alias;
+    if (out.device_id) {
+        r.device_id = out.device_id;
+        geniex_free(out.device_id);
     }
+    if (out.warning) {
+        r.warning = out.warning;
+        LOGi("[JNI] resolve_device: %s", r.warning.c_str());
+        geniex_free(out.warning);
+    }
+    // Preserve the "-1 means no override" contract downstream relies on.
+    if (out.ngl != -1) r.ngl_override = out.ngl;
     return r;
 }
 
@@ -521,7 +499,7 @@ geniex_LlmCreateInput extract_llm_create_input(JNIEnv* env, jobject inputObj) {
         }
     }
     {
-        ResolvedDevice r = resolve_device(out.plugin_id, raw_dev);
+        ResolvedDevice r = resolve_device(out.plugin_id, out.model_name, raw_dev);
         out.device_id    = r.device_id.empty() ? nullptr : hold_c_str(r.device_id);
         if (r.ngl_override >= 0) out.config.n_gpu_layers = r.ngl_override;
         LOGi("[JNI] [extract] device_id = %s, n_gpu_layers = %d (from raw='%s')",
@@ -599,7 +577,7 @@ geniex_VlmCreateInput extract_vlm_create_input(JNIEnv* env, jobject inputObj) {
                 env->DeleteLocalRef(jstr);
             }
         }
-        ResolvedDevice r = resolve_device(out.plugin_id, raw_dev);
+        ResolvedDevice r = resolve_device(out.plugin_id, out.model_name, raw_dev);
         out.device_id    = r.device_id.empty() ? nullptr : hold_c_str(r.device_id);
         if (r.ngl_override >= 0) out.config.n_gpu_layers = r.ngl_override;
         LOGi("[JNI] [extract_vlm] device_id = %s, n_gpu_layers = %d (from raw='%s')",
@@ -703,7 +681,7 @@ geniex_EmbedderCreateInput extract_embedder_create_input(JNIEnv* env, jobject in
                 env->DeleteLocalRef(jstr);
             }
         }
-        ResolvedDevice r = resolve_device(out.plugin_id, raw_dev);
+        ResolvedDevice r = resolve_device(out.plugin_id, out.model_name, raw_dev);
         out.device_id    = r.device_id.empty() ? nullptr : hold_c_str(r.device_id);
         if (r.ngl_override >= 0) out.config.n_gpu_layers = r.ngl_override;
         LOGi("[JNI] [extract_embedder] device_id = %s, n_gpu_layers = %d (from raw='%s')",
@@ -807,7 +785,7 @@ geniex_RerankerCreateInput extract_reranker_create_input(JNIEnv* env, jobject in
                 env->DeleteLocalRef(jstr);
             }
         }
-        ResolvedDevice r = resolve_device(out.plugin_id, raw_dev);
+        ResolvedDevice r = resolve_device(out.plugin_id, out.model_name, raw_dev);
         out.device_id    = r.device_id.empty() ? nullptr : hold_c_str(r.device_id);
         if (r.ngl_override >= 0) out.config.n_gpu_layers = r.ngl_override;
         LOGi("[JNI] [extract_reranker] device_id = %s, n_gpu_layers = %d (from raw='%s')",

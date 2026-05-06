@@ -14,109 +14,85 @@
 
 package geniex_sdk
 
+/*
+#include <stdlib.h>
+#include "geniex.h"
+*/
+import "C"
+
 import (
 	"fmt"
-	"strings"
+	"unsafe"
 )
 
-// Friendly device aliases that downstream callers (CLI, Python bindings,
-// Android bindings) accept on their `--device` / `device_map` option. They
-// translate to a plugin-specific `(device_id, n_gpu_layers)` pair via
-// [ResolveDevice].
+// Friendly device aliases that downstream callers pass on their
+// `--device` / `device_map` option. The SDK (`sdk/src/device.cpp`)
+// owns the alias table; this file is just the Go-side thin wrapper.
 const (
-	// DeviceCPU forces pure-CPU inference: no accelerator device is
-	// selected and `n_gpu_layers` is clamped to 0.
-	DeviceCPU = "cpu"
-	// DeviceGPU pins inference to the first GPU backend (for llama_cpp
-	// on Snapdragon this is Adreno via OpenCL).
-	DeviceGPU = "gpu"
-	// DeviceNPU pins inference to a single NPU session. For llama_cpp
-	// this is `HTP0`, and the plugin falls into its single-device path
-	// (see `sdk/plugins/llama_cpp/src/llm.cpp`).
-	DeviceNPU = "npu"
-	// DeviceHybrid leaves `device_id` empty with `n_gpu_layers=999` so
-	// llama.cpp's per-tensor backend scheduler places each op on HTP or
-	// CPU as appropriate. This is the fast path for LLMs on Snapdragon.
+	DeviceCPU    = "cpu"
+	DeviceGPU    = "gpu"
+	DeviceNPU    = "npu"
 	DeviceHybrid = "hybrid"
 )
 
-// Plugin IDs. Kept here (rather than in every caller) so CLI / pybind /
-// android agree on the strings the SDK plugin registry uses.
+// Plugin IDs. Kept here so CLI / pybind / android agree on the strings
+// the SDK plugin registry uses.
 const (
 	PluginLlamaCpp = "llama_cpp"
 	PluginQairt    = "qairt"
 )
 
-// Concrete device_id strings the SDK plugins expect.
-const (
-	deviceIDHTP0      = "HTP0"
-	deviceIDGPUOpenCL = "GPUOpenCL"
-	deviceIDQairtNPU  = "NPU"
-)
+// ResolveDevice calls into the SDK's `geniex_resolve_device` to map a
+// (pluginID, modelName, mode) triple onto the concrete (device_id,
+// n_gpu_layers) pair the plugins expect. See the C API doc for alias
+// semantics — the SDK is the single source of truth.
+//
+// `modelName` may be empty if the caller doesn't know it; it's only
+// consulted for model-specific default overrides (e.g. llama_cpp
+// gpt-oss models default to `npu` instead of `hybrid`).
+//
+// A non-nil `err` means the mode was a non-empty unknown alias; the
+// SDK returned GENIEX_ERROR_COMMON_INVALID_DEVICE. `warning` is
+// non-empty when the alias was coerced (e.g. qairt ↦ NPU regardless
+// of user input).
+func ResolveDevice(pluginID, modelName, mode string, nglDefault int32) (deviceID string, ngl int32, warning string, err error) {
+	cPlugin := C.CString(pluginID)
+	defer C.free(unsafe.Pointer(cPlugin))
 
-// ResolveDevice maps a user-facing (pluginID, mode) pair to the
-// `(device_id, n_gpu_layers)` values that go into [LlmCreateInput] /
-// [VlmCreateInput].
-//
-//   - `mode` is one of the Device* constants above, or an empty string
-//     / "auto" for "pick the plugin's default" (llama_cpp → hybrid,
-//     qairt → npu).
-//   - `nglDefault` is the caller's default `n_gpu_layers` and is returned
-//     unchanged unless the mode forces a value (cpu → 0, hybrid → 999).
-//
-// The returned `warning` is non-empty when the mode had to be coerced
-// (e.g. qairt only runs on its NPU device, so cpu/gpu/hybrid fall back
-// to NPU). Callers should surface it and continue — there is no early
-// exit for coerced modes, by design.
-//
-// An `err` is returned only when `mode` is not one of the known
-// aliases. CLI / binding callers may still choose to treat that as a
-// warning and pass through, but the default expectation is a hard
-// validation failure.
-func ResolveDevice(pluginID, mode string, nglDefault int32) (deviceID string, ngl int32, warning string, err error) {
-	mode = strings.ToLower(strings.TrimSpace(mode))
-	ngl = nglDefault
-
-	if mode != "" && mode != "auto" && !isKnownMode(mode) {
-		return "", ngl, "", fmt.Errorf("invalid device %q, must be one of: cpu, gpu, npu, hybrid", mode)
+	var cModel *C.char
+	if modelName != "" {
+		cModel = C.CString(modelName)
+		defer C.free(unsafe.Pointer(cModel))
+	}
+	var cMode *C.char
+	if mode != "" {
+		cMode = C.CString(mode)
+		defer C.free(unsafe.Pointer(cMode))
 	}
 
-	// Empty / "auto" → plugin-specific default.
-	if mode == "" || mode == "auto" {
-		if pluginID == PluginQairt {
-			mode = DeviceNPU
-		} else {
-			mode = DeviceHybrid
+	input := C.geniex_ResolveDeviceInput{
+		plugin_id:   cPlugin,
+		model_name:  cModel,
+		mode:        cMode,
+		ngl_default: C.int32_t(nglDefault),
+	}
+	var output C.geniex_ResolveDeviceOutput
+	rc := C.geniex_resolve_device(&input, &output)
+	if rc != C.GENIEX_SUCCESS {
+		if rc == C.GENIEX_ERROR_COMMON_INVALID_DEVICE {
+			return "", nglDefault, "", fmt.Errorf("invalid device %q, must be one of: cpu, gpu, npu, hybrid", mode)
 		}
+		return "", nglDefault, "", SDKError(rc)
 	}
 
-	// QAIRT only exposes a single NPU device. Coerce other modes with
-	// a warning so the caller can surface it.
-	if pluginID == PluginQairt {
-		if mode != DeviceNPU {
-			warning = fmt.Sprintf("qairt plugin only supports NPU inference; ignoring --device=%s and running on NPU", mode)
-		}
-		return deviceIDQairtNPU, ngl, warning, nil
+	if output.device_id != nil {
+		deviceID = C.GoString(output.device_id)
+		C.geniex_free(unsafe.Pointer(output.device_id))
 	}
-
-	switch mode {
-	case DeviceCPU:
-		return "", 0, "", nil
-	case DeviceGPU:
-		return deviceIDGPUOpenCL, ngl, "", nil
-	case DeviceNPU:
-		return deviceIDHTP0, ngl, "", nil
-	case DeviceHybrid:
-		return "", 999, "", nil
+	if output.warning != nil {
+		warning = C.GoString(output.warning)
+		C.geniex_free(unsafe.Pointer(output.warning))
 	}
-	// Unreachable: isKnownMode above guards this switch.
-	return "", ngl, "", nil
-}
-
-func isKnownMode(s string) bool {
-	switch s {
-	case DeviceCPU, DeviceGPU, DeviceNPU, DeviceHybrid:
-		return true
-	}
-	return false
+	ngl = int32(output.ngl)
+	return
 }

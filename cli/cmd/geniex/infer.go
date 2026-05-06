@@ -330,17 +330,18 @@ func loadStopSequences() ([]string, error) {
 }
 
 // resolveDevice maps the --device flag to (device_id, n_gpu_layers) via
-// the shared bridge helper in bindings/go. An empty --device picks the
-// plugin's preferred default (hybrid for llama.cpp, npu for qairt). When
-// --device is unset and the manifest pins a specific DeviceId (e.g.
-// "HTP0,HTP1,HTP2,HTP3"), the manifest wins — qairt is still coerced to
-// its NPU device with a warning.
+// the SDK's geniex_resolve_device (see sdk/src/device.cpp). An empty
+// --device picks the plugin's preferred default (hybrid for llama.cpp,
+// npu for qairt — with model-specific overrides, e.g. gpt-oss on
+// llama_cpp defaults to npu). When --device is unset and the manifest
+// pins a specific DeviceId (e.g. "HTP0,HTP1,HTP2,HTP3"), the manifest
+// wins — qairt is still coerced to its NPU device with a warning.
 func resolveDevice(manifest *types.ModelManifest) (deviceID string, nglOverride int32) {
 	if device == "" && manifest.DeviceId != "" && manifest.PluginId != geniex_sdk.PluginQairt {
 		return manifest.DeviceId, ngl
 	}
 
-	deviceID, nglOverride, warning, err := geniex_sdk.ResolveDevice(manifest.PluginId, device, ngl)
+	deviceID, nglOverride, warning, err := geniex_sdk.ResolveDevice(manifest.PluginId, manifest.ModelName, device, ngl)
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 		os.Exit(1)
