@@ -16,10 +16,13 @@ import Feedback from "/snippets/page-feedback.mdx";
     - [GenieX CLI Download](https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/geniex-cli.exe)
 
     click the downloaded `.exe` file and follow the installation. The App is not signed yet, so you need to click "More info" then click "run anyway".
+    
+    Currently, we support LLM and Multimodal models. Before you run any command, please firstly add geniex to your `PATH`:
+    ```powershell windows
+    Set-Alias geniex (where.exe geniex)
+    ```
 
     ### **Running Your First Model through QAIRT plugin**
-
-    Currently, we support LLM and Multimodal models.
 
     **Language Model (LLM)**
     Remember to select `Q4_0` as quant type which has the best support with llama.cpp Hexagon backend.
