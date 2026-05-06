@@ -40,13 +40,19 @@ import Feedback from "/snippets/page-feedback.mdx";
     **Language Model (LLM)**
 
     ```bash Windows
-   geniex infer unsloth/Qwen3.5-0.8B-GGUF
+    geniex infer unsloth/Qwen3.5-0.8B-GGUF
     ```
 
     **Multimodal Model**
     ```bash Windows
     geniex infer Qwen/Qwen3-VL-2B-Instruct-GGUF
     ```
+
+    When prompted, select:
+    - **Model type**: `vlm` for vision-language models (Qwen3-VL), `llm` for all others
+    - **Quantization**: `Q4_0` — best Hexagon NPU support for llama.cpp
+
+    <Note>Multimodal support for `Qwen3.5` and `Gemma4` is coming soon.</Note>
 
     <Tip>To try other GGUF models, visit Hugging Face, copy the path of any compatible GGUF model (e.g., `unsloth/Phi-4-mini-instruct-GGUF`), and replace the model path in the command above.</Tip>
 
