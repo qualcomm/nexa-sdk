@@ -21,9 +21,10 @@
 //! `.progress` marker format matches the Go CLI
 //! (`cli/internal/model_hub/model_hub.go`): a byte array of length
 //! `ceil(size / chunk_size)` where each `0x01` byte signals a completed
-//! chunk. The current Rust implementation downloads whole files (hf-hub
-//! v0.4 has no chunking API), so the marker is always a single `0x01`
-//! byte — but the format is forward-compatible with the Go layout.
+//! chunk. As of the concurrent-download refactor, the engine writes and
+//! flips these bytes chunk-by-chunk — so a killed pull resumes at
+//! chunk granularity, and a pull started by the Go CLI can be finished
+//! by the Rust engine (and vice versa).
 
 use std::fs;
 use std::path::Path;
@@ -93,10 +94,14 @@ fn pull_locked(store: &Store, hub: &dyn ModelHub, req: &PullRequest) -> Result<(
     // mismatch would cause `Store::list` / `get_manifest` to misfile it.
     manifest.name = req.model_name.clone();
 
-    // 2. Build the list of files we actually need to fetch.
+    // 2. Build the list of files to hand to the hub. With chunk-granular
+    //    resume the engine itself decides what bytes to request, but we
+    //    still filter out files that are already fully marked done —
+    //    saves a HEAD per file on restart.
     let files = files_to_download(&manifest, &dest_dir);
 
-    // 3. Fetch files we don't yet have.
+    // 3. Fetch. The hub takes ownership of .progress bitmap management;
+    //    on success every marker byte is already 0x01.
     hub.download(
         &req.model_name,
         &files,
@@ -104,29 +109,44 @@ fn pull_locked(store: &Store, hub: &dyn ModelHub, req: &PullRequest) -> Result<(
         req.on_progress.as_ref(),
     )?;
 
-    // 4. Write per-file .progress markers (whole-file granularity for now).
-    for f in &files {
-        let marker_path = dest_dir.join(format!("{}{}", f, PROGRESS_SUFFIX));
-        if let Some(parent) = marker_path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(&marker_path, [0x01u8])?;
-    }
-
-    // 5. Persist the manifest (staged then atomic rename).
+    // 4. Persist the manifest (staged then atomic rename).
     let staged = inflight_dir.join(MANIFEST_FILE);
     fs::write(&staged, serde_json::to_string(&manifest)?)?;
     let final_path = dest_dir.join(MANIFEST_FILE);
     fs::rename(&staged, &final_path)?;
 
-    // 6. Clear the in-flight marker.
+    // 5. On a clean success, drop the per-file .progress markers — the
+    //    published manifest is now the source of truth that the store
+    //    considers this model complete. Matches the Go CLI's behavior
+    //    at model_hub.go's `for _, p := range markerPaths { os.Remove(p) }`.
+    for f in manifest.model_file.values() {
+        drop_marker(&dest_dir, &f.name);
+    }
+    drop_marker(&dest_dir, &manifest.mmproj_file.name);
+    drop_marker(&dest_dir, &manifest.tokenizer_file.name);
+    for f in &manifest.extra_files {
+        drop_marker(&dest_dir, &f.name);
+    }
+
+    // 6. Clear the in-flight sentinel.
     let _ = fs::remove_dir_all(&inflight_dir);
 
     Ok(())
 }
 
-/// Decide which files listed in the manifest still need fetching, based
-/// on existing `.progress` markers. Whole-file granularity for now.
+fn drop_marker(dest_dir: &Path, file_name: &str) {
+    if file_name.is_empty() {
+        return;
+    }
+    let marker = dest_dir.join(format!("{file_name}{PROGRESS_SUFFIX}"));
+    let _ = fs::remove_file(&marker);
+}
+
+/// Decide which files listed in the manifest still need fetching. A file
+/// is considered "fully done" only when its `.progress` marker exists
+/// and every byte is `0x01` — partial bitmaps mean we need to resume.
+/// The engine does the actual chunk-level decision; this filter just
+/// lets us skip the per-file HEAD round-trip on restart.
 fn files_to_download(manifest: &ModelManifest, dest_dir: &Path) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
 
@@ -134,13 +154,20 @@ fn files_to_download(manifest: &ModelManifest, dest_dir: &Path) -> Vec<String> {
         if name.is_empty() {
             return;
         }
+        // Already-published file: manifest exists in dest_dir but
+        // we got a second pull attempt. The engine's bitmap check
+        // will be authoritative; we still push so the engine
+        // reopens, confirms, and moves on (a no-op).
         let marker = dest_dir.join(format!("{}{}", name, PROGRESS_SUFFIX));
-        if marker.exists() {
-            // Any non-zero byte signals completion for this simple-file mode.
-            if let Ok(data) = fs::read(&marker) {
-                if data.iter().any(|b| *b != 0) {
-                    return;
-                }
+        let output = dest_dir.join(name);
+        if !marker.exists() && output.exists() {
+            // Legacy published state: file present, no marker.
+            // Previous pulls left this shape. Treat as done.
+            return;
+        }
+        if let Ok(data) = fs::read(&marker) {
+            if !data.is_empty() && data.iter().all(|b| *b == 0x01) {
+                return;
             }
         }
         out.push(name.to_string());
