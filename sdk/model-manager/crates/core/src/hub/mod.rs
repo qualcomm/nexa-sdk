@@ -1,5 +1,10 @@
 pub mod hf;
+pub mod hf_metadata;
 pub mod localfs;
+pub mod metadata;
+
+pub use hf_metadata::HfMetadata;
+pub use metadata::{FileSource, HubContext, HubMetadata};
 
 use std::path::Path;
 
