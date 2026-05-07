@@ -74,8 +74,6 @@ geniex serve
 
 `image_url` 可以是以下任一格式：
 
-- 远程 URL，例如 `https://example.com/photo.jpg`
-- Base64 编码字符串，例如 `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...`
 - 服务器本地文件路径（需服务器有访问权限），例如 `C:/Users/Username/Pictures/photo.jpg`。`file://` 前缀可选。
 
 首先，下载一张示例图片到当前目录：
@@ -107,7 +105,7 @@ curl -o demo.jpeg https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets
 
 ![Swagger UI 展示 chat completions 端点及示例请求体](/Images/server/curl-1.png)
 
-**步骤 2.** 点击 **Try it out**，将请求体替换为 VLM payload（`image_url.url` 可指向本地图片、远程 URL 或 base64 字符串），然后点击 **Execute**。
+**步骤 2.** 点击 **Try it out**，将请求体替换为 VLM payload（`image_url.url` 指向本地图片路径），然后点击 **Execute**。
 
 ![在 Try-it-out 模式下编辑 VLM 请求体后执行](/Images/server/curl-4.png)
 
