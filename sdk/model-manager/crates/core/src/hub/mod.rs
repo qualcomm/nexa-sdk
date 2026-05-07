@@ -1,5 +1,10 @@
 pub mod hf;
+pub mod hf_metadata;
 pub mod localfs;
+pub mod metadata;
+
+pub use hf_metadata::HfMetadata;
+pub use metadata::{FileSource, HubContext, HubMetadata};
 
 use std::path::Path;
 
@@ -17,8 +22,10 @@ pub struct FileProgress {
 /// Called periodically during a pull. The slice contains one entry per file
 /// currently being tracked. Returning `false` signals the hub to cancel.
 ///
-/// The slice is borrowed — callbacks must not retain it.
-pub type ProgressCallback = Box<dyn Fn(&[FileProgress]) -> bool>;
+/// The slice is borrowed — callbacks must not retain it. The `Send + Sync`
+/// bounds let the engine invoke the callback from a dedicated dispatcher
+/// task while workers update counters from other threads.
+pub type ProgressCallback = Box<dyn Fn(&[FileProgress]) -> bool + Send + Sync>;
 
 pub enum HubSource {
     HuggingFace,
@@ -31,10 +38,7 @@ pub trait ModelHub {
     ///
     /// Hubs that have no concept of "remote listing" (e.g. `LocalFsHub`)
     /// should return files discovered under their source directory.
-    fn list_files(
-        &self,
-        repo_id: &str,
-    ) -> Result<(Vec<RemoteFile>, Option<ModelManifest>)>;
+    fn list_files(&self, repo_id: &str) -> Result<(Vec<RemoteFile>, Option<ModelManifest>)>;
 
     /// Download the named files to `dest_dir`.
     ///
