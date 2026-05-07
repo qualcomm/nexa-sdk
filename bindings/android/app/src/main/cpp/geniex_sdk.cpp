@@ -6,6 +6,7 @@
 #include <unistd.h>    // For access()
 #include <unistd.h>
 
+#include <cstring>
 #include <string>
 
 #include "android_utils.h"
@@ -14,6 +15,32 @@
 
 using namespace jniutils;
 using namespace geniex_android_sdk;
+
+// Route SDK log messages to Android logcat under the "GeniexSdk" tag.
+static void android_sdk_log_to_logcat(geniex_LogLevel level, const char* msg) {
+    int prio;
+    switch (level) {
+        case GENIEX_LOG_LEVEL_TRACE:
+            prio = ANDROID_LOG_VERBOSE;
+            break;
+        case GENIEX_LOG_LEVEL_DEBUG:
+            prio = ANDROID_LOG_DEBUG;
+            break;
+        case GENIEX_LOG_LEVEL_INFO:
+            prio = ANDROID_LOG_INFO;
+            break;
+        case GENIEX_LOG_LEVEL_WARN:
+            prio = ANDROID_LOG_WARN;
+            break;
+        case GENIEX_LOG_LEVEL_ERROR:
+            prio = ANDROID_LOG_ERROR;
+            break;
+        default:
+            prio = ANDROID_LOG_DEFAULT;
+            break;
+    }
+    __android_log_print(prio, TAG, "%s", msg ? msg : "");
+}
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     setup_redirect_stdout_stderr();
@@ -24,8 +51,39 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     fflush(stdout);
     fflush(stderr);
 
+    // Route SDK logs to logcat before geniex_init() so initialization logs surface too.
+    geniex_set_log(android_sdk_log_to_logcat);
+
     geniex_init();
     return JNI_VERSION_1_6;
+}
+
+// Map log-level strings to the SDK enum. Keep in sync with bindings/go/ml.go and
+// bindings/python/geniex/_ffi/_api.py.
+extern "C" JNIEXPORT void JNICALL Java_com_geniex_sdk_GeniexSdk_nativeSetLogLevel(
+    JNIEnv* env, jclass, jstring level_jstr) {
+    if (level_jstr == nullptr) return;
+    const char* level = env->GetStringUTFChars(level_jstr, nullptr);
+    if (level == nullptr) return;
+    geniex_LogLevel target;
+    if (std::strcmp(level, "trace") == 0)
+        target = GENIEX_LOG_LEVEL_TRACE;
+    else if (std::strcmp(level, "debug") == 0)
+        target = GENIEX_LOG_LEVEL_DEBUG;
+    else if (std::strcmp(level, "info") == 0)
+        target = GENIEX_LOG_LEVEL_INFO;
+    else if (std::strcmp(level, "warn") == 0)
+        target = GENIEX_LOG_LEVEL_WARN;
+    else if (std::strcmp(level, "error") == 0)
+        target = GENIEX_LOG_LEVEL_ERROR;
+    else if (std::strcmp(level, "none") == 0)
+        target = static_cast<geniex_LogLevel>(GENIEX_LOG_LEVEL_ERROR + 1);
+    else {
+        env->ReleaseStringUTFChars(level_jstr, level);
+        return;
+    }
+    geniex_set_log_level(target);
+    env->ReleaseStringUTFChars(level_jstr, level);
 }
 
 using namespace jniutils;
