@@ -12,3 +12,6 @@
 //! `ceil(size / chunk_size)` where byte `i` is `0x01` iff chunk `i` is done.
 
 pub mod chunk;
+pub mod engine;
+
+pub use engine::{Engine, EngineConfig};

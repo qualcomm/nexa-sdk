@@ -22,8 +22,10 @@ pub struct FileProgress {
 /// Called periodically during a pull. The slice contains one entry per file
 /// currently being tracked. Returning `false` signals the hub to cancel.
 ///
-/// The slice is borrowed — callbacks must not retain it.
-pub type ProgressCallback = Box<dyn Fn(&[FileProgress]) -> bool>;
+/// The slice is borrowed — callbacks must not retain it. The `Send + Sync`
+/// bounds let the engine invoke the callback from a dedicated dispatcher
+/// task while workers update counters from other threads.
+pub type ProgressCallback = Box<dyn Fn(&[FileProgress]) -> bool + Send + Sync>;
 
 pub enum HubSource {
     HuggingFace,
