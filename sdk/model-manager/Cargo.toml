@@ -35,6 +35,5 @@ async-trait = "0.1"
 bytes = "1"
 futures = "0.3"
 url = "2"
-hf-hub = { version = "0.4", default-features = false, features = ["ureq"] }
 fs2 = "0.4"
 wiremock = "0.6"
