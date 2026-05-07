@@ -31,7 +31,7 @@ int32_t LlamaVlm::create_impl(const geniex_VlmCreateInput* input) {
     }
 
     llama_model_params mpar = llama_model_default_params();
-    mpar.use_mmap           = true;
+    mpar.use_mmap           = false;
     mpar.use_mlock          = false;
     mpar.n_gpu_layers       = input->config.n_gpu_layers;
     if (input->device_id) {
@@ -58,7 +58,15 @@ int32_t LlamaVlm::create_impl(const geniex_VlmCreateInput* input) {
 
     llama_context_params cpar = llama_context_default_params();
     cpar.n_ctx                = input->config.n_ctx > 0 ? input->config.n_ctx : 16384;
-    cpar.n_batch              = 4096;
+    cpar.n_batch              = 256;
+    cpar.n_ubatch             = 512;
+    cpar.n_seq_max            = 1;
+    cpar.n_threads            = static_cast<int32_t>(std::thread::hardware_concurrency()) / 2;
+    cpar.n_threads_batch      = static_cast<int32_t>(std::thread::hardware_concurrency()) / 2;
+    cpar.flash_attn_type      = LLAMA_FLASH_ATTN_TYPE_ENABLED;
+    cpar.swa_full             = false;
+    cpar.kv_unified           = false;
+    cpar.no_perf              = false;  // enable performance counters
 
     this->ctx = llama_init_from_model(this->model, cpar);
     if (!this->ctx) {
