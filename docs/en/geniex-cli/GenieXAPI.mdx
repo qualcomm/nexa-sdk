@@ -75,8 +75,6 @@ Open `http://127.0.0.1:18181` in your browser to access the built-in Swagger UI.
 
 `image_url` can be one of the following:
 
-- A remote URL, e.g., `https://example.com/photo.jpg`
-- A base64-encoded string, e.g., `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...`
 - A local file path on the server machine (requires server access to the file), e.g., `C:/Users/Username/Pictures/photo.jpg`. The `file://` prefix is optional.
 
 First, download a sample image to the current directory, add below request to your 
@@ -95,6 +93,22 @@ First, download a sample image to the current directory, add below request to yo
   ]
 }
 ```
+
+#### **Usage Example**
+
+Open `http://127.0.0.1:18181` in your browser to access the built-in Swagger UI.
+
+**Step 1.** Expand the `POST /v1/chat/completions` endpoint to view the example request body and schema.
+
+![Swagger UI showing the chat completions endpoint with example request body](/Images/server/curl-1.png)
+
+**Step 2.** Click **Try it out**, replace the request body with a VLM payload (point `image_url.url` to a local image path), then click **Execute**.
+
+![Editing the VLM request body in Try-it-out mode before executing](/Images/server/curl-4.png)
+
+**Step 3.** View the response — a `200` status with the model's description of the image.
+
+![Response body showing a successful 200 response with the VLM's image description](/Images/server/curl-5.png)
 
 
 <br />
