@@ -22,7 +22,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	// "reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -36,7 +35,6 @@ import (
 
 	geniex_sdk "github.com/qcom-it-nexa-ai/geniex/bindings/go"
 	"github.com/qcom-it-nexa-ai/geniex/cli/cmd/geniex/common"
-	// "github.com/qcom-it-nexa-ai/geniex/cli/cmd/geniex/logic"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/model_hub/aihub"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/record"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/render"
