@@ -1,13 +1,13 @@
 //! Live tests against the real Qualcomm AI Hub public bucket. Require
-//! network access (and, for the end-to-end pull, ~2 GB of disk + patience),
-//! so they are gated behind `--ignored` and only run when explicitly
-//! requested:
+//! network access (and, for the end-to-end pull, ~2 GB of disk +
+//! patience), so they are gated behind `--ignored` and only run when
+//! explicitly requested:
 //!
 //!   cargo test --test s3_live -- --ignored
 //!
 //! The CI job does not pass `--ignored`; these exist to give humans a
-//! quick confidence check that our protojson parsing + selector + full
-//! download pipeline still work against production infrastructure.
+//! quick confidence check that our protojson parsing + selector +
+//! remote-zip pipeline still work against production infrastructure.
 //!
 //! The chosen model is the smallest Genie (qairt) asset currently
 //! published: Phi-3.5-Mini-Instruct on snapdragon-x-elite (~2 GB).
@@ -16,9 +16,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use model_manager_core::config::StoreConfig;
-use model_manager_core::hub::s3::{pull_ai_hub, S3Config};
-use model_manager_core::hub::{FileProgress, ProgressCallback};
+use model_manager_core::executor::{FileProgress, ProgressCallback};
+use model_manager_core::pull::pull_with_source;
+use model_manager_core::source::ai_hub::{AiHubConfig, AiHubSource};
+use model_manager_core::source::ModelSource;
 use model_manager_core::store::Store;
+use model_manager_core::transport::ReqwestTransport;
 
 const AI_HUB_BASE_URL: &str =
     "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models";
@@ -30,37 +33,29 @@ const PHI_STORED_NAME: &str = "qualcomm/Phi-3.5-Mini-Instruct";
 
 /// Cheap reachability + parsing check: fetch manifest.json, confirm
 /// the model we rely on is still present. Runs in a couple hundred
-/// milliseconds; no zip download.
+/// milliseconds; no zip payload download.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore]
 async fn live_manifest_resolves_phi_model() {
-    use model_manager_core::hub::s3::pull_ai_hub_with_transport;
-    use model_manager_core::transport::ReqwestTransport;
-
-    // Reuse the pull entry point's HEAD-only code path indirectly by
-    // pointing at a nonsense chipset and asserting we hit the "not
-    // available" error after the manifest lookup succeeded. A failure
-    // *before* that string means manifest parsing is broken.
     let tmp = tempfile::tempdir().unwrap();
-    let store = Store::new(StoreConfig::new(tmp.path().to_path_buf())).unwrap();
-    let cfg = S3Config::new(
+    let cfg = AiHubConfig::new(
         AI_HUB_BASE_URL,
         AI_HUB_VERSION,
         "definitely-not-a-real-chipset",
         tmp.path().join("aihub"),
         true,
     );
-
-    let err = pull_ai_hub_with_transport(
-        &store,
-        PHI_STORED_NAME,
-        PHI_DISPLAY_NAME,
+    let transport = Arc::new(ReqwestTransport::new().unwrap());
+    let src = AiHubSource::with_transport(
+        PHI_DISPLAY_NAME.to_string(),
+        PHI_STORED_NAME.to_string(),
         cfg,
-        Arc::new(ReqwestTransport::new().unwrap()),
-        None,
-    )
-    .await
-    .expect_err("expected chipset mismatch error");
+        transport,
+    );
+    let err = src
+        .plan()
+        .await
+        .expect_err("expected chipset mismatch error");
     let msg = format!("{err}");
     assert!(
         msg.contains("not available") || msg.contains("not found in platform.json"),
@@ -68,16 +63,17 @@ async fn live_manifest_resolves_phi_model() {
     );
 }
 
-/// End-to-end: download the real Phi-3.5-Mini-Instruct qairt zip from
-/// the public bucket, extract, synthesise the manifest, and verify the
-/// store reports the model. ~2 GB download; don't run in CI.
+/// End-to-end: download the real Phi-3.5-Mini-Instruct qairt asset from
+/// the public bucket via range reads, inflate each entry, write the
+/// synthesised manifest, and verify the store reports the model.
+/// ~2 GB payload; don't run in CI.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore]
 async fn live_phi_3_5_mini_e2e_pull() {
     let tmp = tempfile::tempdir().unwrap();
     let store = Store::new(StoreConfig::new(tmp.path().to_path_buf())).unwrap();
 
-    let cfg = S3Config::new(
+    let cfg = AiHubConfig::new(
         AI_HUB_BASE_URL,
         AI_HUB_VERSION,
         PHI_CHIPSET,
@@ -85,8 +81,6 @@ async fn live_phi_3_5_mini_e2e_pull() {
         true,
     );
 
-    // Terse progress pinger so a slow run doesn't look hung when
-    // invoked with `--nocapture`.
     let invoked = Arc::new(AtomicBool::new(false));
     let invoked_cl = invoked.clone();
     let cb: ProgressCallback = Box::new(move |files: &[FileProgress]| -> bool {
@@ -103,7 +97,14 @@ async fn live_phi_3_5_mini_e2e_pull() {
         true
     });
 
-    pull_ai_hub(&store, PHI_STORED_NAME, PHI_DISPLAY_NAME, cfg, Some(&cb))
+    let transport = Arc::new(ReqwestTransport::new().unwrap());
+    let src = AiHubSource::with_transport(
+        PHI_DISPLAY_NAME.to_string(),
+        PHI_STORED_NAME.to_string(),
+        cfg,
+        transport.clone(),
+    );
+    pull_with_source(&store, PHI_STORED_NAME, Box::new(src), transport, Some(&cb))
         .await
         .expect("live AI Hub pull failed");
 
@@ -127,18 +128,27 @@ async fn live_phi_3_5_mini_e2e_pull() {
         model_dir.join(&entry.name).exists(),
         "entrypoint file missing on disk"
     );
-    // The real Phi qairt archive ships a tokenizer.json alongside the
-    // weight shards.
     assert!(
         mf.extra_files.iter().any(|f| f.name == "tokenizer.json"),
         "tokenizer.json missing from extras: {:?}",
         mf.extra_files
     );
+    // Regression guard for the whole point of this refactor: no zip
+    // should ever land on disk with the range-read pipeline.
+    let entries: Vec<_> = std::fs::read_dir(&model_dir)
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        !entries.iter().any(|n| n.ends_with(".zip")),
+        "unexpected .zip in model dir: {entries:?}"
+    );
 }
 
 /// Same shape as `live_phi_3_5_mini_e2e_pull` but feeds an empty
-/// chipset through `S3Config`, exercising the
-/// `detect::detect_host_chipset` fallback inside `pull_ai_hub_inner`.
+/// chipset through `AiHubConfig`, exercising the
+/// `detect::detect_host_chipset` fallback inside `AiHubSource::plan`.
 /// On non-Snapdragon-Windows hosts this fails with "host auto-detect
 /// is not supported on this platform"; only real Snapdragon X Elite /
 /// Plus / X2 Elite laptops can pass it.
@@ -148,7 +158,7 @@ async fn live_e2e_with_auto_detect() {
     let tmp = tempfile::tempdir().unwrap();
     let store = Store::new(StoreConfig::new(tmp.path().to_path_buf())).unwrap();
 
-    let cfg = S3Config::new(
+    let cfg = AiHubConfig::new(
         AI_HUB_BASE_URL,
         AI_HUB_VERSION,
         "", // <-- triggers host auto-detect
@@ -156,12 +166,14 @@ async fn live_e2e_with_auto_detect() {
         true,
     );
 
-    // Success implies auto-detect hit a chipset that AI Hub actually
-    // publishes the Phi-3.5 qairt asset for — on this xelite1 host
-    // that's necessarily `qualcomm-snapdragon-x-elite`, since no other
-    // chipset the detector returns would resolve to a real asset for
-    // this model.
-    pull_ai_hub(&store, PHI_STORED_NAME, PHI_DISPLAY_NAME, cfg, None)
+    let transport = Arc::new(ReqwestTransport::new().unwrap());
+    let src = AiHubSource::with_transport(
+        PHI_DISPLAY_NAME.to_string(),
+        PHI_STORED_NAME.to_string(),
+        cfg,
+        transport.clone(),
+    );
+    pull_with_source(&store, PHI_STORED_NAME, Box::new(src), transport, None)
         .await
         .expect("live AI Hub pull with auto-detect failed");
 

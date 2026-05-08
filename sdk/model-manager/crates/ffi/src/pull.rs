@@ -2,9 +2,8 @@ use std::os::raw::{c_char, c_void};
 use std::path::PathBuf;
 
 use model_manager_core::config::StoreConfig;
-use model_manager_core::hub::HubSource;
 use model_manager_core::manifest_builder::ManifestHint;
-use model_manager_core::pull::{pull_blocking, PullRequest};
+use model_manager_core::pull::{pull_blocking, PullIntent, PullRequest};
 
 use crate::init::{get_store, runtime_handle};
 use crate::types::*;
@@ -92,14 +91,22 @@ pub extern "C" fn geniex_model_pull(input: *const GeniexModelPullInput) -> i32 {
             None => return GENIEX_ERROR_COMMON_INVALID_INPUT,
         };
 
-        let hub = match inp.hub {
-            GeniexHubSource::HuggingFace | GeniexHubSource::Auto => HubSource::HuggingFace,
+        // Explicit token wins; env var is the fallback; anonymous otherwise.
+        let hf_token = unsafe { cstr_to_str(inp.hf_token) }
+            .map(str::to_string)
+            .or_else(StoreConfig::hf_token_from_env);
+
+        let intent = match inp.hub {
+            GeniexHubSource::HuggingFace | GeniexHubSource::Auto => PullIntent::HuggingFace {
+                repo: model_name.clone(),
+                token: hf_token,
+            },
             GeniexHubSource::LocalFs => {
                 let path = match unsafe { cstr_to_str(inp.local_path) } {
                     Some(s) => PathBuf::from(s),
                     None => return GENIEX_ERROR_COMMON_INVALID_INPUT,
                 };
-                HubSource::LocalFs(path)
+                PullIntent::LocalFs { source_dir: path }
             }
             GeniexHubSource::S3 => {
                 // chipset NULL or empty → SDK auto-detects (currently
@@ -111,21 +118,20 @@ pub extern "C" fn geniex_model_pull(input: *const GeniexModelPullInput) -> i32 {
                     Some(s) if !s.is_empty() => s.to_string(),
                     _ => return GENIEX_ERROR_COMMON_INVALID_INPUT,
                 };
-                HubSource::S3 {
+                PullIntent::AiHub {
                     display_name,
                     chipset,
                 }
             }
             // ModelScope / Volces remain placeholders — fall back to HuggingFace.
-            _ => HubSource::HuggingFace,
+            _ => PullIntent::HuggingFace {
+                repo: model_name.clone(),
+                token: hf_token,
+            },
         };
 
         // Build a Rust closure that re-marshals Rust FileProgress → C array
         // and invokes the caller's function pointer.
-        //
-        // Neither `*mut c_void` nor fn pointers with *mut c_void implement
-        // Send/Sync automatically; we wrap them in a struct that asserts
-        // it's fine for our single-threaded blocking call path.
         struct CCallback {
             cb: unsafe extern "C" fn(*const GeniexFileProgress, i32, *mut c_void) -> bool,
             user_data: *mut c_void,
@@ -133,20 +139,15 @@ pub extern "C" fn geniex_model_pull(input: *const GeniexModelPullInput) -> i32 {
         unsafe impl Send for CCallback {}
         unsafe impl Sync for CCallback {}
 
-        let progress_cb: Option<model_manager_core::hub::ProgressCallback> = if let Some(cb) =
+        let progress_cb: Option<model_manager_core::executor::ProgressCallback> = if let Some(cb) =
             inp.on_progress
         {
-            // Wrap in Arc so the closure captures the asserted
-            // Send+Sync wrapper as a single unit. Rust 2021's
-            // disjoint captures would otherwise split the fields
-            // and see the bare `*mut c_void`, which is !Sync.
             let cc = std::sync::Arc::new(CCallback {
                 cb,
                 user_data: inp.user_data,
             });
             Some(Box::new(
-                move |files: &[model_manager_core::hub::FileProgress]| -> bool {
-                    // CStrings must live for the duration of the callback.
+                move |files: &[model_manager_core::executor::FileProgress]| -> bool {
                     let cstrings: Vec<std::ffi::CString> = files
                         .iter()
                         .map(|f| std::ffi::CString::new(f.file_name.as_bytes()).unwrap_or_default())
@@ -164,7 +165,6 @@ pub extern "C" fn geniex_model_pull(input: *const GeniexModelPullInput) -> i32 {
                     let result = unsafe {
                         (cc.cb)(ffi_entries.as_ptr(), ffi_entries.len() as i32, cc.user_data)
                     };
-                    // cstrings drop here — after the callback returns.
                     let _ = cstrings;
                     result
                 },
@@ -186,15 +186,9 @@ pub extern "C" fn geniex_model_pull(input: *const GeniexModelPullInput) -> i32 {
             ..ManifestHint::default()
         };
 
-        // Explicit token wins; env var is the fallback; anonymous otherwise.
-        let hf_token = unsafe { cstr_to_str(inp.hf_token) }
-            .map(str::to_string)
-            .or_else(StoreConfig::hf_token_from_env);
-
         let req = PullRequest {
             model_name,
-            hub,
-            hf_token,
+            intent,
             on_progress: progress_cb,
             hint,
         };

@@ -758,6 +758,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
+ "flate2",
  "fs2",
  "futures",
  "reqwest",

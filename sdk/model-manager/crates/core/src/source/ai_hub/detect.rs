@@ -8,15 +8,10 @@
 //!
 //! Current coverage:
 //!   * Windows on Snapdragon (X Elite / X Plus / X2 Elite) — parsed
-//!     from the CPU brand string via WMIC. This is the 95% case for
-//!     Genie runtime users today.
+//!     from the CPU brand string via a `reg query` probe. This is the
+//!     95% case for Genie runtime users today.
 //!   * Everything else — returns `None`. Callers must then pass
 //!     `chipset` explicitly.
-//!
-//! The returned string is a raw SoC identifier (e.g. `"X1E80100"`,
-//! `"sm8650"`); it's the caller's job to feed it through
-//! [`super::selector::resolve_chipset`] against the live
-//! `platform.json` to get a canonical AI Hub chipset name.
 
 #[cfg(target_os = "windows")]
 mod windows;
@@ -42,15 +37,7 @@ pub fn detect_host_chipset() -> Option<String> {
 ///
 /// Kept pub(crate) for unit testing.
 pub(crate) fn cpu_name_to_chipset_alias(brand: String) -> Option<String> {
-    // Strategy: scan the brand string for an `X<digit>{E,P}` token,
-    // then key off the first four characters (`X1E`, `X1P`, `X2E`).
-    // Examples:
-    //   "Snapdragon(R) X Elite - X1E80100 - Qualcomm(R) Oryon(TM) CPU"
-    //   "Snapdragon X Plus - X1P64100 - Qualcomm Oryon CPU"
-    //   "Snapdragon X2 Elite - X2E80100 - Qualcomm Oryon CPU"
     let sku = extract_oryon_sku(&brand)?;
-    // `is_oryon_sku` already guaranteed len >= 6 and an ASCII prefix,
-    // so a direct 3-byte slice is safe without re-checking.
     match &sku[..3] {
         "X1E" => Some("qualcomm-snapdragon-x-elite".to_string()),
         "X1P" => Some("qualcomm-snapdragon-x-plus-8-core".to_string()),
@@ -60,7 +47,6 @@ pub(crate) fn cpu_name_to_chipset_alias(brand: String) -> Option<String> {
 }
 
 fn extract_oryon_sku(brand: &str) -> Option<String> {
-    // Walk tokens and pick the first that looks like X<digit><letter><digits>.
     for tok in brand.split(|c: char| !(c.is_ascii_alphanumeric())) {
         if is_oryon_sku(tok) {
             return Some(tok.to_ascii_uppercase());
@@ -70,7 +56,6 @@ fn extract_oryon_sku(brand: &str) -> Option<String> {
 }
 
 fn is_oryon_sku(tok: &str) -> bool {
-    // Shape: X<digit><E|P><digits> (e.g. X1E80100, X2E96100).
     let bytes = tok.as_bytes();
     if bytes.len() < 6 {
         return false;
@@ -143,13 +128,9 @@ mod tests {
 
     #[test]
     fn rejects_almost_sku_shaped_tokens() {
-        // Trailing letter → not a pure digit tail.
         assert!(!is_oryon_sku("X1E80100A"));
-        // Missing digit after X.
         assert!(!is_oryon_sku("XEE80100"));
-        // Too short (min length 6: X + digit + letter + 3 digits).
         assert!(!is_oryon_sku("X1E10"));
-        // Empty.
         assert!(!is_oryon_sku(""));
     }
 }

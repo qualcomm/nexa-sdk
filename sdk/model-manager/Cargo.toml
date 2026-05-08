@@ -38,3 +38,4 @@ url = "2"
 fs2 = "0.4"
 wiremock = "0.6"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }

@@ -27,21 +27,12 @@ pub(super) fn detect() -> Option<String> {
     parse_reg_query(&String::from_utf8_lossy(&out.stdout))
 }
 
-/// Parse a `reg query` stdout block and extract the `REG_SZ` value.
-///
-/// Expected shape (one blank line before / after the line we want):
-/// ```text
-/// HKEY_LOCAL_MACHINE\HARDWARE\...\CentralProcessor\0
-///     ProcessorNameString    REG_SZ    Snapdragon(R) X 12-core X1E80100 @ 3.40 GHz
-/// ```
 fn parse_reg_query(stdout: &str) -> Option<String> {
     for line in stdout.lines() {
         let trimmed = line.trim_start();
         if !trimmed.starts_with(VALUE) {
             continue;
         }
-        // Split on "REG_SZ" to isolate the value. The value can contain
-        // spaces and punctuation, so we can't naively split_whitespace.
         if let Some((_, value)) = trimmed.split_once("REG_SZ") {
             let v = value.trim();
             if !v.is_empty() {
@@ -58,8 +49,6 @@ mod tests {
 
     #[test]
     fn parses_xelite1_reg_output() {
-        // Verbatim capture from `reg query HKLM\HARDWARE\...` on a real
-        // Snapdragon X Elite host (Windows 11 26200).
         let stdout = "\
 HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0\r\n    \
 ProcessorNameString    REG_SZ    Snapdragon(R) X 12-core X1E80100 @ 3.40 GHz\r\n\r\n";
