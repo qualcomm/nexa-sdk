@@ -80,9 +80,18 @@ struct FileState {
 impl FileState {
     fn snapshot(&self) -> FileProgress {
         let total = self.total_bytes.load(Ordering::Relaxed);
+        let downloaded = self.downloaded_bytes.load(Ordering::Relaxed);
+        // Clamp: scaled DEFLATE counters can overshoot `total` by a
+        // rounding byte or two before the post-decode pin snaps them
+        // back. A UI showing "101%" is worse than showing "100%".
+        let visible = if total == u64::MAX {
+            downloaded
+        } else {
+            downloaded.min(total)
+        };
         FileProgress {
             file_name: self.name.clone(),
-            downloaded_bytes: self.downloaded_bytes.load(Ordering::Relaxed) as i64,
+            downloaded_bytes: visible as i64,
             total_bytes: if total == u64::MAX { -1 } else { total as i64 },
         }
     }
@@ -436,16 +445,24 @@ async fn download_http_deflate(
     // in-flight deflate entry; `file_concurrency` bounds how many run
     // in parallel. Streaming decode on `spawn_blocking` because flate2
     // is sync.
+    //
+    // `downloaded_bytes` is advanced during the fetch (not the decode)
+    // using a scale factor so the progress callback sees a smooth
+    // compressed → uncompressed mapping. DEFLATE's 1:N ratio is stable
+    // within a shard, so the scaled number matches the final
+    // uncompressed size to within a rounding byte.
     let mut compressed: Vec<u8> = Vec::with_capacity(compressed_len as usize);
-    transport
-        .get_range(
-            &url,
-            auth.as_deref(),
-            offset,
-            compressed_len,
-            &mut compressed,
-        )
-        .await?;
+    {
+        let scale = if compressed_len == 0 {
+            1.0
+        } else {
+            uncompressed_size as f64 / compressed_len as f64
+        };
+        let mut counted = CountingSink::scaled(&mut compressed, state.clone(), scale);
+        transport
+            .get_range(&url, auth.as_deref(), offset, compressed_len, &mut counted)
+            .await?;
+    }
 
     if cancel.load(Ordering::SeqCst) {
         return Err(Error::Cancelled);
@@ -455,26 +472,22 @@ async fn download_http_deflate(
         tokio::fs::create_dir_all(parent).await?;
     }
     let out_path = output_path.clone();
-    let state_cl = state.clone();
     let decoded_size = tokio::task::spawn_blocking(move || -> Result<u64> {
         use flate2::write::DeflateDecoder;
         use std::io::Write as IoWrite;
-        let file = std::fs::OpenOptions::new()
+        let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
             .open(&out_path)?;
-        let mut dec = DeflateDecoder::new(CountingWriter {
-            inner: file,
-            state: state_cl,
-        });
+        let mut dec = DeflateDecoder::new(&mut file);
         dec.write_all(&compressed)
-            .map_err(|e| Error::Hub(format!("inflate {name:?}: {e}", name = out_path.display())))?;
-        let counted = dec
-            .finish()
-            .map_err(|e| Error::Hub(format!("inflate finish {:?}: {e}", out_path.display())))?;
-        counted.inner.sync_all()?;
-        Ok(counted.state.downloaded_bytes.load(Ordering::Relaxed))
+            .map_err(|e| Error::Hub(format!("inflate {}: {e}", out_path.display())))?;
+        let written = dec.total_out();
+        dec.finish()
+            .map_err(|e| Error::Hub(format!("inflate finish {}: {e}", out_path.display())))?;
+        file.sync_all()?;
+        Ok(written)
     })
     .await
     .map_err(|e| Error::Http(format!("deflate join: {e}")))??;
@@ -485,38 +498,43 @@ async fn download_http_deflate(
             name
         )));
     }
+    // Snap downloaded_bytes to the exact expected size — the scaled
+    // fetch counter is within a rounding byte but not precise.
+    state
+        .downloaded_bytes
+        .store(uncompressed_size, Ordering::Relaxed);
 
     std::fs::write(&marker_path, [chunk::PROGRESS_DONE_BYTE])?;
 
     Ok(())
 }
 
-struct CountingWriter<W: std::io::Write> {
-    inner: W,
-    state: Arc<FileState>,
-}
-
-impl<W: std::io::Write> std::io::Write for CountingWriter<W> {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let n = self.inner.write(buf)?;
-        self.state
-            .downloaded_bytes
-            .fetch_add(n as u64, Ordering::Relaxed);
-        Ok(n)
-    }
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.inner.flush()
-    }
-}
-
 struct CountingSink<'a, W: tokio::io::AsyncWrite + Unpin + Send> {
     inner: &'a mut W,
     state: Arc<FileState>,
+    /// Multiplier applied to each write's byte count before crediting
+    /// `downloaded_bytes`. `1.0` for raw range downloads (written bytes
+    /// = visible progress); for DEFLATE fetches it's
+    /// `uncompressed_size / compressed_len`, so the progress callback
+    /// sees the fetch advance at the scale the UI expects.
+    scale: f64,
 }
 
 impl<'a, W: tokio::io::AsyncWrite + Unpin + Send> CountingSink<'a, W> {
     fn new(inner: &'a mut W, state: Arc<FileState>) -> Self {
-        Self { inner, state }
+        Self {
+            inner,
+            state,
+            scale: 1.0,
+        }
+    }
+
+    fn scaled(inner: &'a mut W, state: Arc<FileState>, scale: f64) -> Self {
+        Self {
+            inner,
+            state,
+            scale,
+        }
     }
 }
 
@@ -527,12 +545,14 @@ impl<'a, W: tokio::io::AsyncWrite + Unpin + Send> tokio::io::AsyncWrite for Coun
         buf: &[u8],
     ) -> std::task::Poll<std::io::Result<usize>> {
         let state = self.state.clone();
+        let scale = self.scale;
         let inner = std::pin::Pin::new(&mut *self.inner);
         match inner.poll_write(cx, buf) {
             std::task::Poll::Ready(Ok(n)) => {
+                let credited = ((n as f64) * scale).round() as u64;
                 state
                     .downloaded_bytes
-                    .fetch_add(n as u64, Ordering::Relaxed);
+                    .fetch_add(credited, Ordering::Relaxed);
                 std::task::Poll::Ready(Ok(n))
             }
             other => other,

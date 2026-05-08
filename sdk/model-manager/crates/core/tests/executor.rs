@@ -342,3 +342,98 @@ async fn http_deflate_decodes_and_marks_done() {
     let marker = std::fs::read(tmp.path().join("decoded.bin.progress")).unwrap();
     assert_eq!(marker, vec![0x01]);
 }
+
+#[tokio::test]
+async fn http_deflate_progress_scales_to_uncompressed_size() {
+    // Regression guard: the compressed fetch must credit
+    // `downloaded_bytes` scaled to the uncompressed size, otherwise
+    // the user-visible progress sits at 0% through the whole fetch
+    // and only jumps to 100% post-decode.
+    use flate2::write::DeflateEncoder;
+    use flate2::Compression;
+    use std::io::Write as IoWrite;
+
+    let plain = vec![b'A'; 64 * 1024]; // highly compressible → non-1:1 ratio
+    let mut compressed: Vec<u8> = Vec::new();
+    {
+        let mut enc = DeflateEncoder::new(&mut compressed, Compression::default());
+        enc.write_all(&plain).unwrap();
+        enc.finish().unwrap();
+    }
+    let compressed_len = compressed.len() as u64;
+    assert!(
+        compressed_len < plain.len() as u64 / 4,
+        "fixture should compress to well under 25%, got {}/{}",
+        compressed_len,
+        plain.len()
+    );
+
+    let server = MockServer::start().await;
+    let body = compressed.clone();
+    Mock::given(method("HEAD"))
+        .and(path("/blob"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .append_header("Content-Length", body.len().to_string())
+                .append_header("Accept-Ranges", "bytes"),
+        )
+        .mount(&server)
+        .await;
+    let body_arc = Arc::new(body);
+    let body_cl = body_arc.clone();
+    Mock::given(method("GET"))
+        .and(path("/blob"))
+        .respond_with(move |req: &Request| {
+            let (start, len) = parse_range(req);
+            let slice = body_cl[start as usize..(start + len) as usize].to_vec();
+            ResponseTemplate::new(206).set_body_bytes(slice)
+        })
+        .mount(&server)
+        .await;
+
+    let tmp = tempdir().unwrap();
+    let files = vec![FileSpec {
+        name: "scaled.bin".to_string(),
+        size: plain.len() as u64,
+        bytes: BytesSource::HttpDeflate {
+            url: Url::parse(&format!("{}/blob", server.uri())).unwrap(),
+            auth: None,
+            offset: 0,
+            compressed_len,
+        },
+    }];
+
+    let seen: Arc<Mutex<Vec<Vec<FileProgress>>>> = Arc::new(Mutex::new(Vec::new()));
+    let seen_cl = seen.clone();
+    let cb: ProgressCallback = Box::new(move |files: &[FileProgress]| -> bool {
+        seen_cl.lock().unwrap().push(files.to_vec());
+        true
+    });
+
+    Executor::with_config(
+        fast_transport(),
+        ExecutorConfig {
+            file_concurrency: 1,
+            chunk_concurrency: 1,
+            progress_interval: Duration::from_millis(5),
+        },
+    )
+    .run(&files, tmp.path(), Some(&cb))
+    .await
+    .expect("deflate");
+
+    let history = seen.lock().unwrap();
+    let last = history.last().expect("at least one callback");
+    // Terminal snapshot must settle on the exact uncompressed size —
+    // the store-after-decode pin guarantees no rounding drift.
+    assert_eq!(
+        last[0].downloaded_bytes,
+        plain.len() as i64,
+        "final progress should be exact uncompressed size"
+    );
+    assert_eq!(
+        last[0].total_bytes,
+        plain.len() as i64,
+        "total should match uncompressed size"
+    );
+}
