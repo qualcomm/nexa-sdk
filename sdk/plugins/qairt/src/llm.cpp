@@ -199,7 +199,7 @@ int32_t QairtLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
         GENIEX_LOG_ERROR("QAIRT generate: context length exceeded: {}", e.what());
         return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
     }
-    is_first_turn_        = false;
+    is_first_turn_ = false;
 
     // Map result to output
     output->full_text = portable_strdup(result.full_text.c_str());
