@@ -201,10 +201,10 @@ typedef struct {
      * or not a recognised version.
      */
     uint32_t         struct_size;
-    const char*      model_name;  /**< "org/repo" or short alias                    */
-    const char*      quant;       /**< Quantization hint. NULL for auto-select      */
-    geniex_HubSource hub;         /**< Use GENIEX_HUB_AUTO for automatic selection  */
-    geniex_Path      local_path;  /**< Required only when hub == GENIEX_HUB_LOCALFS */
+    const char*      model_name; /**< "org/repo" or short alias                    */
+    const char*      quant;      /**< Quantization hint. NULL for auto-select      */
+    geniex_HubSource hub;        /**< Use GENIEX_HUB_AUTO for automatic selection  */
+    geniex_Path      local_path; /**< Required only when hub == GENIEX_HUB_LOCALFS */
     /**
      * HuggingFace bearer token for this pull. NULL falls back to the
      * `GENIEX_HFTOKEN` environment variable; if that is also unset the
