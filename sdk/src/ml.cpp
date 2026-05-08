@@ -205,7 +205,7 @@ const char* version = build_config::kBridgeVersion;
 
 const char* geniex_version() { return version; }
 
-const char* geniex_qairt_version() { return build_config::kQairtRuntimeVersion; }
+const char* geniex_qairt_version() { return build_config::kQairtVersion; }
 
 // Get Plugin List
 

@@ -3,6 +3,6 @@
 #include "build_config.h"
 
 namespace geniex::build_config {
-const char kBridgeVersion[]       = GENIEX_VERSION;
-const char kQairtRuntimeVersion[] = GENIEX_QAIRT_RUNTIME_VERSION;
+const char kBridgeVersion[] = GENIEX_VERSION;
+const char kQairtVersion[]  = GENIEX_QAIRT_VERSION;
 }  // namespace geniex::build_config
