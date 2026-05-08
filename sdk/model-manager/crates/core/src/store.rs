@@ -227,6 +227,7 @@ mod tests {
             plugin_id: "llama_cpp".to_string(),
             device_id: String::new(),
             min_sdk_version: String::new(),
+            precision: String::new(),
             model_file,
             mmproj_file: ModelFileInfo::default(),
             tokenizer_file: ModelFileInfo::default(),

@@ -243,6 +243,7 @@ pub fn infer_manifest_from_names(
         plugin_id,
         device_id: String::new(),
         min_sdk_version: String::new(),
+        precision: String::new(),
         model_file,
         mmproj_file,
         tokenizer_file,

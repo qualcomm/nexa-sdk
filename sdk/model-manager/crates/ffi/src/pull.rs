@@ -39,6 +39,15 @@ pub struct GeniexModelPullInput {
     /// HuggingFace bearer token (NULL = fall back to GENIEX_HFTOKEN env,
     /// then anonymous). Only meaningful when `hub == GENIEX_HUB_HUGGINGFACE`.
     pub hf_token: *const c_char,
+    /// Target chipset for AI Hub pulls. Required when
+    /// `hub == GENIEX_HUB_S3`; ignored otherwise. Matched against the
+    /// `name` / `aliases` fields of `platform.json`.
+    pub chipset: *const c_char,
+    /// AI Hub `display_name` of the model to download. Required when
+    /// `hub == GENIEX_HUB_S3`; ignored otherwise. `model_name` still
+    /// names the on-disk directory ("org/repo" shape), mirroring the
+    /// Go CLI's `storedName` / `displayName` split.
+    pub display_name: *const c_char,
     pub on_progress: GeniexDownloadProgressCb,
     pub user_data: *mut c_void,
 }
@@ -66,7 +75,21 @@ pub extern "C" fn geniex_model_pull(input: *const GeniexModelPullInput) -> i32 {
                 };
                 HubSource::LocalFs(path)
             }
-            // Other hubs are placeholders — fall back to HuggingFace for now.
+            GeniexHubSource::S3 => {
+                let chipset = match unsafe { cstr_to_str(inp.chipset) } {
+                    Some(s) if !s.is_empty() => s.to_string(),
+                    _ => return GENIEX_ERROR_COMMON_INVALID_INPUT,
+                };
+                let display_name = match unsafe { cstr_to_str(inp.display_name) } {
+                    Some(s) if !s.is_empty() => s.to_string(),
+                    _ => return GENIEX_ERROR_COMMON_INVALID_INPUT,
+                };
+                HubSource::S3 {
+                    display_name,
+                    chipset,
+                }
+            }
+            // ModelScope / Volces remain placeholders — fall back to HuggingFace.
             _ => HubSource::HuggingFace,
         };
 

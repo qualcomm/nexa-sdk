@@ -2,9 +2,11 @@ pub mod hf;
 pub mod hf_metadata;
 pub mod localfs;
 pub mod metadata;
+pub mod s3;
 
 pub use hf_metadata::HfMetadata;
 pub use metadata::{FileSource, HubContext, HubMetadata};
+pub use s3::S3Config;
 
 use std::path::Path;
 
@@ -30,6 +32,20 @@ pub type ProgressCallback = Box<dyn Fn(&[FileProgress]) -> bool + Send + Sync>;
 pub enum HubSource {
     HuggingFace,
     LocalFs(std::path::PathBuf),
+    /// AI Hub qairt runtime assets served out of the public S3 bucket.
+    ///
+    /// * `display_name` — the AI Hub manifest key; matches against the
+    ///   `display_name` field of each `ReleaseManifest.models` entry.
+    /// * `chipset` — user-configured device (e.g. `"SM8650"`), matched
+    ///   against `platform.json` chipsets/aliases before download.
+    ///
+    /// The on-disk directory is named after `PullRequest.model_name`
+    /// (the usual "org/repo" form), mirroring the Go CLI split between
+    /// `storedName` and `displayName`.
+    S3 {
+        display_name: String,
+        chipset: String,
+    },
 }
 
 pub trait ModelHub {

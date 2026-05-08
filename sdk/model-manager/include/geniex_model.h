@@ -191,7 +191,20 @@ typedef struct {
      * download proceeds anonymously (subject to HF rate limits). Only
      * consulted when `hub == GENIEX_HUB_HUGGINGFACE`.
      */
-    const char*                 hf_token;
+    const char* hf_token;
+    /**
+     * Target chipset for AI Hub (qairt) pulls, e.g. "SM8650". Matched
+     * against the name/aliases fields of platform.json. Required when
+     * `hub == GENIEX_HUB_S3`; ignored otherwise.
+     */
+    const char* chipset;
+    /**
+     * AI Hub model `display_name`. Required when `hub == GENIEX_HUB_S3`;
+     * ignored otherwise. `model_name` still names the on-disk directory
+     * ("org/repo" shape), matching the Go CLI's storedName/displayName
+     * split.
+     */
+    const char*                 display_name;
     geniex_download_progress_cb on_progress; /**< NULL to suppress progress reporting           */
     void*                       user_data;   /**< Forwarded to on_progress                      */
 } geniex_ModelPullInput;

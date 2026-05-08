@@ -29,7 +29,9 @@
 use std::fs;
 use std::path::Path;
 
+use crate::config::StoreConfig;
 use crate::error::Result;
+use crate::hub::s3::{pull_ai_hub, S3Config};
 use crate::hub::{hf::HfHub, localfs::LocalFsHub, HubSource, ModelHub, ProgressCallback};
 use crate::manifest::ModelManifest;
 use crate::manifest_builder::{infer_manifest_from_names, ManifestHint};
@@ -54,12 +56,37 @@ pub struct PullRequest {
 pub fn pull(store: &Store, req: PullRequest) -> Result<()> {
     validate_model_name(&req.model_name)?;
 
-    let hub: Box<dyn ModelHub> = match &req.hub {
-        HubSource::HuggingFace => Box::new(HfHub::new(req.hf_token.clone())?),
-        HubSource::LocalFs(path) => Box::new(LocalFsHub::new(path.clone())),
-    };
-
-    store.with_model_lock(&req.model_name, || pull_locked(store, hub.as_ref(), &req))
+    match &req.hub {
+        HubSource::HuggingFace => {
+            let hub = HfHub::new(req.hf_token.clone())?;
+            store.with_model_lock(&req.model_name, || pull_locked(store, &hub, &req))
+        }
+        HubSource::LocalFs(path) => {
+            let hub = LocalFsHub::new(path.clone());
+            store.with_model_lock(&req.model_name, || pull_locked(store, &hub, &req))
+        }
+        HubSource::S3 {
+            display_name,
+            chipset,
+        } => {
+            let cfg = S3Config {
+                endpoint: StoreConfig::ai_hub_base_url(),
+                version: StoreConfig::ai_hub_version(),
+                chipset: chipset.clone(),
+                cache_dir: store.config().ai_hub_cache_dir(),
+                skip_cache: false,
+            };
+            store.with_model_lock(&req.model_name, || {
+                pull_ai_hub(
+                    store,
+                    &req.model_name,
+                    display_name,
+                    cfg,
+                    req.on_progress.as_ref(),
+                )
+            })
+        }
+    }
 }
 
 fn pull_locked(store: &Store, hub: &dyn ModelHub, req: &PullRequest) -> Result<()> {
