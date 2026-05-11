@@ -55,7 +55,10 @@ mod tests {
 
     #[test]
     fn aihub_display_name_matches_qualcomm_org() {
-        assert_eq!(aihub_display_name_from_repo("qualcomm/Qwen3-4B"), Some("Qwen3-4B"));
+        assert_eq!(
+            aihub_display_name_from_repo("qualcomm/Qwen3-4B"),
+            Some("Qwen3-4B")
+        );
     }
 
     #[test]

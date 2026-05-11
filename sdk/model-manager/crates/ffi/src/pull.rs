@@ -115,8 +115,7 @@ pub extern "C" fn geniex_model_pull(input: *const GeniexModelPullInput) -> i32 {
                 // callers may still override via inp.display_name.
                 if let Some(repo) = aihub_display_name_from_repo(&model_name) {
                     PullIntent::AiHub {
-                        display_name: explicit_display_name
-                            .unwrap_or_else(|| repo.to_string()),
+                        display_name: explicit_display_name.unwrap_or_else(|| repo.to_string()),
                         chipset,
                     }
                 } else {
