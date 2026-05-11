@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -57,7 +56,7 @@ func (d *HuggingFace) MaxConcurrency() int {
 		}
 		msg := "Set HF_TOKEN to speed up HuggingFace downloads. " +
 			"Get a token at https://huggingface.co/settings/tokens, then:\n  " + setCmd
-		fmt.Fprintln(os.Stderr, render.GetTheme().Warning.Sprint(msg))
+		fmt.Println(render.GetTheme().Warning.Sprint(msg))
 	})
 	return 1
 }
