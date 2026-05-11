@@ -17,6 +17,7 @@ package model_hub
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -235,10 +236,45 @@ func (h *AIHub) PostDownload(ctx context.Context, name, outputDir string, mf *ty
 		mf.ExtraFiles = append(mf.ExtraFiles, f)
 	}
 
+	// Detect model type from metadata.json if present.
+	// supports_vision absent or false → LLM; true → VLM.
+	if mf.ModelType == "" {
+		mf.ModelType = detectModelTypeFromDir(outputDir)
+	}
+
 	h.mu.Lock()
 	delete(h.resolved, name)
 	h.mu.Unlock()
 	return nil
+}
+
+// aiHubMetaJSON is the minimal subset of metadata.json needed for type detection.
+type aiHubMetaJSON struct {
+	Genie *struct {
+		SupportsVision bool `json:"supports_vision"`
+	} `json:"genie"`
+}
+
+// detectModelTypeFromDir reads metadata.json from dir and returns VLM when
+// supports_vision is true, LLM otherwise (including when the file is absent
+// or unparseable — both are valid LLM cases).
+func detectModelTypeFromDir(dir string) types.ModelType {
+	data, err := os.ReadFile(filepath.Join(dir, "metadata.json"))
+	if err != nil {
+		slog.Debug("aihub: no metadata.json, treating as LLM", "dir", dir)
+		return types.ModelTypeLLM
+	}
+	var meta aiHubMetaJSON
+	if err := json.Unmarshal(data, &meta); err != nil {
+		slog.Warn("aihub: failed to parse metadata.json, treating as LLM", "err", err)
+		return types.ModelTypeLLM
+	}
+	if meta.Genie != nil && meta.Genie.SupportsVision {
+		slog.Info("aihub: detected VLM via metadata.json supports_vision")
+		return types.ModelTypeVLM
+	}
+	slog.Debug("aihub: supports_vision=false, treating as LLM")
+	return types.ModelTypeLLM
 }
 
 // formatMatchError turns aihub.ChipsetNotAvailableError into a friendlier

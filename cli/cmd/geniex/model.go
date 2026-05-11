@@ -300,13 +300,16 @@ func pullModel(name string, quant string) error {
 			return err
 		}
 
-		if manifest.ModelType == "" {
-			manifest.ModelType = inferModelTypeFromManifest(&manifest)
-		}
-
-		det := store.ModelTypeDetection{Detected: manifest.ModelType}
-		if manifest.MMProjFile.Name == "" {
-			det.Err = fmt.Errorf("no mmproj file found in repository")
+		switch manifest.PluginId {
+		case "llama_cpp":
+			// For GGUF models, presence of an mmproj file indicates VLM.
+			if manifest.ModelType == "" {
+				manifest.ModelType = inferModelTypeFromManifest(&manifest)
+			}
+		case "qairt":
+			// For AI Hub models, type is detected from metadata.json inside the
+			// zip by PostDownload. Leave ModelType blank here; re-read the
+			// manifest after Pull to surface the detected type to the user.
 		}
 
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
@@ -322,6 +325,15 @@ func pullModel(name string, quant string) error {
 			bar.Clear()
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			return err
+		}
+
+		// For qairt models the type was written to disk by PostDownload;
+		// re-read the manifest so we can report the correct detected type.
+		det := store.ModelTypeDetection{Detected: manifest.ModelType}
+		if manifest.PluginId == "qairt" {
+			if updated, err := s.GetManifest(name); err == nil {
+				det.Detected = updated.ModelType
+			}
 		}
 
 		printModelTypeDetection(name, det)
