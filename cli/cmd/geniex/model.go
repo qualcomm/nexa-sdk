@@ -58,13 +58,14 @@ func pull() *cobra.Command {
 	pullCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	pullCmd.Flags().SortFlags = false
-	pullCmd.Flags().StringVarP(&modelHub, "model-hub", "", "", "specify model hub to use: volces|modelscope|s3|hf|localfs")
+	pullCmd.Flags().StringVarP(&modelHub, "model-hub", "", "", "specify model hub to use: aihub|hf|localfs")
 	pullCmd.Flags().StringVarP(&localPath, "local-path", "", "", "[localfs] path to local directory")
 	pullCmd.Flags().StringVarP(&modelType, "model-type", "", "", "specify model type to use: [llm|vlm]")
 
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
 		name, quant := normalizeModelName(args[0])
 		if err := pullModel(name, quant); err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to pull model: %s", err))
 			os.Exit(1)
 		}
 	}
