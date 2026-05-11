@@ -72,8 +72,6 @@ func Get() *Config {
 	c := &Config{}
 	viper.Unmarshal(c)
 
-	// HF_TOKEN is the standard HuggingFace env var and takes priority;
-	// GENIEX_HFTOKEN stays supported for backward compatibility.
 	if t := os.Getenv("HF_TOKEN"); t != "" {
 		c.HFToken = t
 	}

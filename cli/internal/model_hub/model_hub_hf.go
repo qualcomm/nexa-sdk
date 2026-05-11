@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
@@ -50,14 +51,12 @@ func (d *HuggingFace) MaxConcurrency() int {
 		return 8
 	}
 	hfTokenWarnOnce.Do(func() {
-		msg := "No HuggingFace token detected. Set one to:\n" +
-			"  - speed up downloads (parallel chunks instead of 1)\n" +
-			"  - access gated models (Llama, Gemma, etc.)\n" +
-			"Get a token: https://huggingface.co/settings/tokens\n" +
-			"Set it:\n" +
-			"  Windows (PowerShell): $env:HF_TOKEN=\"hf_...\"\n" +
-			"  Linux/macOS:          export HF_TOKEN=hf_...\n" +
-			"(GENIEX_HFTOKEN is also accepted for backward compatibility.)"
+		setCmd := `export HF_TOKEN=hf_...`
+		if runtime.GOOS == "windows" {
+			setCmd = `$env:HF_TOKEN="hf_..."`
+		}
+		msg := "Set HF_TOKEN to speed up HuggingFace downloads. " +
+			"Get a token at https://huggingface.co/settings/tokens, then:\n  " + setCmd
 		fmt.Fprintln(os.Stderr, render.GetTheme().Warning.Sprint(msg))
 	})
 	return 1
