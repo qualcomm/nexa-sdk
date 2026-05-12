@@ -72,22 +72,23 @@ val copyBridgeLibs = tasks.register<Copy>("copyBridgeLibs") {
         include("libgeniex_core.so", "libgeniex_plugin.so")
         rename("libgeniex_plugin\\.so", "libgeniex_plugin_qairt.so")
     }
-    // Do NOT copy from qairt/htp-files/: the Windows CLI package ships
-    // Hexagon DSP (32-bit) binaries there for FastRPC, which Android's
-    // linker then rejects out of arm64-v8a/. Instead, pull the ARM64
-    // CPU-side QAIRT client libs from the qairt submodule's Android
-    // third-party dir (these are what the qairt plugin dlopens).
+    // Do NOT copy from qairt/htp-files/: that dir is populated by the
+    // Windows CLI package install and ships Hexagon DSP (32-bit)
+    // binaries whose basenames collide with the Android CPU-side libs
+    // (libQnnSystem.so, libQnnSaver.so). Android's loader then rejects
+    // them with "is 32-bit instead of 64-bit" when QAIRT dlopens them.
+    //
+    // Instead, pull from the qairt submodule's Android third-party dir
+    // which ships both the ARM64 CPU libs and DSP skels under
+    // non-colliding names:
+    //   - CPU ARM64: libQnnSystem.so, libQnnHtp*.so (dlopen'd by us)
+    //   - DSP:      libQnnHtpV??.so, libQnnHtpV??Skel.so, libCalculator_skel.so
+    //               (loaded by FastRPC on the Hexagon side; named so they
+    //               never collide with CPU libs, so Android happily
+    //               ships them alongside the ARM64 ones without trying
+    //               to dlopen them in the main process).
     from(File(projectDir, "../../../third-party/geniex-qairt/third-party/android")) {
         include("*.so")
-        // Skip DSP skels and Hexagon-only binaries (32-bit); leave those
-        // to GeniexSdk.extractHtpAssets which unpacks them from assets/.
-        exclude("libCalculator_skel.so")
-        exclude("libQnnHtpV??Skel.so")
-        exclude("libQnnHtpV??.so")
-        exclude("libQnnHtpV??QemuDriver.so")
-        exclude("libQnnNetRunDirectV??Skel.so")
-        exclude("libSnpeHtpV??Skel.so")
-        exclude("libqnnhtpv??.cat")
     }
     from(File(projectDir, "extLibs/arm64-v8a")) { include("*.so") }
     into(jniOutDir)
