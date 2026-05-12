@@ -83,10 +83,9 @@ func ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, *types.M
 	}
 
 	// check manifest available
-	const manifestFile = "geniex.json"
 	var hasManifest bool
 	for i := 0; i < len(files); i++ {
-		if files[i].Name == manifestFile {
+		if files[i].Name == types.ManifestFileName {
 			files = append(files[:i], files[i+1:]...)
 			hasManifest = true
 			break
@@ -97,7 +96,7 @@ func ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, *types.M
 	}
 
 	// parse manifest
-	data, err := GetFileContent(ctx, modelName, manifestFile)
+	data, err := GetFileContent(ctx, modelName, types.ManifestFileName)
 	if err != nil {
 		slog.Warn("failed to get manifest file, ignore", "error", err)
 		return nil, nil, err
@@ -333,7 +332,7 @@ func StartDownloadURL(ctx context.Context, urlStr, outputDir, dstName string, si
 		outPath := filepath.Join(outputDir, dstName)
 		markerPath := outPath + ProgressSuffix
 
-		hd := downloader.NewDownloader("")
+		hd := downloader.NewDownloader()
 		fetch := func(ctx context.Context, offset, limit int64, w io.Writer) error {
 			return hd.DownloadChunk(ctx, urlStr, offset, limit, w)
 		}

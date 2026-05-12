@@ -24,21 +24,26 @@ import (
 	"time"
 
 	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/fasthttpproxy"
 )
 
 type HTTPDownloader struct {
-	authToken    string
-	maxRedirects int
+	// AuthToken is sent as a Bearer token and stripped when a redirect crosses
+	// to a different host (presigned S3/Azure URLs 400/404 on unexpected auth).
+	AuthToken string
+	// Headers are applied to every request and follow all redirects — use for
+	// static, non-sensitive headers like Accept.
+	Headers map[string]string
 
+	maxRedirects int
 	maxRetries   int
 	retryDelayMs int
 
 	fasthttp.Client
 }
 
-func NewDownloader(authToken string) *HTTPDownloader {
+func NewDownloader() *HTTPDownloader {
 	return &HTTPDownloader{
-		authToken:    authToken,
 		maxRedirects: 3,
 		maxRetries:   3,
 		retryDelayMs: 1000,
@@ -47,25 +52,47 @@ func NewDownloader(authToken string) *HTTPDownloader {
 			MaxIdemponentCallAttempts: 3,
 			ReadBufferSize:            64 * 1024,
 			WriteBufferSize:           64 * 1024,
+			// Respect HTTP_PROXY / HTTPS_PROXY / NO_PROXY (and lowercase variants).
+			Dial: fasthttpproxy.FasthttpProxyHTTPDialerTimeout(10 * time.Second),
 		},
 	}
 }
 
-func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, limit int64, writer io.Writer) error {
+// sameHost reports whether two URLs share the same host (case-insensitive).
+// Used to decide whether Authorization headers should survive a redirect.
+func sameHost(a, b string) bool {
+	ua, err := url.Parse(a)
+	if err != nil {
+		return false
+	}
+	ub, err := url.Parse(b)
+	if err != nil {
+		return false
+	}
+	return ua.Hostname() == ub.Hostname()
+}
+
+func (d *HTTPDownloader) DownloadChunk(ctx context.Context, reqURL string, offset, limit int64, writer io.Writer) error {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
+	originalURL := reqURL
 	for range d.maxRedirects {
 		req.Reset()
 		resp.Reset()
 
-		req.SetRequestURI(url)
+		req.SetRequestURI(reqURL)
 		req.Header.SetMethod(fasthttp.MethodGet)
 		req.Header.Set("User-Agent", "GenieX-CLI/0.0")
-		if d.authToken != "" {
-			req.Header.Set("Authorization", "Bearer "+d.authToken)
+		for k, v := range d.Headers {
+			req.Header.Set(k, v)
+		}
+		// Strip Authorization when following a cross-host redirect: presigned
+		// S3/Azure URLs 400/404 on unexpected auth headers.
+		if d.AuthToken != "" && sameHost(reqURL, originalURL) {
+			req.Header.Set("Authorization", "Bearer "+d.AuthToken)
 		}
 		if limit > 0 {
 			req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1))
@@ -106,7 +133,7 @@ func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, 
 			if len(location) == 0 {
 				return fmt.Errorf("redirect status %d with no Location", resp.StatusCode())
 			}
-			url = resolveRelativeURL(url, string(location))
+			reqURL = resolveRelativeURL(reqURL, string(location))
 			continue
 		}
 

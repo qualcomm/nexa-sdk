@@ -70,10 +70,6 @@ dependencies {
 
     implementation(project(":geniex-bindings"))
     implementation(project(":transform"))
-    implementation(":okdownload-core@aar")
-    implementation(":okdownload-sqlite@aar")
-    implementation(":okdownload-okhttp@aar")
-    implementation(":okdownload-ktx@aar")
     implementation(kotlin("reflect"))
     implementation(libs.glide)
     implementation(libs.gson)
@@ -89,7 +85,6 @@ dependencies {
     implementation(libs.imm.bar)
     implementation(libs.imm.bar.ktx)
     implementation(libs.auto.size)
-    implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

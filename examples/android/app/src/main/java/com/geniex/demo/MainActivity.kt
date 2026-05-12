@@ -5,7 +5,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -17,7 +16,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
-import android.system.Os
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -41,32 +39,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.gyf.immersionbar.ktx.immersionBar
 import com.hjq.toast.Toaster
-import com.liulishuo.okdownload.DownloadContext
-import com.liulishuo.okdownload.DownloadTask
-import com.liulishuo.okdownload.OkDownload
-import com.liulishuo.okdownload.core.cause.EndCause
-import com.liulishuo.okdownload.core.connection.DownloadOkHttp3Connection
-import com.liulishuo.okdownload.kotlin.listener.createDownloadContextListener
-import com.liulishuo.okdownload.kotlin.listener.createListener1
-import com.geniex.demo.bean.DownloadableFile
-import com.geniex.demo.bean.DownloadableFileWithFallback
-import com.geniex.demo.bean.DownloadState
 import com.geniex.demo.bean.ModelData
-import com.geniex.demo.bean.downloadableFiles
-import com.geniex.demo.bean.downloadableFilesWithFallback
-import com.geniex.demo.bean.getGeniexManifest
-import com.geniex.demo.bean.getNonExistModelFile
 import com.geniex.demo.bean.getSupportPluginIds
 import com.geniex.demo.bean.isNpuModel
-import com.geniex.demo.bean.mmprojTokenFile
-import com.geniex.demo.bean.modelDir
-import com.geniex.demo.bean.modelFile
-import com.geniex.demo.bean.tokenFile
-import com.geniex.demo.bean.withFallbackUrls
-import com.geniex.demo.utils.ModelFileListingUtil
 import com.geniex.demo.databinding.ActivityMainBinding
 import com.geniex.demo.databinding.DialogSelectPluginIdBinding
 import com.geniex.demo.listeners.CustomDialogInterface
@@ -79,6 +56,7 @@ import com.geniex.sdk.CvWrapper
 import com.geniex.sdk.EmbedderWrapper
 import com.geniex.sdk.LlmWrapper
 import com.geniex.sdk.GeniexSdk
+import com.geniex.sdk.ModelManagerWrapper
 import com.geniex.sdk.RerankerWrapper
 import com.geniex.sdk.VlmWrapper
 import com.geniex.sdk.bean.AsrCreateInput
@@ -89,9 +67,11 @@ import com.geniex.sdk.bean.CVModelConfig
 import com.geniex.sdk.bean.ChatMessage
 import com.geniex.sdk.bean.EmbedderCreateInput
 import com.geniex.sdk.bean.EmbeddingConfig
+import com.geniex.sdk.bean.HubSource
 import com.geniex.sdk.bean.LlmCreateInput
 import com.geniex.sdk.bean.LlmStreamResult
 import com.geniex.sdk.bean.ModelConfig
+import com.geniex.sdk.bean.ModelPullInput
 import com.geniex.sdk.bean.RerankConfig
 import com.geniex.sdk.bean.RerankerCreateInput
 import com.geniex.sdk.bean.VlmChatMessage
@@ -100,31 +80,18 @@ import com.geniex.sdk.bean.VlmCreateInput
 import com.geniex.sdk.bean.DeviceIdValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
-import java.security.SecureRandom
-import java.security.cert.CertificateException
-import java.security.cert.X509Certificate
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSession
-import javax.net.ssl.SSLSocketFactory
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 
 class MainActivity : FragmentActivity() {
 
     private val binding: ActivityMainBinding by inflate()
-    private var downloadContext: DownloadContext? = null
-    private var downloadState = DownloadState.IDLE
+    private var downloadJob: Job? = null
     private var downloadingModelData: ModelData? = null
-    private lateinit var spDownloaded: SharedPreferences
     private lateinit var llDownloading: LinearLayout
     private lateinit var tvDownloadProgress: TextView
     private lateinit var pbDownloading: ProgressBar
@@ -188,7 +155,6 @@ class MainActivity : FragmentActivity() {
             statusBarDarkFont(true)
         }
         requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
-        okdownload()
         initData()
         initView()
         setListeners()
@@ -296,20 +262,10 @@ class MainActivity : FragmentActivity() {
     }
 
     /**
-     * Step 0. Preparing to download the model file.
+     * Step 0. Parse the model list and initialise the SDK. Model presence
+     * is queried from the Rust model manager, not tracked client-side.
      */
     private fun initData() {
-        spDownloaded = getSharedPreferences(SP_DOWNLOADED, MODE_PRIVATE)
-//        spDownloaded.edit().putBoolean("Qwen3-0.6B-Q8_0", false).commit()
-//        spDownloaded.edit().putBoolean("Qwen3-0.6B-IQ4_NL", false).commit()
-//        spDownloaded.edit().putBoolean("LFM2-1.2B-npu", false).commit()
-//        spDownloaded.edit().putBoolean("embeddinggemma-300m-npu", false).commit()
-//        spDownloaded.edit().putBoolean("jina-v2-rerank-npu", false).commit()
-//        spDownloaded.edit().putBoolean("paddleocr-npu", false).commit()
-//        spDownloaded.edit().putBoolean("parakeet-tdt-0.6b-v3-npu", false).commit()
-//        spDownloaded.edit().putBoolean("OmniNeural-4B", false).commit()
-//        spDownloaded.edit().putBoolean("Granite-4.0-h-350M-NPU", false).commit()
-//        spDownloaded.edit().putBoolean("Granite-4-Micro-NPU", false).commit()
         parseModelList()
         //
         initGeniexSdk()
@@ -373,10 +329,6 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         vlmChatList.add(vlmSystemPrompty)
     }
 
-    private fun getHfToken(model: ModelData, url: String): String? {
-        // Replace with your own HuggingFace token if needed for private models
-        return null
-    }
 
     private fun onLoadModelSuccess(tip: String) {
         runOnUiThread {
@@ -411,19 +363,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
     private fun onLoadModelFailed(tip: String) {
         runOnUiThread {
             vTip.visibility = View.GONE
-
-            // Check if files exist locally first
-            val selectModelData = modelList.firstOrNull { it.id == selectModelId }
-            val fileName = isModelDownloaded(selectModelData!!)
-            val filesExist = fileName == null
-
-            if (!filesExist) {
-                Toaster.showLong("The \"$fileName\" file is missing. Please download it first.")
-            } else {
-                Toast.makeText(this@MainActivity, tip, Toast.LENGTH_SHORT)
-                    .show()
-            }
-
+            Toast.makeText(this@MainActivity, tip, Toast.LENGTH_SHORT).show()
             // change UI
             btnAddImage.visibility = View.INVISIBLE
             btnAudioRecord.visibility = View.INVISIBLE
@@ -438,20 +378,12 @@ Note: You must use the campaign_investigation function whenever a customer asks 
     }
 
     /**
-     * Helper function to check if model files exist locally
-     * @return null if all files exist locally. or file's name which is missing.
+     * Checks the Rust model manager's cache for [modelData]. The
+     * manager filters out `.inflight/` entries, so a cancelled download
+     * returns `false` here until it completes.
      */
-    private fun isModelDownloaded(modelData: ModelData): String? {
-        val modelDir = modelData.modelDir(this@MainActivity)
-        val fileName = modelData.getNonExistModelFile(modelDir)
-        val filesExist = fileName == null
-        // Sync SharedPreferences with actual file existence
-        if (filesExist && !spDownloaded.getBoolean(modelData.id, false)) {
-            Log.d(TAG, "Model files found locally for ${modelData.id}, updating SharedPreferences")
-            spDownloaded.edit().putBoolean(modelData.id, true).commit()
-        }
-
-        return fileName
+    private suspend fun isModelDownloaded(modelData: ModelData): Boolean {
+        return ModelManagerWrapper.list().contains(modelData.modelName)
     }
 
     /**
@@ -545,25 +477,30 @@ Note: You must use the campaign_investigation function whenever a customer asks 
     ) {
         modelScope.launch {
             resetLoadState()
-            val geniexManifestBean = selectModelData.getGeniexManifest(this@MainActivity)
-            val pluginId = geniexManifestBean?.PluginId ?: modelDataPluginId
-            when (geniexManifestBean?.ModelType ?: selectModelData.type) {
+            val paths = ModelManagerWrapper.getPaths(selectModelData.modelName)
+            if (paths == null) {
+                onLoadModelFailed("model paths unavailable — pull it first")
+                return@launch
+            }
+            // Manifest-written plugin_id wins when present; fall back to
+            // the user's UI selection for GGUF models that skip the manifest.
+            val pluginId = paths.plugin_id.ifEmpty { modelDataPluginId }
+            val resolvedDeviceId = deviceId ?: paths.device_id
+            when (selectModelData.type) {
                 "chat", "llm" -> {
-
                     val conf = ModelConfig(
                         nCtx = 1024,
                         nGpuLayers = nGpuLayers,
                         enable_thinking = enableThinking,
                     )
-                    // Build and initialize LlmWrapper for chat model
                     LlmWrapper.builder().llmCreateInput(
                         LlmCreateInput(
-                            model_name = geniexManifestBean?.ModelName ?: "",
-                            model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                            tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
+                            model_name = paths.model_name,
+                            model_path = paths.model_path,
+                            tokenizer_path = paths.tokenizer_path,
                             config = conf,
                             plugin_id = pluginId,
-                            device_id = deviceId ?: DeviceIdValue.NPU.value
+                            device_id = resolvedDeviceId ?: DeviceIdValue.NPU.value,
                         )
                     ).build().onSuccess { wrapper ->
                         isLoadLlmModel = true
@@ -572,24 +509,20 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     }.onFailure { error ->
                         onLoadModelFailed(error.message.toString())
                     }
-
                 }
 
                 "embedder" -> {
-                    // Handle embedder model loading with NPU paths using EmbedderCreateInput
-                    // embed-gemma
-                    val embedderCreateInput = EmbedderCreateInput(
-                        model_name = geniexManifestBean?.ModelName
-                            ?: "",  // Model name for NPU plugin
-                        model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                        tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
-                        config = ModelConfig(nGpuLayers = nGpuLayers),
-                        plugin_id = pluginId,
-                        device_id = DeviceIdValue.CPU.value
-                    )
-
                     EmbedderWrapper.builder()
-                        .embedderCreateInput(embedderCreateInput)
+                        .embedderCreateInput(
+                            EmbedderCreateInput(
+                                model_name = paths.model_name,
+                                model_path = paths.model_path,
+                                tokenizer_path = paths.tokenizer_path,
+                                config = ModelConfig(nGpuLayers = nGpuLayers),
+                                plugin_id = pluginId,
+                                device_id = resolvedDeviceId ?: DeviceIdValue.CPU.value,
+                            )
+                        )
                         .build().onSuccess { wrapper ->
                             isLoadEmbedderModel = true
                             embedderWrapper = wrapper
@@ -597,24 +530,20 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }.onFailure { error ->
                             onLoadModelFailed(error.message.toString())
                         }
-
                 }
 
                 "reranker" -> {
-                    // Handle reranker model loading with NPU paths using RerankerCreateInput
-                    // jina-v2-rerank-npu
-                    val rerankerCreateInput = RerankerCreateInput(
-                        model_name = geniexManifestBean?.ModelName
-                            ?: "",  // Model name for NPU plugin
-                        model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                        tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
-                        config = ModelConfig(nGpuLayers = nGpuLayers),
-                        plugin_id = pluginId,
-                        device_id = DeviceIdValue.CPU.value
-                    )
-
                     RerankerWrapper.builder()
-                        .rerankerCreateInput(rerankerCreateInput)
+                        .rerankerCreateInput(
+                            RerankerCreateInput(
+                                model_name = paths.model_name,
+                                model_path = paths.model_path,
+                                tokenizer_path = paths.tokenizer_path,
+                                config = ModelConfig(nGpuLayers = nGpuLayers),
+                                plugin_id = pluginId,
+                                device_id = resolvedDeviceId ?: DeviceIdValue.CPU.value,
+                            )
+                        )
                         .build().onSuccess { wrapper ->
                             isLoadRerankerModel = true
                             rerankerWrapper = wrapper
@@ -622,23 +551,22 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }.onFailure { error ->
                             onLoadModelFailed(error.message.toString())
                         }
-
                 }
 
                 "cv" -> {
-                    // paddleocr-npu
-                    val cvCreateInput = CVCreateInput(
-                        model_name = geniexManifestBean?.ModelName ?: "",
-                        config = CVModelConfig(
-                            capabilities = CVCapability.OCR,
-                            det_model_path = selectModelData.modelDir(this@MainActivity).absolutePath,
-                            rec_model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                            char_dict_path = selectModelData.modelDir(this@MainActivity).absolutePath,
-                        ),
-                        plugin_id = pluginId
-                    )
                     CvWrapper.builder()
-                        .createInput(cvCreateInput)
+                        .createInput(
+                            CVCreateInput(
+                                model_name = paths.model_name,
+                                config = CVModelConfig(
+                                    capabilities = CVCapability.OCR,
+                                    det_model_path = paths.model_dir,
+                                    rec_model_path = paths.model_path,
+                                    char_dict_path = paths.model_dir,
+                                ),
+                                plugin_id = pluginId,
+                            )
+                        )
                         .build().onSuccess {
                             isLoadCVModel = true
                             cvWrapper = it
@@ -649,17 +577,15 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 }
 
                 "asr" -> {
-                    // ADD: Handle ASR model loading
-                    // parakeet-tdt-0.6b-v3-npu
-                    val asrCreateInput = AsrCreateInput(
-                        model_name = geniexManifestBean?.ModelName ?: "",
-                        model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                        config = ModelConfig(nGpuLayers = nGpuLayers),
-                        plugin_id = pluginId
-                    )
-
                     AsrWrapper.builder()
-                        .asrCreateInput(asrCreateInput)
+                        .asrCreateInput(
+                            AsrCreateInput(
+                                model_name = paths.model_name,
+                                model_path = paths.model_path,
+                                config = ModelConfig(nGpuLayers = nGpuLayers),
+                                plugin_id = pluginId,
+                            )
+                        )
                         .build().onSuccess { wrapper ->
                             isLoadAsrModel = true
                             asrWrapper = wrapper
@@ -670,14 +596,9 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 }
 
                 "multimodal", "vlm" -> {
-                    // VLM model
-                    val isNpuVlm = geniexManifestBean?.PluginId == "qairt"
+                    val isNpuVlm = pluginId == "qairt"
                     val config = if (isNpuVlm) {
-                        ModelConfig(
-                            nCtx = 2048,
-                            nThreads = 8,
-                            enable_thinking = enableThinking,
-                        )
+                        ModelConfig(nCtx = 2048, nThreads = 8, enable_thinking = enableThinking)
                     } else {
                         ModelConfig(
                             nCtx = 1024,
@@ -685,21 +606,20 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             nBatch = 1,
                             nUBatch = 1,
                             nGpuLayers = nGpuLayers,
-                            enable_thinking = enableThinking
+                            enable_thinking = enableThinking,
                         )
                     }
-
-                    val vlmCreateInput = VlmCreateInput(
-                        model_name = geniexManifestBean?.ModelName ?: "",
-                        model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                        mmproj_path = selectModelData.mmprojTokenFile(this@MainActivity)?.absolutePath,
-                        config = config,
-                        plugin_id = pluginId,
-                        device_id = "HTP0"
-                    )
-
                     VlmWrapper.builder()
-                        .vlmCreateInput(vlmCreateInput)
+                        .vlmCreateInput(
+                            VlmCreateInput(
+                                model_name = paths.model_name,
+                                model_path = paths.model_path,
+                                mmproj_path = paths.mmproj_path,
+                                config = config,
+                                plugin_id = pluginId,
+                                device_id = resolvedDeviceId ?: "HTP0",
+                            )
+                        )
                         .build().onSuccess {
                             isLoadVlmModel = true
                             vlmWrapper = it
@@ -717,341 +637,73 @@ Note: You must use the campaign_investigation function whenever a customer asks 
     }
 
     private fun downloadModel(selectModelData: ModelData) {
-        // Check local files first before SharedPreferences
-        val fileName = isModelDownloaded(selectModelData)
-        if (fileName == null || hasLoadedModel()) {
-            Toast.makeText(this@MainActivity, "model already downloaded", Toast.LENGTH_SHORT)
-                .show()
-        } else {
-            downloadState = DownloadState.DOWNLOADING
-            downloadingModelData = selectModelData
-            llDownloading.visibility = View.VISIBLE
-            tvDownloadProgress.text = "0%"
-            modelScope.launch {
-                val selectModelData = modelList.first { it.id == selectModelId }
-                val unsafeClient = getUnsafeOkHttpClient().build()
+        if (hasLoadedModel()) {
+            Toast.makeText(this@MainActivity, "unload the current model first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (downloadJob?.isActive == true) {
+            Toaster.show("${downloadingModelData?.displayName ?: "a model"} is already downloading")
+            return
+        }
 
-                // Track URL mapping for fallback: primary URL -> fallback URL
-                val fallbackUrlMap = mutableMapOf<String, String>()
-                // Track failed downloads for fallback retry
-                val failedDownloads = mutableListOf<DownloadableFileWithFallback>()
+        downloadingModelData = selectModelData
+        llDownloading.visibility = View.VISIBLE
+        tvDownloadProgress.text = "0%"
 
-                // For NPU models without explicit files list, fetch file list with fallback support
-                val filesToDownloadWithFallback: List<DownloadableFileWithFallback> =
-                    if (selectModelData.isNpuModel() &&
-                        selectModelData.files.isNullOrEmpty() &&
-                        !selectModelData.baseUrl.isNullOrEmpty()
-                    ) {
+        val hub = runCatching { HubSource.valueOf(selectModelData.hub ?: "AUTO") }
+            .getOrDefault(HubSource.AUTO)
+        // AI Hub pulls route through chipset-matched assets. The Rust side
+        // can auto-detect the host only on Windows-on-Snapdragon, so on
+        // Android we must pass an explicit chipset for anything that ends
+        // up on the AI Hub path — whether hub is AIHUB or AUTO + qualcomm/*.
+        val willUseAiHub = hub == HubSource.AIHUB ||
+            (hub == HubSource.AUTO && selectModelData.modelName.startsWith("qualcomm/"))
+        if (willUseAiHub && selectModelData.chipset.isNullOrBlank()) {
+            llDownloading.visibility = View.GONE
+            Toaster.show("AI Hub models require a chipset. Update model_list.json.")
+            return
+        }
+        val input = ModelPullInput(
+            model_name = selectModelData.modelName,
+            quant = selectModelData.quant,
+            hub = hub,
+            chipset = selectModelData.chipset,
+            display_name = selectModelData.aiHubDisplayName,
+        )
 
-                        Log.d(TAG, "NPU model detected, fetching file list: ${selectModelData.baseUrl}")
+        downloadJob = modelScope.launch {
+            // Short-circuit if already cached — the manager filters .inflight/
+            // models out of list(), so this only matches a complete pull.
+            if (isModelDownloaded(selectModelData)) {
+                runOnUiThread {
+                    llDownloading.visibility = View.GONE
+                    Toast.makeText(this@MainActivity, "model already downloaded", Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
 
-                        // Fetch file list with fallback support
-                        val result = ModelFileListingUtil.listFilesWithFallback(selectModelData.baseUrl!!, unsafeClient)
-
-                        if (result.files.isEmpty()) {
-                            Log.e(TAG, "Failed to fetch file list for ${selectModelData.id}")
-                            runOnUiThread {
-                                downloadState = DownloadState.IDLE
-                                llDownloading.visibility = View.GONE
-                                Toaster.show("Failed to fetch file list.")
-                            }
-                            return@launch
-                        }
-
-                        val useHfUrls = result.source == ModelFileListingUtil.FileListResult.Source.HUGGINGFACE
-                        Log.d(TAG, "Found ${result.files.size} files from ${result.source}: ${result.files}")
-
-                        selectModelData.downloadableFilesWithFallback(
-                            selectModelData.modelDir(this@MainActivity),
-                            result.files,
-                            useHfUrls
-                        )
-                    } else {
-                        // For non-NPU models or models with explicit files, use the original method with fallback
-                        selectModelData.downloadableFiles(selectModelData.modelDir(this@MainActivity))
-                            .withFallbackUrls()
+            ModelManagerWrapper.pullFlow(input).collect { event ->
+                when (event) {
+                    is ModelManagerWrapper.PullEvent.Progress -> {
+                        val total = event.files.sumOf { if (it.total_bytes > 0) it.total_bytes else 0L }
+                        val done = event.files.sumOf { it.downloaded_bytes }
+                        val percent = if (total > 0) ((done * 100) / total).toInt() else 0
+                        runOnUiThread { tvDownloadProgress.text = "$percent%" }
                     }
-
-                // Build fallback URL map
-                filesToDownloadWithFallback.forEach {
-                    fallbackUrlMap[it.primaryUrl] = it.fallbackUrl
-                }
-
-                // Convert to simple DownloadableFile for initial download attempt
-                val filesToDownload = filesToDownloadWithFallback.map {
-                    DownloadableFile(it.file, it.primaryUrl)
-                }
-
-                Log.d(TAG, "filesToDownload: $filesToDownload")
-                if (filesToDownload.isEmpty()) throw IllegalArgumentException("No download URL")
-
-                fun getUrlFileSize(client: OkHttpClient, url: String): Long {
-                    val hostname = try {
-                        url.substringAfter("://").substringBefore("/")
-                    } catch (e: Exception) {
-                        "unknown"
-                    }
-
-                    Log.d(TAG, "Requesting file size: $hostname")
-
-                    val builder = Request.Builder().url(url).head()
-                    getHfToken(selectModelData, url)?.let {
-                        builder.addHeader("Authorization", "Bearer $it")
-                    }
-                    val request = builder.build()
-                    try {
-                        client.newCall(request).execute().use { resp ->
-                            val size = resp.header("Content-Length")?.toLongOrNull() ?: 0L
-                            Log.d(TAG, "Response: code=${resp.code}, size=$size")
-                            return size
-                        }
-                    } catch (e: java.net.UnknownHostException) {
-                        Log.e(TAG, "DNS resolution failed for $hostname - Check DNS/network")
-                        return 0L
-                    } catch (e: java.net.SocketTimeoutException) {
-                        Log.e(TAG, "Connection timeout to $hostname - Possible firewall/proxy issue")
-                        return 0L
-                    } catch (e: java.net.ConnectException) {
-                        Log.e(TAG, "Connection refused by $hostname - Server unreachable")
-                        return 0L
-                    } catch (e: javax.net.ssl.SSLException) {
-                        Log.e(TAG, "SSL/TLS error to $hostname - ${e.message}")
-                        return 0L
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Network error: ${e.javaClass.simpleName} - ${e.message}")
-                        return 0L
-                    }
-                }
-
-                // Try to get file sizes, with fallback to HF if S3 fails
-                val fileSizeMap = mutableMapOf<String, Long>()
-                filesToDownloadWithFallback.forEach { fileWithFallback ->
-                    var size = getUrlFileSize(unsafeClient, fileWithFallback.primaryUrl)
-                    if (size == 0L && fileWithFallback.fallbackUrl != fileWithFallback.primaryUrl) {
-                        Log.w(TAG, "Primary URL failed, trying fallback for size: ${fileWithFallback.file.name}")
-                        size = getUrlFileSize(unsafeClient, fileWithFallback.fallbackUrl)
-                    }
-                    fileSizeMap[fileWithFallback.primaryUrl] = size
-                }
-
-                val totalSizes = filesToDownload.map { fileSizeMap[it.url] ?: 0L }
-
-                // Only fail if essential model files (.geniex, .gguf, .bin) have size=0
-                // Allow size=0 for config files like .json, .md, .txt, .gitattributes
-                val essentialExtensions = listOf(".geniex", ".gguf", ".bin", ".safetensors")
-                val essentialFilesWithZeroSize = filesToDownload.filterIndexed { index, file ->
-                    val isEssential = essentialExtensions.any { file.file.name.endsWith(it, ignoreCase = true) }
-                    isEssential && totalSizes[index] == 0L
-                }
-
-                if (essentialFilesWithZeroSize.isNotEmpty()) {
-                    Log.e(TAG, "Essential files with zero size: ${essentialFilesWithZeroSize.map { it.file.name }}")
-                    runOnUiThread {
-                        downloadState = DownloadState.IDLE
-                        llDownloading.visibility = View.GONE
-                        Toaster.show("Download failed - could not get file sizes for essential model files.")
-                    }
-                    return@launch
-                }
-
-                // Filter out non-essential files with size=0 (like config.json that may not exist)
-                val filesToDownloadFiltered = filesToDownload.filterIndexed { index, _ ->
-                    totalSizes[index] > 0L
-                }
-                val filesToDownloadWithFallbackFiltered = filesToDownloadWithFallback.filter { fileWithFallback ->
-                    fileSizeMap[fileWithFallback.primaryUrl]?.let { it > 0L } ?: false
-                }
-
-                if (filesToDownloadFiltered.isEmpty()) {
-                    runOnUiThread {
-                        downloadState = DownloadState.IDLE
-                        llDownloading.visibility = View.GONE
-                        Toaster.show("No files to download.")
-                    }
-                    return@launch
-                }
-
-                Log.d(
-                    TAG,
-                    "Filtered ${filesToDownload.size - filesToDownloadFiltered.size} files with size=0, downloading ${filesToDownloadFiltered.size} files"
-                )
-
-                val alreadyDownloaded = mutableMapOf<String, Long>()
-                val totalBytes = totalSizes.sum()
-                Log.d(TAG, "all model size: $totalBytes")
-
-                val startTime = System.currentTimeMillis()
-                var lastProgressTime = 0L
-                val progressInterval = 500L
-
-                fun onProgress(
-                    modelId: String,
-                    percent: Int,
-                    downloaded: Long,
-                    totalBytes: Long,
-                    etaSec: Long,
-                    speedStr: String
-                ) {
-                    runOnUiThread {
-                        if (100 == percent) {
+                    is ModelManagerWrapper.PullEvent.Completed -> {
+                        runOnUiThread {
                             llDownloading.visibility = View.GONE
-                            spDownloaded.edit().putBoolean(selectModelId, true).commit()
-                            Toaster.show("${downloadingModelData?.displayName} downloaded")
-                        } else {
-                            tvDownloadProgress.text = "$percent%"
+                            Toaster.show("${selectModelData.displayName} downloaded")
+                        }
+                    }
+                    is ModelManagerWrapper.PullEvent.Error -> {
+                        Log.e(TAG, "pull failed rc=${event.code}: ${event.message}")
+                        runOnUiThread {
+                            llDownloading.visibility = View.GONE
+                            Toaster.showLong("Download failed: ${event.message}")
                         }
                     }
                 }
-
-                fun reportProgress(force: Boolean = false) {
-                    val now = System.currentTimeMillis()
-                    if (force || now - lastProgressTime > progressInterval) {
-                        val elapsedMs = now - startTime
-                        val downloaded = alreadyDownloaded.values.sum()
-                        val percent =
-                            if (totalBytes > 0) ((downloaded * 100) / totalBytes).toInt() else 0
-                        val speedAvg =
-                            if (elapsedMs > 0) downloaded / (elapsedMs / 1000.0) else 0.0
-                        val etaSec =
-                            if (speedAvg > 0) ((totalBytes - downloaded) / speedAvg).toLong() else -1L
-                        val speedStr = if (speedAvg > 1024 * 1024) {
-                            String.format("%.2f MB/s", speedAvg / (1024 * 1024))
-                        } else {
-                            String.format("%.1f KB/s", speedAvg / 1024)
-                        }
-                        onProgress(selectModelId, percent, downloaded, totalBytes, etaSec, speedStr)
-                        lastProgressTime = now
-                    }
-                }
-
-                // Function to start download for a list of files
-                fun startDownload(
-                    downloadFiles: List<DownloadableFile>,
-                    isFallbackAttempt: Boolean = false
-                ) {
-                    if (downloadFiles.isEmpty()) {
-                        if (failedDownloads.isEmpty()) {
-                            // All downloads complete
-                            downloadState = DownloadState.IDLE
-                            reportProgress(force = true)
-                            onProgress(selectModelId, 100, totalBytes, totalBytes, 0, "0 KB/s")
-                        } else {
-                            runOnUiThread {
-                                downloadState = DownloadState.IDLE
-                                llDownloading.visibility = View.GONE
-                                Toaster.show("Download failed for some files.")
-                            }
-                        }
-                        return
-                    }
-
-                    val queueSet = DownloadContext.QueueSet()
-                        .setParentPathFile(downloadFiles[0].file.parentFile)
-                        .setMinIntervalMillisCallbackProcess(300)
-                    val builder = queueSet.commit()
-
-                    downloadFiles.forEach { item ->
-                        val taskBuilder = DownloadTask.Builder(item.url, item.file)
-                        getHfToken(selectModelData, item.url)?.let {
-                            taskBuilder.addHeader("Authorization", "Bearer $it")
-                        }
-                        val task = taskBuilder.build()
-                        task.info?.let {
-                            alreadyDownloaded[it.url] = it.totalOffset
-                        }
-                        builder.bindSetTask(task)
-                    }
-
-                    val totalCount = filesToDownloadFiltered.size
-                    var currentCount = filesToDownloadFiltered.size - downloadFiles.size
-                    val pendingFallbacks = mutableListOf<DownloadableFile>()
-
-                    downloadContext = builder.setListener(createDownloadContextListener {}).build()
-                    downloadContext?.start(
-                        createListener1(taskStart = { task, _ ->
-                            Log.d(TAG, "download task ${task.id} Start${if (isFallbackAttempt) " (fallback)" else ""}")
-                        }, retry = { task, _ ->
-                            Log.d(TAG, "download task ${task.id} retry")
-                        }, connected = { task, _, _, _ ->
-                            Log.d(TAG, "download task ${task.id} connected")
-                        }, progress = { task, currentOffset, totalLength ->
-                            Log.d(TAG, "download task ${task.id} progress $currentOffset $totalLength")
-                            alreadyDownloaded[task.url] = currentOffset
-                            reportProgress(true)
-                        }) { task, cause, exception, _ ->
-                            when (cause) {
-                                EndCause.CANCELED -> {
-                                    // do nothing
-                                }
-
-                                EndCause.COMPLETED -> {
-                                    Log.d(TAG, "download task ${task.id} end")
-                                    currentCount += 1
-                                    Log.d(
-                                        TAG,
-                                        "download task process currentCount:$currentCount, totalCount:$totalCount"
-                                    )
-
-                                    if (currentCount >= totalCount) {
-                                        downloadState = DownloadState.IDLE
-                                        reportProgress(force = true)
-                                        onProgress(selectModelId, 100, totalBytes, totalBytes, 0, "0 KB/s")
-                                    }
-                                }
-
-                                else -> {
-                                    Log.e(TAG, "download task ${task.id} error: $cause, ${exception?.message}")
-
-                                    // Try fallback URL if available and not already a fallback attempt
-                                    if (!isFallbackAttempt) {
-                                        val fallbackUrl = fallbackUrlMap[task.url]
-                                        if (fallbackUrl != null && fallbackUrl != task.url && task.file != null) {
-                                            Log.w(TAG, "Primary download failed, queuing fallback: ${task.file?.name}")
-                                            pendingFallbacks.add(DownloadableFile(task.file!!, fallbackUrl))
-                                        } else {
-                                            val failedFile =
-                                                filesToDownloadWithFallback.find { it.primaryUrl == task.url }
-                                            if (failedFile != null) {
-                                                failedDownloads.add(failedFile)
-                                            }
-                                        }
-                                    } else {
-                                        val failedFile = filesToDownloadWithFallback.find {
-                                            it.primaryUrl == task.url || it.fallbackUrl == task.url
-                                        }
-                                        if (failedFile != null) {
-                                            failedDownloads.add(failedFile)
-                                        }
-                                    }
-
-                                    currentCount += 1
-                                    if (currentCount >= totalCount && pendingFallbacks.isEmpty()) {
-                                        if (failedDownloads.isEmpty()) {
-                                            downloadState = DownloadState.IDLE
-                                            reportProgress(force = true)
-                                            onProgress(selectModelId, 100, totalBytes, totalBytes, 0, "0 KB/s")
-                                        } else {
-                                            runOnUiThread {
-                                                downloadState = DownloadState.IDLE
-                                                llDownloading.visibility = View.GONE
-                                                Toaster.show("Download failed for ${failedDownloads.size} file(s).")
-                                            }
-                                        }
-                                    } else if (pendingFallbacks.isNotEmpty()) {
-                                        Log.d(TAG, "Starting ${pendingFallbacks.size} fallback downloads")
-                                        modelScope.launch {
-                                            startDownload(pendingFallbacks.toList(), isFallbackAttempt = true)
-                                        }
-                                        pendingFallbacks.clear()
-                                    }
-                                }
-                            }
-                        }, true
-                    )
-                }
-
-                // Start initial download with primary URLs
-                startDownload(filesToDownloadFiltered)
             }
         }
     }
@@ -1070,27 +722,27 @@ Note: You must use the campaign_investigation function whenever a customer asks 
             clearHistory()
         }
         /**
-         * Step 3. download model
+         * Step 3. download model. Cancelling the coroutine triggers the
+         * flow's awaitClose which flips the Rust progress callback to
+         * return false — partial files stay on disk for a resumed pull.
+         * Use the Retry button to kick off a fresh pull that resumes.
          */
         binding.btnCancelDownload.setOnClickListener {
-            downloadContext?.stop()
+            downloadJob?.cancel()
+            downloadJob = null
             tvDownloadProgress.text = "0%"
-            downloadingModelData?.downloadableFiles(downloadingModelData!!.modelDir(this))
-                ?.forEach {
-                    it.file.delete()
-                }
             binding.btnDismissDownload.performClick()
         }
         binding.btnRetryDownload.setOnClickListener {
-            downloadContext?.stop()
-            downloadState = DownloadState.IDLE
-            downloadModel(downloadingModelData!!)
+            downloadJob?.cancel()
+            downloadJob = null
+            downloadingModelData?.let { downloadModel(it) }
         }
         binding.btnDismissDownload.setOnClickListener {
             binding.llDownloading.visibility = View.GONE
         }
         btnDownload.setOnClickListener {
-            if (downloadState == DownloadState.DOWNLOADING) {
+            if (downloadJob?.isActive == true) {
                 if (downloadingModelData?.id == selectModelId) {
                     binding.llDownloading.visibility = View.VISIBLE
                 } else {
@@ -1116,100 +768,16 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 return@setOnClickListener
             }
 
-            // Check if model files exist locally before attempting to load
-            val fileName = isModelDownloaded(selectModelData)
-            if (fileName != null) {
-                Toaster.showLong("The \"$fileName\" file is missing. Please download it first.")
-                return@setOnClickListener
-            }
-
-            vTip.visibility = View.VISIBLE
-            llLoading.visibility = View.VISIBLE
-
-            val supportPluginIds = selectModelData.getSupportPluginIds()
-            Log.d(TAG, "support plugin_id:$supportPluginIds")
-            var modelDataPluginId = "llama_cpp"
-            var nGpuLayers = 0
-            if (supportPluginIds.size > 1) {
-                val dialogBinding = DialogSelectPluginIdBinding.inflate(layoutInflater)
-                val isGgufLlmModel = !selectModelData.isNpuModel() &&
-                        (selectModelData.type == "chat" || selectModelData.type == "llm")
-                supportPluginIds.forEach {
-                    when (it) {
-                        "cpu" -> {
-                            dialogBinding.rbCpu.visibility = View.VISIBLE
-                            dialogBinding.rbCpu.isChecked = true
-                        }
-
-                        "gpu" -> {
-                            dialogBinding.rbGpu.visibility = View.VISIBLE
-                        }
-
-                        "npu" -> {
-                            dialogBinding.rbNpu.visibility = View.VISIBLE
-                            dialogBinding.rbNpu.isChecked = true
-                        }
+            // Availability is checked against the manager's cache — a pull
+            // that was cancelled mid-flight is not listed until it completes.
+            modelScope.launch {
+                if (!isModelDownloaded(selectModelData)) {
+                    runOnUiThread {
+                        Toaster.showLong("Model not downloaded — tap Download first.")
                     }
+                    return@launch
                 }
-                if (isGgufLlmModel) {
-                    dialogBinding.rbNpu.visibility = View.VISIBLE
-                }
-                dialogBinding.rgSelectPluginId.setOnCheckedChangeListener { group, checkedId ->
-                    dialogBinding.llGpuLayers.visibility =
-                        if (checkedId == R.id.rb_gpu) View.VISIBLE else View.GONE
-                }
-
-                val dialogOnClickListener = object : CustomDialogInterface.OnClickListener() {
-                    override fun onClick(
-                        dialog: DialogInterface?,
-                        which: Int
-                    ) {
-                        nGpuLayers = 0
-                        var ggufLlmDeviceId: String? = null
-                        val checkedId = dialogBinding.rgSelectPluginId.checkedRadioButtonId
-                        if (checkedId == R.id.rb_gpu) {
-                            if (dialogBinding.llGpuLayers.visibility == View.VISIBLE) {
-                                nGpuLayers = dialogBinding.etGpuLayers.text.toString().toInt()
-                                if (nGpuLayers == 0) {
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "nGpuLayers min value is 1",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    return
-                                }
-                            }
-                            ggufLlmDeviceId = DeviceIdValue.GPU.value
-                        } else if (checkedId == R.id.rb_npu && isGgufLlmModel) {
-                            nGpuLayers = 999
-                            ggufLlmDeviceId = DeviceIdValue.NPU.value
-                        }
-                        when (which) {
-                            DialogInterface.BUTTON_POSITIVE -> {
-                                dialog?.dismiss()
-                                loadModel(selectModelData, modelDataPluginId, nGpuLayers, ggufLlmDeviceId)
-                            }
-
-                            DialogInterface.BUTTON_NEGATIVE -> {
-                                llLoading.visibility = View.INVISIBLE
-                                vTip.visibility = View.GONE
-                            }
-                        }
-                    }
-
-                }
-                val alertDialog = AlertDialog.Builder(this).setView(dialogBinding.root)
-                    .setNegativeButton("cancel", dialogOnClickListener)
-                    .setPositiveButton("sure", dialogOnClickListener)
-                    .setCancelable(false)
-                    .create()
-                alertDialog.show()
-                dialogOnClickListener.resetPositiveButton(alertDialog)
-            } else {
-                if ("npu" == supportPluginIds[0]) {
-                    modelDataPluginId = "npu"
-                }
-                loadModel(selectModelData, modelDataPluginId, nGpuLayers)
+                runOnUiThread { startLoadModel(selectModelData) }
             }
         }
 
@@ -1264,7 +832,7 @@ space ::= | " " | "\n" | "\r" | "\t"
 
             modelScope.launch {
                 val selectModelData = modelList.first { it.id == selectModelId }
-                val isNpu = selectModelData.getGeniexManifest(this@MainActivity)?.PluginId == "qairt"
+                val isNpu = ModelManagerWrapper.getPaths(selectModelData.modelName)?.plugin_id == "qairt"
                 Log.d(TAG, "isNpu: $isNpu")
 
                 val sb = StringBuilder()
@@ -1631,6 +1199,90 @@ space ::= | " " | "\n" | "\r" | "\t"
         }
     }
 
+    private fun startLoadModel(selectModelData: ModelData) {
+        vTip.visibility = View.VISIBLE
+        llLoading.visibility = View.VISIBLE
+
+        val supportPluginIds = selectModelData.getSupportPluginIds()
+        Log.d(TAG, "support plugin_id:$supportPluginIds")
+        var modelDataPluginId = "llama_cpp"
+        var nGpuLayers = 0
+        if (supportPluginIds.size > 1) {
+            val dialogBinding = DialogSelectPluginIdBinding.inflate(layoutInflater)
+            val isGgufLlmModel = !selectModelData.isNpuModel() &&
+                    (selectModelData.type == "chat" || selectModelData.type == "llm")
+            supportPluginIds.forEach {
+                when (it) {
+                    "cpu" -> {
+                        dialogBinding.rbCpu.visibility = View.VISIBLE
+                        dialogBinding.rbCpu.isChecked = true
+                    }
+                    "gpu" -> {
+                        dialogBinding.rbGpu.visibility = View.VISIBLE
+                    }
+                    "npu" -> {
+                        dialogBinding.rbNpu.visibility = View.VISIBLE
+                        dialogBinding.rbNpu.isChecked = true
+                    }
+                }
+            }
+            if (isGgufLlmModel) {
+                dialogBinding.rbNpu.visibility = View.VISIBLE
+            }
+            dialogBinding.rgSelectPluginId.setOnCheckedChangeListener { _, checkedId ->
+                dialogBinding.llGpuLayers.visibility =
+                    if (checkedId == R.id.rb_gpu) View.VISIBLE else View.GONE
+            }
+
+            val dialogOnClickListener = object : CustomDialogInterface.OnClickListener() {
+                override fun onClick(dialog: DialogInterface?, which: Int) {
+                    nGpuLayers = 0
+                    var ggufLlmDeviceId: String? = null
+                    val checkedId = dialogBinding.rgSelectPluginId.checkedRadioButtonId
+                    if (checkedId == R.id.rb_gpu) {
+                        if (dialogBinding.llGpuLayers.visibility == View.VISIBLE) {
+                            nGpuLayers = dialogBinding.etGpuLayers.text.toString().toInt()
+                            if (nGpuLayers == 0) {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "nGpuLayers min value is 1",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return
+                            }
+                        }
+                        ggufLlmDeviceId = DeviceIdValue.GPU.value
+                    } else if (checkedId == R.id.rb_npu && isGgufLlmModel) {
+                        nGpuLayers = 999
+                        ggufLlmDeviceId = DeviceIdValue.NPU.value
+                    }
+                    when (which) {
+                        DialogInterface.BUTTON_POSITIVE -> {
+                            dialog?.dismiss()
+                            loadModel(selectModelData, modelDataPluginId, nGpuLayers, ggufLlmDeviceId)
+                        }
+                        DialogInterface.BUTTON_NEGATIVE -> {
+                            llLoading.visibility = View.INVISIBLE
+                            vTip.visibility = View.GONE
+                        }
+                    }
+                }
+            }
+            val alertDialog = AlertDialog.Builder(this).setView(dialogBinding.root)
+                .setNegativeButton("cancel", dialogOnClickListener)
+                .setPositiveButton("sure", dialogOnClickListener)
+                .setCancelable(false)
+                .create()
+            alertDialog.show()
+            dialogOnClickListener.resetPositiveButton(alertDialog)
+        } else {
+            if ("npu" == supportPluginIds[0]) {
+                modelDataPluginId = "npu"
+            }
+            loadModel(selectModelData, modelDataPluginId, nGpuLayers)
+        }
+    }
+
     fun handleResult(sb: StringBuilder, streamResult: LlmStreamResult) {
         when (streamResult) {
             is LlmStreamResult.Token -> {
@@ -1699,60 +1351,6 @@ space ::= | " " | "\n" | "\r" | "\t"
                 }
                 Log.d(TAG, "Error: $streamResult")
             }
-        }
-    }
-
-    private fun okdownload() {
-        val okDownloadBuilder = OkDownload.Builder(this)
-        val factory = DownloadOkHttp3Connection.Factory()
-        factory.setBuilder(getUnsafeOkHttpClient())
-        okDownloadBuilder.connectionFactory(factory)
-        try {
-            OkDownload.setSingletonInstance(okDownloadBuilder.build())
-        } catch (e: java.lang.Exception) {
-            Log.e("download", "download init failed")
-        }
-    }
-
-    private fun getUnsafeOkHttpClient(): OkHttpClient.Builder {
-        try {
-            val x509m: X509TrustManager = object : X509TrustManager {
-                override fun getAcceptedIssuers(): Array<X509Certificate?>? {
-                    //Note: Cannot return null here, otherwise it will throw an error
-                    val x509Certificates = arrayOfNulls<X509Certificate>(0)
-                    return x509Certificates
-                }
-
-                @Throws(CertificateException::class)
-                override fun checkServerTrusted(
-                    chain: Array<X509Certificate?>?, authType: String?
-                ) {
-// Do not throw exception to trust all server certificates
-                }
-
-                @Throws(CertificateException::class)
-                override fun checkClientTrusted(
-                    chain: Array<X509Certificate?>?, authType: String?
-                ) {
-// Default trust mechanism
-                }
-            }
-            // Create a TrustManager that trusts all certificates
-            val trustAllCerts = arrayOf<TrustManager>(x509m)
-
-            // Initialize SSLContext
-            val sslContext = SSLContext.getInstance("SSL")
-            sslContext.init(null, trustAllCerts, SecureRandom())
-
-            // Create SSLSocketFactory
-            val sslSocketFactory: SSLSocketFactory = sslContext.getSocketFactory()
-
-            // Build OkHttpClient
-            return OkHttpClient.Builder().sslSocketFactory(
-                sslSocketFactory, (trustAllCerts[0] as X509TrustManager?)!!
-            ).hostnameVerifier { hostname: String?, session: SSLSession? -> true }
-        } catch (e: Exception) {
-            throw RuntimeException(e)
         }
     }
 
@@ -2020,7 +1618,6 @@ space ::= | " " | "\n" | "\r" | "\t"
     }
 
     companion object {
-        private const val SP_DOWNLOADED = "sp_downloaded"
         private const val TAG = "MainActivity"
     }
 }

@@ -15,6 +15,7 @@
 #include "logging.h"
 #include "pipeline/llm_pipeline.h"
 #include "qnn_runtime_utils.h"
+#include "sampler_config_utils.h"
 #include "types.h"
 
 namespace fs = std::filesystem;
@@ -36,6 +37,16 @@ int32_t QairtLlm::create_impl(const geniex_LlmCreateInput* input) {
 
     model_name_      = input->model_name;
     enable_thinking_ = input->config.enable_thinking;
+
+    // Reject llama.cpp-only parameters that have no meaning in the QAIRT plugin
+    if (input->config.n_gpu_layers != 0) {
+        GENIEX_LOG_ERROR("--ngl (n_gpu_layers) is not supported by the qairt plugin");
+        return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+    }
+    if (input->config.n_ctx != 0) {
+        GENIEX_LOG_ERROR("--nctx (n_ctx) is not supported by the qairt plugin");
+        return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+    }
 
     // Look up model in registry
     auto& registry = llm_model_registry();
@@ -164,10 +175,14 @@ int32_t QairtLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     if (!pipeline_) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
     if (!input || !output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
 
-    // Check for input_ids path (not supported in Phase 1)
+    // Reject llama.cpp-only parameters that have no meaning in the QAIRT plugin
     if (input->input_ids && input->input_ids_count > 0) {
-        GENIEX_LOG_ERROR("QAIRT plugin does not support input_ids yet, use prompt_utf8");
-        return GENIEX_ERROR_COMMON_NOT_SUPPORTED;
+        GENIEX_LOG_ERROR("--token-file (input_ids) is not supported by the qairt plugin");
+        return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+    }
+    if (input->config && input->config->stop && input->config->stop_count > 0) {
+        GENIEX_LOG_ERROR("--stop / --stop-file (stop sequences) is not supported by the qairt plugin");
+        return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
     }
 
     if (!input->prompt_utf8) return GENIEX_ERROR_COMMON_INVALID_INPUT;
@@ -176,10 +191,7 @@ int32_t QairtLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     GenerationConfig gen_cfg{};
     if (input->config) {
         gen_cfg.max_tokens = input->config->max_tokens > 0 ? input->config->max_tokens : 512;
-        if (input->config->sampler_config) {
-            gen_cfg.temperature = input->config->sampler_config->temperature;
-            gen_cfg.top_p       = input->config->sampler_config->top_p;
-        }
+        qairt::apply_sampler_config(input->config->sampler_config, gen_cfg);
     }
     gen_cfg.thinking_mode = enable_thinking_;
 

@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -192,6 +193,80 @@ func list() *cobra.Command {
 	return listCmd
 }
 
+// modelCmd builds the `geniex model` command tree:
+//
+// It is the home for all per-model management operations
+func modelCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		GroupID: "model",
+		Use:     "model",
+		Short:   "Manage cached models",
+		Long:    "Commands to manage cached models, including reconfiguring model-specific settings.",
+	}
+	cmd.AddCommand(setTypeCmd())
+	return cmd
+}
+
+// setTypeCmd builds the `geniex model set-type` subcommand.
+// It overwrites the ModelType field in an already-downloaded model's manifest.
+func setTypeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "set-type <model-name> [llm|vlm]",
+		Short: "Override the model type for a cached model",
+		Long:  "Update the model type stored in a cached model's manifest.\n\nOmit the type argument to choose interactively.",
+		Args:  cobra.RangeArgs(1, 2),
+		ValidArgs: func() []string {
+			s := make([]string, len(types.AllModelTypes))
+			for i, t := range types.AllModelTypes {
+				s[i] = string(t)
+			}
+			return s
+		}(),
+		Run: func(cmd *cobra.Command, args []string) {
+			name, _ := normalizeModelName(args[0])
+
+			// Verify the model is present before prompting for a type.
+			if _, err := store.Get().GetManifest(name); err != nil {
+				fmt.Fprintln(os.Stderr, render.GetTheme().Error.Sprintf("Model %q not found: %s", name, err))
+				return
+			}
+
+			var mt types.ModelType
+			if len(args) == 2 {
+				mt = types.ModelType(strings.ToLower(args[1]))
+				valid := false
+				for _, t := range types.AllModelTypes {
+					if mt == t {
+						valid = true
+						break
+					}
+				}
+				if !valid {
+					validStrs := make([]string, len(types.AllModelTypes))
+					for i, t := range types.AllModelTypes {
+						validStrs[i] = string(t)
+					}
+					fmt.Fprintln(os.Stderr, render.GetTheme().Error.Sprintf(
+						"Unknown model type %q (valid: %s)", args[1], strings.Join(validStrs, ", ")))
+					return
+				}
+			} else {
+				var err error
+				mt, err = chooseModelType()
+				if err != nil {
+					return
+				}
+			}
+
+			if err := store.Get().SetModelType(name, mt); err != nil {
+				fmt.Fprintln(os.Stderr, render.GetTheme().Error.Sprintf("Failed to update model type: %s", err))
+				return
+			}
+			fmt.Println(render.GetTheme().Success.Sprintf("✔  %s → %s", name, mt))
+		},
+	}
+}
+
 func pullModel(name string, quant string) error {
 	slog.Debug("pullModel", "name", name, "quant", quant)
 
@@ -278,7 +353,6 @@ func pullModel(name string, quant string) error {
 		if hmf != nil {
 			manifest.ModelName = hmf.ModelName
 			manifest.PluginId = hmf.PluginId
-			manifest.DeviceId = hmf.DeviceId
 			manifest.ModelType = hmf.ModelType
 		}
 
@@ -288,19 +362,40 @@ func pullModel(name string, quant string) error {
 		if manifest.PluginId == "" {
 			manifest.PluginId = choosePluginId(name)
 		}
-		if manifest.ModelType == "" {
-			if ctype, err := chooseModelType(); err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-				return err
-			} else {
-				manifest.ModelType = ctype
-			}
-		}
 
 		err := chooseFiles(name, quant, files, &manifest)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			return err
+		}
+
+		// --model-type flag overrides all auto-detection. Validate early so
+		// we fail before downloading anything.
+		if modelType != "" {
+			mt := types.ModelType(strings.ToLower(modelType))
+			if !slices.Contains(types.AllModelTypes, mt) {
+				return fmt.Errorf("unknown model type %q (valid: %s)", modelType,
+					strings.Join(func() []string {
+						s := make([]string, len(types.AllModelTypes))
+						for i, t := range types.AllModelTypes {
+							s[i] = string(t)
+						}
+						return s
+					}(), ", "))
+			}
+			manifest.ModelType = mt
+		}
+
+		if manifest.ModelType == "" {
+			switch manifest.PluginId {
+			case "llama_cpp":
+				// For GGUF models, presence of an mmproj file indicates VLM.
+				manifest.ModelType = inferModelTypeFromManifest(&manifest)
+			case "qairt":
+				// For AI Hub models, type is detected from metadata.json inside
+				// the zip by PostDownload. Leave ModelType blank here; re-read
+				// the manifest after Pull to surface the detected type to the user.
+			}
 		}
 
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
@@ -314,9 +409,30 @@ func pullModel(name string, quant string) error {
 
 		for err := range errCh {
 			bar.Clear()
+			var detErr *model_hub.ErrModelTypeDetection
+			if errors.As(err, &detErr) {
+				// Detection failure is non-fatal: the model downloaded successfully
+				// but we couldn't determine its type from metadata.json.
+				fmt.Println(render.GetTheme().Warning.Sprintf(
+					"⚠  Model type detection failed; defaulting to llm.\n"+
+						"   To set the correct type, run:\n"+
+						"     geniex model set-type %s <llm|vlm>", name))
+				continue
+			}
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			return err
 		}
+
+		// For qairt models the type was written to disk by PostDownload;
+		// re-read the manifest so we can report the correct detected type.
+		detectedType := manifest.ModelType
+		if manifest.PluginId == "qairt" {
+			if updated, err := s.GetManifest(name); err == nil {
+				detectedType = updated.ModelType
+			}
+		}
+
+		fmt.Println(render.GetTheme().Info.Sprintf("   Detected model type: %s", detectedType))
 	}
 
 	fmt.Println(render.GetTheme().Success.Sprintf("✔  Download success"))
@@ -354,14 +470,6 @@ func choosePluginId(name string) string {
 }
 
 func chooseModelType() (types.ModelType, error) {
-	if modelType != "" {
-		mt := types.ModelType(modelType)
-		if !slices.Contains(types.AllModelTypes, mt) {
-			return "", fmt.Errorf("unknown model type: %s", modelType)
-		}
-		return mt, nil
-	}
-
 	var modelType types.ModelType
 	if err := huh.NewSelect[types.ModelType]().
 		Title("Choose Model Type").
@@ -375,6 +483,15 @@ func chooseModelType() (types.ModelType, error) {
 
 var partRegex = regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
 
+// inferModelTypeFromManifest returns the model type inferred from the manifest
+// for a GGUF model.
+func inferModelTypeFromManifest(manifest *types.ModelManifest) types.ModelType {
+	if manifest.MMProjFile.Name != "" {
+		return types.ModelTypeVLM
+	}
+	return types.ModelTypeLLM
+}
+
 func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, res *types.ModelManifest) (err error) {
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
@@ -386,10 +503,6 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 
 	// check gguf
 	var mmprojs []model_hub.ModelFileInfo
-	var tokenizers []model_hub.ModelFileInfo
-	var onnxFiles []model_hub.ModelFileInfo
-	var geniexFiles []model_hub.ModelFileInfo
-	var npyFiles []model_hub.ModelFileInfo
 	ggufs := make(map[string][]model_hub.ModelFileInfo) // key is gguf name without part
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0 *d-of-*d like this
 
@@ -402,14 +515,6 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 				name := partRegex.ReplaceAllString(file.Name, "")
 				ggufs[name] = append(ggufs[name], file)
 			}
-		} else if strings.HasSuffix(name, "tokenizer.json") {
-			tokenizers = append(tokenizers, file)
-		} else if strings.HasSuffix(name, ".onnx") {
-			onnxFiles = append(onnxFiles, file)
-		} else if strings.HasSuffix(name, ".geniex") {
-			geniexFiles = append(geniexFiles, file)
-		} else if strings.HasSuffix(name, ".npy") {
-			npyFiles = append(npyFiles, file)
 		}
 	}
 
@@ -516,179 +621,33 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 			}
 		}
 
-		// detect mmproj
-		switch len(mmprojs) {
-		case 0:
-			// fallback to onnx file as mmproj if no regular mmproj found and exactly one onnx file exists
-			if len(onnxFiles) == 1 {
-				res.MMProjFile.Name = onnxFiles[0].Name
-				res.MMProjFile.Size = onnxFiles[0].Size
-				res.MMProjFile.Downloaded = true
-			} else if len(geniexFiles) == 1 {
-				// fallback to geniex file as mmproj if no onnx file and exactly one geniex file exists
-				res.MMProjFile.Name = geniexFiles[0].Name
-				res.MMProjFile.Size = geniexFiles[0].Size
-				res.MMProjFile.Downloaded = true
-			}
-		case 1:
-			res.MMProjFile.Name = mmprojs[0].Name
-			res.MMProjFile.Size = mmprojs[0].Size
-			res.MMProjFile.Downloaded = true
-
-		default:
-			// match biggest
-			var file model_hub.ModelFileInfo
-			for _, mmproj := range mmprojs {
-				if mmproj.Size > file.Size {
-					file = mmproj
-				}
-			}
-
-			res.MMProjFile.Name = file.Name
-			res.MMProjFile.Size = file.Size
-			res.MMProjFile.Downloaded = true
-		}
-
-		// detect tokenizer for gguf models
-		switch len(tokenizers) {
-		case 0:
-			// No tokenizer file found - skip
-		case 1:
-			res.TokenizerFile.Name = tokenizers[0].Name
-			res.TokenizerFile.Size = tokenizers[0].Size
-			res.TokenizerFile.Downloaded = true
-
-		default:
-			return fmt.Errorf("multiple tokenizer files found: %v. Expected exactly one tokenizer file", tokenizers)
-		}
-
-		// Always include .geniex files as extra files when gguf is the main model, except if used as mmproj
-		for _, geniexFile := range geniexFiles {
-			// Skip if this geniex file is being used as mmproj
-			if res.MMProjFile.Name != geniexFile.Name {
-				res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
-					Name:       geniexFile.Name,
-					Downloaded: true,
-					Size:       geniexFile.Size,
-				})
+		// detect mmproj: pick the biggest when multiple are present
+		var biggest model_hub.ModelFileInfo
+		for _, mmproj := range mmprojs {
+			if mmproj.Size > biggest.Size {
+				biggest = mmproj
 			}
 		}
-
-		// Always include .npy files as extra files when gguf is the main model
-		for _, npyFile := range npyFiles {
-			res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
-				Name:       npyFile.Name,
+		if biggest.Name != "" {
+			res.MMProjFile = types.ModelFileInfo{
+				Name:       biggest.Name,
+				Size:       biggest.Size,
 				Downloaded: true,
-				Size:       npyFile.Size,
-			})
+			}
 		}
 
 	} else {
-		// other
+		// qairt only have one zip file
 		if specifiedQuant != "" {
 			return fmt.Errorf("specified quant %s only support in gguf model", specifiedQuant)
 		}
 
-		// quant
-		quant := getQuant(name)
-		if quant == "N/A" {
-			if q, err := model_hub.GetFileContent(context.TODO(), name, "config.json"); err != nil {
-			} else if b, err := sonic.Get(q, "quantization_config", "bits"); err != nil {
-			} else if q, err := b.Float64(); err != nil {
-			} else {
-				quant = fmt.Sprintf("%dBIT", uint32(q))
-			}
-		}
+		mainFile := files[0]
 
-		// Detect macOS model bundles (.mlmodelc and .mlpackage)
-		// These appear as folders on HuggingFace but are actually model bundles
-		bundlePaths := detectMacOSBundles(files)
-
-		if len(bundlePaths) > 0 {
-			// Use the first bundle as the model path
-			bundlePath := bundlePaths[0]
-
-			// Calculate total size of the primary bundle
-			var primaryBundleSize int64
-			for _, file := range files {
-				if strings.HasPrefix(file.Name, bundlePath+"/") {
-					primaryBundleSize += file.Size
-				}
-			}
-
-			// Set the first bundle path as the model file (this is a directory reference, not a downloadable file)
-			res.ModelFile[quant] = types.ModelFileInfo{
-				Name:       bundlePath,
-				Downloaded: true, // Mark as available for inference
-				Size:       primaryBundleSize,
-			}
-
-			// Add ALL files to ExtraFiles - this includes:
-			// 1. All files from the primary bundle
-			// 2. All files from other bundles
-			// 3. All other files in the repo
-			// The bundle paths themselves are not downloadable, only the files within them are
-			for _, file := range files {
-				res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
-					Name:       file.Name,
-					Downloaded: true,
-					Size:       file.Size,
-				})
-			}
-		} else {
-			// Original logic for non-bundle files
-			// detect main model file
-			isSupportedModelFile := func(filename string) bool {
-				lower := strings.ToLower(filename)
-				return strings.HasSuffix(lower, "safetensors") ||
-					strings.HasSuffix(lower, "npz") ||
-					strings.HasSuffix(lower, "geniex") ||
-					strings.HasSuffix(lower, "bin")
-			}
-
-			// First pass: prefer non-nested supported files (not in subdirectories)
-			for _, file := range files {
-				if isSupportedModelFile(file.Name) && !strings.Contains(file.Name, "/") {
-					res.ModelFile[quant] = types.ModelFileInfo{Name: file.Name, Size: file.Size}
-					break
-				}
-			}
-
-			// Second pass: if no non-nested file found, fall back to any supported file
-			if res.ModelFile[quant].Name == "" {
-				for _, file := range files {
-					if isSupportedModelFile(file.Name) {
-						res.ModelFile[quant] = types.ModelFileInfo{Name: file.Name, Size: file.Size}
-						break
-					}
-				}
-			}
-
-			// add other files to ExtraFiles
-			for _, file := range files {
-				if file.Name != res.ModelFile[quant].Name {
-					res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{Name: file.Name, Size: file.Size})
-				}
-			}
-
-			// fallback to first file
-			if res.ModelFile[quant].Name == "" {
-				res.ModelFile[quant] = types.ModelFileInfo{Name: files[0].Name, Size: files[0].Size}
-				res.ExtraFiles = res.ExtraFiles[1:]
-			}
-
-			res.ModelFile[quant] = types.ModelFileInfo{
-				Name:       res.ModelFile[quant].Name,
-				Downloaded: true,
-				Size:       res.ModelFile[quant].Size,
-			}
-			for i, v := range res.ExtraFiles {
-				res.ExtraFiles[i] = types.ModelFileInfo{
-					Name:       v.Name,
-					Downloaded: true,
-					Size:       v.Size,
-				}
-			}
+		res.ModelFile["N/A"] = types.ModelFileInfo{
+			Name:       mainFile.Name,
+			Downloaded: true,
+			Size:       mainFile.Size,
 		}
 	}
 
@@ -763,31 +722,4 @@ func sumSize(files []model_hub.ModelFileInfo) int64 {
 		size += f.Size
 	}
 	return size
-}
-
-// detectMacOSBundles detects .mlmodelc and .mlpackage bundles from file list
-// Returns a list of bundle paths (e.g., "EmbedNeuralVision.mlmodelc")
-func detectMacOSBundles(files []model_hub.ModelFileInfo) []string {
-	bundleMap := make(map[string]bool)
-
-	for _, file := range files {
-		// Case-insensitive check for .mlmodelc/ or .mlpackage/
-		lowerName := strings.ToLower(file.Name)
-		if idx := strings.Index(lowerName, ".mlmodelc/"); idx != -1 {
-			bundlePath := file.Name[:idx+len(".mlmodelc")]
-			bundleMap[bundlePath] = true
-		} else if idx := strings.Index(lowerName, ".mlpackage/"); idx != -1 {
-			bundlePath := file.Name[:idx+len(".mlpackage")]
-			bundleMap[bundlePath] = true
-		}
-	}
-
-	// Convert map to sorted slice for consistent ordering
-	bundles := make([]string, 0, len(bundleMap))
-	for bundle := range bundleMap {
-		bundles = append(bundles, bundle)
-	}
-	sort.Strings(bundles)
-
-	return bundles
 }

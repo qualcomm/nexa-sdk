@@ -5,6 +5,7 @@ import android.content.res.AssetManager
 import android.system.Os
 import android.util.Log
 import com.geniex.sdk.bean.PluginIdValue
+import com.geniex.sdk.jni.ModelManager
 import java.io.File
 import java.io.IOException
 import java.util.zip.ZipEntry
@@ -20,6 +21,15 @@ class GeniexSdk private constructor() {
 
     external fun registerPlugin(pluginLibPath: String): Int
 
+    // Idempotent across Activity recreation. Plugin registration is
+    // safe to re-attempt (it logs and moves on); model-manager init is
+    // not — the FFI rejects re-init — so we guard it here.
+    @Volatile
+    private var pluginsRegistered = false
+
+    @Volatile
+    private var modelManagerInited = false
+
     /**
      * @param callback Use for Checking the context environment of GeniexSdk.When an exception occurs,
      * the [InitCallback.onFailure] will be invoked.
@@ -28,30 +38,41 @@ class GeniexSdk private constructor() {
         val nativeLibPath = context.applicationInfo.nativeLibraryDir
 
         val exceptionResult = StringBuilder()
-        arrayOf(
-            PluginIdValue.LLAMA_CPP.value,
-            PluginIdValue.QAIRT.value
-        ).forEach { pluginName ->
-            File(
-                nativeLibPath,
-                "libgeniex_plugin_${pluginName}.so"
-            ).let { pluginSoFile ->
-                if (pluginSoFile.exists()) {
-                    pluginSoFile.absolutePath.let { pluginPath ->
-                        Log.d(TAG, "Loading plugin: $pluginPath")
-                        if (registerPlugin(pluginPath) != 0) {
-                            exceptionResult.append("Cannot registerPlugin $pluginName\n")
+        synchronized(this) {
+            if (!pluginsRegistered) {
+                arrayOf(
+                    PluginIdValue.LLAMA_CPP.value,
+                    PluginIdValue.QAIRT.value
+                ).forEach { pluginName ->
+                    File(
+                        nativeLibPath,
+                        "libgeniex_plugin_${pluginName}.so"
+                    ).let { pluginSoFile ->
+                        if (pluginSoFile.exists()) {
+                            pluginSoFile.absolutePath.let { pluginPath ->
+                                Log.d(TAG, "Loading plugin: $pluginPath")
+                                if (registerPlugin(pluginPath) != 0) {
+                                    exceptionResult.append("Cannot registerPlugin $pluginName\n")
+                                }
+                            }
+                        } else {
+                            exceptionResult.append("Cannot find ${pluginSoFile.name} in $nativeLibPath\n")
                         }
                     }
+                }
+                pluginsRegistered = true
+            }
+
+            if (!modelManagerInited) {
+                val dataDir = File(context.filesDir, "geniex").apply { mkdirs() }
+                val rc = ModelManager().init(dataDir.absolutePath)
+                if (rc == 0 || rc == GENIEX_ERROR_ALREADY_INITIALIZED) {
+                    modelManagerInited = true
                 } else {
-                    exceptionResult.append("Cannot find ${pluginSoFile.name} in $nativeLibPath\n")
+                    exceptionResult.append("geniex_model_init failed (rc=$rc)\n")
                 }
             }
         }
-        // val soFile = checkSoFile(context, nativeLibPath)
-        // if (soFile != null) {
-        //     exceptionResult.append("Cannot find $soFile in $nativeLibPath")
-        // }
 
         if (exceptionResult.isEmpty()) {
             callback?.onSuccess()
@@ -158,6 +179,8 @@ class GeniexSdk private constructor() {
         private val HTP_ASSET_DIRS = listOf("htp-files", "htp-files-v81", "htp-files-v85")
         const val PLUGIN_ID_QAIRT = "qairt"
         const val PLUGIN_ID_LLAMA_CPP = "llama_cpp"
+        // Mirror of GENIEX_ERROR_COMMON_ALREADY_INITIALIZED from sdk/model-manager/crates/ffi/src/types.rs.
+        private const val GENIEX_ERROR_ALREADY_INITIALIZED = -100008
 
         init {
             System.loadLibrary("npu_jni")
