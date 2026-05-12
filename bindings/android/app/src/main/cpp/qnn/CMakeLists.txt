@@ -20,6 +20,7 @@ set(JNI_SOURCES
         ${PARENT_DIR}/reranker_bridge_jni.cpp
         ${PARENT_DIR}/img_gen_jni.cpp
         ${PARENT_DIR}/tts_bridge_jni.cpp
+        ${PARENT_DIR}/model_manager_jni.cpp
 )
 
 add_library(npu_jni SHARED ${JNI_SOURCES})

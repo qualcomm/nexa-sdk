@@ -72,8 +72,22 @@ val copyBridgeLibs = tasks.register<Copy>("copyBridgeLibs") {
         include("libgeniex_core.so", "libgeniex_plugin.so")
         rename("libgeniex_plugin\\.so", "libgeniex_plugin_qairt.so")
     }
-    from(File(libDir, "qairt/htp-files")) {
+    // Do NOT copy from qairt/htp-files/: the Windows CLI package ships
+    // Hexagon DSP (32-bit) binaries there for FastRPC, which Android's
+    // linker then rejects out of arm64-v8a/. Instead, pull the ARM64
+    // CPU-side QAIRT client libs from the qairt submodule's Android
+    // third-party dir (these are what the qairt plugin dlopens).
+    from(File(projectDir, "../../../third-party/geniex-qairt/third-party/android")) {
         include("*.so")
+        // Skip DSP skels and Hexagon-only binaries (32-bit); leave those
+        // to GeniexSdk.extractHtpAssets which unpacks them from assets/.
+        exclude("libCalculator_skel.so")
+        exclude("libQnnHtpV??Skel.so")
+        exclude("libQnnHtpV??.so")
+        exclude("libQnnHtpV??QemuDriver.so")
+        exclude("libQnnNetRunDirectV??Skel.so")
+        exclude("libSnpeHtpV??Skel.so")
+        exclude("libqnnhtpv??.cat")
     }
     from(File(projectDir, "extLibs/arm64-v8a")) { include("*.so") }
     into(jniOutDir)
