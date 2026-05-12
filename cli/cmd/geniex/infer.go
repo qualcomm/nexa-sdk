@@ -354,15 +354,9 @@ func resolveNglNctx(manifest *types.ModelManifest) (resolvedNgl, resolvedNctx in
 // the SDK's geniex_resolve_device (see sdk/src/device.cpp). An empty
 // --device picks the plugin's preferred default (hybrid for llama.cpp,
 // npu for qairt — with model-specific overrides, e.g. gpt-oss on
-// llama_cpp defaults to npu). When --device is unset and the manifest
-// pins a specific DeviceId (e.g. "HTP0,HTP1,HTP2,HTP3"), the manifest
-// wins — qairt is still coerced to its NPU device with a warning.
+// llama_cpp defaults to npu).
 func resolveDevice(manifest *types.ModelManifest) (deviceID string, nglOverride int32) {
 	effectiveNgl, _ := resolveNglNctx(manifest)
-	if device == "" && manifest.DeviceId != "" && manifest.PluginId != geniex_sdk.PluginQairt {
-		return manifest.DeviceId, effectiveNgl
-	}
-
 	deviceID, nglOverride, warning, err := geniex_sdk.ResolveDevice(manifest.PluginId, manifest.ModelName, device, effectiveNgl)
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
@@ -565,23 +559,17 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 	if manifest.MMProjFile.Name != "" {
 		mmprojfile = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 	}
-	var tokenizerfile string
-	if manifest.TokenizerFile.Name != "" {
-		tokenizerfile = s.ModelfilePath(manifest.Name, manifest.TokenizerFile.Name)
-	}
-
 	deviceID, nglResolved := resolveDevice(manifest)
 	_, nctxResolved := resolveNglNctx(manifest)
 
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := geniex_sdk.NewVLM(geniex_sdk.VlmCreateInput{
-		ModelName:     manifest.ModelName,
-		ModelPath:     modelfile,
-		MmprojPath:    mmprojfile,
-		TokenizerPath: tokenizerfile,
-		PluginID:      manifest.PluginId,
-		DeviceID:      deviceID,
+		ModelName:  manifest.ModelName,
+		ModelPath:  modelfile,
+		MmprojPath: mmprojfile,
+		PluginID:   manifest.PluginId,
+		DeviceID:   deviceID,
 		Config: geniex_sdk.ModelConfig{
 			NCtx:       nctxResolved,
 			NGpuLayers: nglResolved,

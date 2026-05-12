@@ -279,7 +279,6 @@ func pullModel(name string, quant string) error {
 		if hmf != nil {
 			manifest.ModelName = hmf.ModelName
 			manifest.PluginId = hmf.PluginId
-			manifest.DeviceId = hmf.DeviceId
 			manifest.ModelType = hmf.ModelType
 		}
 
@@ -511,10 +510,6 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 
 	// check gguf
 	var mmprojs []model_hub.ModelFileInfo
-	var tokenizers []model_hub.ModelFileInfo
-	var onnxFiles []model_hub.ModelFileInfo
-	var geniexFiles []model_hub.ModelFileInfo
-	var npyFiles []model_hub.ModelFileInfo
 	ggufs := make(map[string][]model_hub.ModelFileInfo) // key is gguf name without part
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0 *d-of-*d like this
 
@@ -527,14 +522,6 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 				name := partRegex.ReplaceAllString(file.Name, "")
 				ggufs[name] = append(ggufs[name], file)
 			}
-		} else if strings.HasSuffix(name, "tokenizer.json") {
-			tokenizers = append(tokenizers, file)
-		} else if strings.HasSuffix(name, ".onnx") {
-			onnxFiles = append(onnxFiles, file)
-		} else if strings.HasSuffix(name, ".geniex") {
-			geniexFiles = append(geniexFiles, file)
-		} else if strings.HasSuffix(name, ".npy") {
-			npyFiles = append(npyFiles, file)
 		}
 	}
 
@@ -641,71 +628,19 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 			}
 		}
 
-		// detect mmproj
-		switch len(mmprojs) {
-		case 0:
-			// fallback to onnx file as mmproj if no regular mmproj found and exactly one onnx file exists
-			if len(onnxFiles) == 1 {
-				res.MMProjFile.Name = onnxFiles[0].Name
-				res.MMProjFile.Size = onnxFiles[0].Size
-				res.MMProjFile.Downloaded = true
-			} else if len(geniexFiles) == 1 {
-				// fallback to geniex file as mmproj if no onnx file and exactly one geniex file exists
-				res.MMProjFile.Name = geniexFiles[0].Name
-				res.MMProjFile.Size = geniexFiles[0].Size
-				res.MMProjFile.Downloaded = true
-			}
-		case 1:
-			res.MMProjFile.Name = mmprojs[0].Name
-			res.MMProjFile.Size = mmprojs[0].Size
-			res.MMProjFile.Downloaded = true
-
-		default:
-			// match biggest
-			var file model_hub.ModelFileInfo
-			for _, mmproj := range mmprojs {
-				if mmproj.Size > file.Size {
-					file = mmproj
-				}
-			}
-
-			res.MMProjFile.Name = file.Name
-			res.MMProjFile.Size = file.Size
-			res.MMProjFile.Downloaded = true
-		}
-
-		// detect tokenizer for gguf models
-		switch len(tokenizers) {
-		case 0:
-			// No tokenizer file found - skip
-		case 1:
-			res.TokenizerFile.Name = tokenizers[0].Name
-			res.TokenizerFile.Size = tokenizers[0].Size
-			res.TokenizerFile.Downloaded = true
-
-		default:
-			return fmt.Errorf("multiple tokenizer files found: %v. Expected exactly one tokenizer file", tokenizers)
-		}
-
-		// Always include .geniex files as extra files when gguf is the main model, except if used as mmproj
-		for _, geniexFile := range geniexFiles {
-			// Skip if this geniex file is being used as mmproj
-			if res.MMProjFile.Name != geniexFile.Name {
-				res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
-					Name:       geniexFile.Name,
-					Downloaded: true,
-					Size:       geniexFile.Size,
-				})
+		// detect mmproj: pick the biggest when multiple are present
+		var biggest model_hub.ModelFileInfo
+		for _, mmproj := range mmprojs {
+			if mmproj.Size > biggest.Size {
+				biggest = mmproj
 			}
 		}
-
-		// Always include .npy files as extra files when gguf is the main model
-		for _, npyFile := range npyFiles {
-			res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
-				Name:       npyFile.Name,
+		if biggest.Name != "" {
+			res.MMProjFile = types.ModelFileInfo{
+				Name:       biggest.Name,
+				Size:       biggest.Size,
 				Downloaded: true,
-				Size:       npyFile.Size,
-			})
+			}
 		}
 
 	} else {
@@ -725,7 +660,8 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 			}
 		}
 
-		// detect main model file
+		// detect main model file: prefer a non-nested supported file, else any
+		// supported file, else the first file in the repo.
 		isSupportedModelFile := func(filename string) bool {
 			lower := strings.ToLower(filename)
 			return strings.HasSuffix(lower, "safetensors") ||
@@ -734,47 +670,37 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 				strings.HasSuffix(lower, "bin")
 		}
 
-		// First pass: prefer non-nested supported files (not in subdirectories)
+		var mainFile model_hub.ModelFileInfo
 		for _, file := range files {
 			if isSupportedModelFile(file.Name) && !strings.Contains(file.Name, "/") {
-				res.ModelFile[quant] = types.ModelFileInfo{Name: file.Name, Size: file.Size}
+				mainFile = file
 				break
 			}
 		}
-
-		// Second pass: if no non-nested file found, fall back to any supported file
-		if res.ModelFile[quant].Name == "" {
+		if mainFile.Name == "" {
 			for _, file := range files {
 				if isSupportedModelFile(file.Name) {
-					res.ModelFile[quant] = types.ModelFileInfo{Name: file.Name, Size: file.Size}
+					mainFile = file
 					break
 				}
 			}
 		}
-
-		// add other files to ExtraFiles
-		for _, file := range files {
-			if file.Name != res.ModelFile[quant].Name {
-				res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{Name: file.Name, Size: file.Size})
-			}
-		}
-
-		// fallback to first file
-		if res.ModelFile[quant].Name == "" {
-			res.ModelFile[quant] = types.ModelFileInfo{Name: files[0].Name, Size: files[0].Size}
-			res.ExtraFiles = res.ExtraFiles[1:]
+		if mainFile.Name == "" {
+			mainFile = files[0]
 		}
 
 		res.ModelFile[quant] = types.ModelFileInfo{
-			Name:       res.ModelFile[quant].Name,
+			Name:       mainFile.Name,
 			Downloaded: true,
-			Size:       res.ModelFile[quant].Size,
+			Size:       mainFile.Size,
 		}
-		for i, v := range res.ExtraFiles {
-			res.ExtraFiles[i] = types.ModelFileInfo{
-				Name:       v.Name,
-				Downloaded: true,
-				Size:       v.Size,
+		for _, file := range files {
+			if file.Name != mainFile.Name {
+				res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
+					Name:       file.Name,
+					Downloaded: true,
+					Size:       file.Size,
+				})
 			}
 		}
 	}
@@ -851,5 +777,3 @@ func sumSize(files []model_hub.ModelFileInfo) int64 {
 	}
 	return size
 }
-
-

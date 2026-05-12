@@ -199,11 +199,6 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 				needs = append(needs, model_hub.ModelFileInfo{Name: mf.MMProjFile.Name, Size: mf.MMProjFile.Size})
 			}
 		}
-		if mf.TokenizerFile.Name != "" {
-			if mf.TokenizerFile.Downloaded {
-				needs = append(needs, model_hub.ModelFileInfo{Name: mf.TokenizerFile.Name, Size: mf.TokenizerFile.Size})
-			}
-		}
 		for _, f := range mf.ExtraFiles {
 			if f.Downloaded {
 				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
@@ -232,18 +227,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 			return
 		}
 
-		model := types.ModelManifest{
-			Name:          mf.Name,
-			ModelName:     mf.ModelName,
-			ModelType:     mf.ModelType,
-			PluginId:      mf.PluginId,
-			DeviceId:      mf.DeviceId,
-			ModelFile:     mf.ModelFile,
-			MMProjFile:    mf.MMProjFile,
-			TokenizerFile: mf.TokenizerFile,
-			ExtraFiles:    mf.ExtraFiles,
-		}
-		if err := writeManifestAt(s.ModelfilePath(mf.Name, ""), model); err != nil {
+		if err := writeManifestAt(s.ModelfilePath(mf.Name, ""), mf); err != nil {
 			errC <- err
 			return
 		}
@@ -274,9 +258,6 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 			if f.Downloaded && !omf.ModelFile[q].Downloaded {
 				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
-		}
-		if nmf.TokenizerFile.Downloaded && !omf.TokenizerFile.Downloaded {
-			needs = append(needs, model_hub.ModelFileInfo{Name: nmf.TokenizerFile.Name, Size: nmf.TokenizerFile.Size})
 		}
 		for q, f := range nmf.ExtraFiles {
 			if f.Downloaded && !omf.ExtraFiles[q].Downloaded {
@@ -310,18 +291,7 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 			return
 		}
 
-		model := types.ModelManifest{
-			Name:          nmf.Name,
-			ModelName:     nmf.ModelName,
-			ModelType:     nmf.ModelType,
-			PluginId:      nmf.PluginId,
-			DeviceId:      nmf.DeviceId,
-			ModelFile:     nmf.ModelFile,
-			MMProjFile:    nmf.MMProjFile,
-			TokenizerFile: nmf.TokenizerFile,
-			ExtraFiles:    nmf.ExtraFiles,
-		}
-		if err := writeManifestAt(s.ModelfilePath(nmf.Name, ""), model); err != nil {
+		if err := writeManifestAt(s.ModelfilePath(nmf.Name, ""), nmf); err != nil {
 			errC <- err
 			return
 		}
