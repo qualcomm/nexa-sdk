@@ -91,17 +91,17 @@ var (
 		llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
 		llmFlags.SortFlags = false
 		llmFlags.StringVarP(&device, "device", "d", "", "device to run on: cpu, gpu, npu, or hybrid (default: hybrid for llama.cpp, npu for qairt)")
-		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "number of layers to offload to gpu/npu")
-		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size")
+		llmFlags.Int32VarP(&ngl, "ngl", "n", 0, "number of layers to offload to gpu/npu (llama_cpp only, default 999)")
+		llmFlags.Int32VarP(&nctx, "nctx", "", 0, "context window size (llama_cpp only, default 4096)")
 		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
-		llmFlags.StringArrayVarP(&stop, "stop", "", nil, "stop sequences")
-		llmFlags.StringVarP(&stopFile, "stop-file", "", "", "file containing stop sequences")
+		llmFlags.StringArrayVarP(&stop, "stop", "", nil, "stop sequences (llama_cpp only)")
+		llmFlags.StringVarP(&stopFile, "stop-file", "", "", "file containing stop sequences (llama_cpp only)")
 		llmFlags.BoolVarP(&noThink, "no-think", "", false, "disable thinking mode")
 		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
 		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
 		llmFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
-		llmFlags.StringVarP(&tokenFile, "token-file", "t", "", "path to token file (space-separated token IDs)")
+		llmFlags.StringVarP(&tokenFile, "token-file", "t", "", "path to token file (space-separated token IDs) (llama_cpp only)")
 		return llmFlags
 	}()
 	vlmFlags = func() *pflag.FlagSet {
@@ -196,6 +196,17 @@ func infer() *cobra.Command {
 		switch err {
 		case nil:
 			os.Exit(0)
+		case geniex_sdk.ErrCommonParamNotSupported:
+			// TODO: Once the C API exposes geniex_get_last_error_detail() (a thread-local
+			// detail string set by the plugin before returning an error code), the specific
+			// unsupported flag name will be available here and this generic message can be
+			// replaced with the detail string from the C API. At that point the resolved
+			// flag name and plugin name should be surfaced directly from the plugin log,
+			// and the CLI-level resolveNglNctx / Changed() workaround can be removed.
+			fmt.Println(render.GetTheme().Error.Sprintf(`
+⚠️ A flag you passed is not supported by the %s plugin.
+
+👉 Run 'geniex infer -h' to see which flags are plugin-specific.`, manifest.PluginId))
 		case geniex_sdk.ErrCommonNotSupport:
 			fmt.Println(render.GetTheme().Error.Sprint(`
 ⚠️ Oops. This model type is not supported yet.
@@ -313,6 +324,32 @@ func loadStopSequences() ([]string, error) {
 	return stopSequences, nil
 }
 
+// resolveNglNctx returns the effective (ngl, nctx) values to pass to the SDK.
+// For llama_cpp, flags that were not explicitly set by the user resolve to
+// their well-known defaults (999 / 4096). If the user explicitly passed a
+// value (including 0), that value is always respected.
+// For all other plugins, unset flags stay at 0 ("not set") so the plugin's
+// param-guard is not tripped by the flag default.
+//
+// TODO: This Changed()-based workaround exists because the C ABI currently has
+// no way to return a dynamic detail string alongside an error code. Once
+// geniex_get_last_error_detail() is added to the C API, the plugin can log the
+// exact flag name and this CLI-side guard (and the 0-default trick) can be
+// removed in favour of simply forwarding the raw flag values and letting the
+// plugin report the problem with full context.
+func resolveNglNctx(manifest *types.ModelManifest) (resolvedNgl, resolvedNctx int32) {
+	resolvedNgl, resolvedNctx = ngl, nctx
+	if manifest.PluginId == geniex_sdk.PluginLlamaCpp {
+		if !llmFlags.Changed("ngl") {
+			resolvedNgl = 999
+		}
+		if !llmFlags.Changed("nctx") {
+			resolvedNctx = 4096
+		}
+	}
+	return
+}
+
 // resolveDevice maps the --device flag to (device_id, n_gpu_layers) via
 // the SDK's geniex_resolve_device (see sdk/src/device.cpp). An empty
 // --device picks the plugin's preferred default (hybrid for llama.cpp,
@@ -321,11 +358,12 @@ func loadStopSequences() ([]string, error) {
 // pins a specific DeviceId (e.g. "HTP0,HTP1,HTP2,HTP3"), the manifest
 // wins — qairt is still coerced to its NPU device with a warning.
 func resolveDevice(manifest *types.ModelManifest) (deviceID string, nglOverride int32) {
+	effectiveNgl, _ := resolveNglNctx(manifest)
 	if device == "" && manifest.DeviceId != "" && manifest.PluginId != geniex_sdk.PluginQairt {
-		return manifest.DeviceId, ngl
+		return manifest.DeviceId, effectiveNgl
 	}
 
-	deviceID, nglOverride, warning, err := geniex_sdk.ResolveDevice(manifest.PluginId, manifest.ModelName, device, ngl)
+	deviceID, nglOverride, warning, err := geniex_sdk.ResolveDevice(manifest.PluginId, manifest.ModelName, device, effectiveNgl)
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 		os.Exit(1)
@@ -359,6 +397,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 
 	deviceID, nglResolved := resolveDevice(manifest)
+	_, nctxResolved := resolveNglNctx(manifest)
 
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
@@ -369,7 +408,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 		PluginID:  manifest.PluginId,
 		DeviceID:  deviceID,
 		Config: geniex_sdk.ModelConfig{
-			NCtx:       nctx,
+			NCtx:       nctxResolved,
 			NGpuLayers: nglResolved,
 		},
 	})
@@ -532,6 +571,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 	}
 
 	deviceID, nglResolved := resolveDevice(manifest)
+	_, nctxResolved := resolveNglNctx(manifest)
 
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
@@ -543,7 +583,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 		PluginID:      manifest.PluginId,
 		DeviceID:      deviceID,
 		Config: geniex_sdk.ModelConfig{
-			NCtx:       nctx,
+			NCtx:       nctxResolved,
 			NGpuLayers: nglResolved,
 		},
 	})
