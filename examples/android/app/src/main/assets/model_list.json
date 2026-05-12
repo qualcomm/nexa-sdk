@@ -91,6 +91,15 @@
     "pluginIds": 7
   },
   {
+    "id": "gpt-oss-20b-GGUF",
+    "displayName": "gpt-oss-20b (GGUF)",
+    "modelName": "unsloth/gpt-oss-20b-GGUF",
+    "quant": "Q4_0",
+    "hub": "HUGGINGFACE",
+    "type": "chat",
+    "pluginIds": 7
+  },
+  {
     "id": "Qwen3-4B-Instruct-2507",
     "displayName": "Qwen3-4B-Instruct-2507 (NPU)",
     "modelName": "qualcomm/Qwen3-4B-Instruct-2507",
