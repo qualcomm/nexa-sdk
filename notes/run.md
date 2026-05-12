@@ -47,7 +47,7 @@ explicitly to override the override. Adding a new family means editing
 that one function and rebuilding the SDK bridge.
 
 Concrete ids (`HTP0,HTP1,HTP2,HTP3`, `GPUOpenCL`, etc.) pass through
-unchanged when supplied via `<plugin>:<device>` or manifest `DeviceId`.
+unchanged when supplied via `<plugin>:<device>`.
 
 ## Backend selection (llama_cpp)
 
@@ -66,7 +66,7 @@ unchanged when supplied via `<plugin>:<device>` or manifest `DeviceId`.
 
 Bonus: when the `device_id` string starts with `"HTP0"`, the plugin also flips KV cache to Q8_0 and enables flash-attn (`llm.cpp:136-140`). Orthogonal to perf — path (2) is slower than (1) even with those enabled.
 
-**Rule of thumb:** use `--device hybrid` (or leave `--device` empty) for fastest throughput; use `--device npu` when you need determinism or when debugging placement. Pass literal `"HTP0"` / `"HTP0,HTP1,HTP2,HTP3"` via the manifest `DeviceId` when the user explicitly wants that layout.
+**Rule of thumb:** use `--device hybrid` (or leave `--device` empty) for fastest throughput; use `--device npu` when you need determinism or when debugging placement.
 
 History: the `fb98467` commit ("add device parameter") originally made `--device npu` synthesize `device_id="HTP0"`, collapsing the fast path. That was reverted (hybrid became the implicit default), then the two semantics were split into explicit `npu` / `hybrid` aliases to let callers pick.
 
@@ -80,15 +80,6 @@ geniex infer Qwen/Qwen3-1.7B-GGUF --device npu    # pinned HTP0
 geniex infer Qwen/Qwen3-1.7B-GGUF --device hybrid # explicit hybrid
 geniex infer Qwen/Qwen3-1.7B-GGUF --device gpu
 geniex infer Qwen/Qwen3-1.7B-GGUF --device cpu
-```
-
-Or override `DeviceId` in the per-model manifest (takes precedence when `--device` is unset and the plugin is not `qairt`):
-
-```powershell
-$m = "$env:USERPROFILE\.cache\geniex\models\NexaAI\Qwen3-0.6B-GGUF\geniex.json"
-$j = Get-Content $m -Raw | ConvertFrom-Json
-$j.DeviceId = ""    # hybrid; or "GPUOpenCL" / "HTP0,HTP1,HTP2,HTP3" / etc.
-$j | ConvertTo-Json -Depth 20 | Set-Content $m
 ```
 
 ### Sanity-checking which path actually ran
