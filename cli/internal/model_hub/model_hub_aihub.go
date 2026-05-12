@@ -87,7 +87,7 @@ func (*AIHub) CheckAvailable(ctx context.Context, name string) error {
 // ModelInfo resolves manifest/platform/release-assets, picks the first
 // matching asset for the configured chipset, and returns a two-file listing:
 //   - "<repo>.zip" — what store.Pull will actually download via GetFileContent
-//   - "geniex.json" — a pseudo manifest (PluginId/DeviceId/Precision/…)
+//   - "geniex.json" — a pseudo manifest (PluginId/Precision/…)
 //     that the upper ModelInfo parses into *types.ModelManifest so
 //     pullModel can populate the real manifest fields automatically.
 func (h *AIHub) ModelInfo(ctx context.Context, name string) ([]ModelFileInfo, error) {
@@ -142,7 +142,6 @@ func (h *AIHub) ModelInfo(ctx context.Context, name string) ([]ModelFileInfo, er
 		Name:      name,
 		ModelName: model.GetId(),
 		PluginId:  "qairt",
-		DeviceId:  asset.GetChipset(),
 		// ModelType intentionally left blank so pullModel prompts the user
 		// via chooseModelType(). ModelFile is filled in by PostDownload
 		// once the zip has been extracted.
@@ -237,7 +236,6 @@ func (h *AIHub) PostDownload(ctx context.Context, name, outputDir string, mf *ty
 		},
 	}
 	mf.MMProjFile = types.ModelFileInfo{}
-	mf.TokenizerFile = types.ModelFileInfo{}
 	mf.ExtraFiles = mf.ExtraFiles[:0]
 	for _, f := range res.Files {
 		if f.Name == res.EntrypointBasename {

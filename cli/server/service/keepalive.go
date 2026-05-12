@@ -188,28 +188,21 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 				NGpuLayers: ngl,
 			},
 			PluginID: manifest.PluginId,
-			DeviceID: manifest.DeviceId,
 		})
 	case reflect.TypeFor[geniex_sdk.VLM]():
 		var mmproj string
 		if manifest.MMProjFile.Name != "" {
 			mmproj = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 		}
-		var tokenizer string
-		if manifest.TokenizerFile.Name != "" {
-			tokenizer = s.ModelfilePath(manifest.Name, manifest.TokenizerFile.Name)
-		}
 		t, e = geniex_sdk.NewVLM(geniex_sdk.VlmCreateInput{
-			ModelName:     manifest.ModelName,
-			ModelPath:     modelfile,
-			MmprojPath:    mmproj,
-			TokenizerPath: tokenizer,
+			ModelName:  manifest.ModelName,
+			ModelPath:  modelfile,
+			MmprojPath: mmproj,
 			Config: geniex_sdk.ModelConfig{
 				NCtx:       nctx,
 				NGpuLayers: ngl,
 			},
 			PluginID: manifest.PluginId,
-			DeviceID: manifest.DeviceId,
 		})
 	default:
 		panic(fmt.Sprintf("not support type: %+#v", t))
