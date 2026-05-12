@@ -40,6 +40,30 @@ import (
 	"github.com/qcom-it-nexa-ai/geniex/cli/server/utils"
 )
 
+// errorPhase identifies which stage produced an otherwise-unclassified error,
+// so the message returned to the client can point the user at likely root
+// causes (e.g. an outdated NPU/GPU driver).
+type errorPhase int
+
+const (
+	phaseModelLoad errorPhase = iota
+	phaseGeneration
+)
+
+// driverHintError formats an error with a hint that the failure may be driver
+// related. Used when the SDK returned an error we haven't otherwise classified,
+// so the client can surface an actionable suggestion instead of a bare message.
+func driverHintError(phase errorPhase, err error) string {
+	switch phase {
+	case phaseModelLoad:
+		return fmt.Sprintf("Model failed to load: %s. This may be caused by an outdated NPU or GPU driver — please check your driver version and update it if necessary.", err.Error())
+	case phaseGeneration:
+		return fmt.Sprintf("Generation failed: %s. This may be caused by an outdated NPU or GPU driver — please check your driver version and update it if necessary.", err.Error())
+	default:
+		return err.Error()
+	}
+}
+
 type ChatCompletionNewParams openai.ChatCompletionNewParams
 
 type ChatCompletionRequest struct {
@@ -218,7 +242,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
 		return
 	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": driverHintError(phaseModelLoad, err), "code": geniex_sdk.SDKErrorCode(err)})
 		return
 	}
 	if isWarmupRequest(param) {
@@ -233,7 +257,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		AddGenerationPrompt: true,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": driverHintError(phaseGeneration, err), "code": geniex_sdk.SDKErrorCode(err)})
 		return
 	}
 
@@ -287,7 +311,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				resWg.Wait()
 
 				if err != nil {
-					c.SSEvent("", map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+					c.SSEvent("", map[string]any{"error": driverHintError(phaseGeneration, err), "code": geniex_sdk.SDKErrorCode(err)})
 					return false
 				}
 
@@ -314,7 +338,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 				if err != nil {
 					slog.Error("Generation error", "error", err)
-					c.SSEvent("", map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+					c.SSEvent("", map[string]any{"error": driverHintError(phaseGeneration, err), "code": geniex_sdk.SDKErrorCode(err)})
 					return false
 				}
 
@@ -375,7 +399,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		},
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": driverHintError(phaseGeneration, err), "code": geniex_sdk.SDKErrorCode(err)})
 			return
 		}
 
@@ -551,7 +575,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
 		return
 	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": driverHintError(phaseModelLoad, err), "code": geniex_sdk.SDKErrorCode(err)})
 		return
 	}
 	if isWarmupRequest(param) {
@@ -566,7 +590,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		EnableThink: param.EnableThink,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": driverHintError(phaseGeneration, err), "code": geniex_sdk.SDKErrorCode(err)})
 		return
 	}
 	images := make([]string, 0)
@@ -634,7 +658,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				resWg.Wait()
 
 				if err != nil {
-					c.SSEvent("", map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+					c.SSEvent("", map[string]any{"error": driverHintError(phaseGeneration, err), "code": geniex_sdk.SDKErrorCode(err)})
 					return false
 				}
 
@@ -661,7 +685,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 				if err != nil {
 					slog.Error("Generation error", "error", err)
-					c.SSEvent("", map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+					c.SSEvent("", map[string]any{"error": driverHintError(phaseGeneration, err), "code": geniex_sdk.SDKErrorCode(err)})
 					return false
 				}
 
@@ -725,7 +749,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		},
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": driverHintError(phaseGeneration, err), "code": geniex_sdk.SDKErrorCode(err)})
 			return
 		}
 
