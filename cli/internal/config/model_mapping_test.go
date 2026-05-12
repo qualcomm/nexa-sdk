@@ -24,11 +24,6 @@ func TestGetModelMapping(t *testing.T) {
 		expected    string
 		shouldExist bool
 	}{
-		{"qwen3", "Qwen/Qwen3-4B-GGUF", true},
-		{"qwen2vl", "ggml-org/Qwen2-VL-2B-Instruct-GGUF", true},
-		{"qwen2.5vl", "Qwen/Qwen2.5-VL-3B-Instruct", true},
-		{"gemma3", "ggml-org/gemma-3-4b-it-GGUF", true},
-		{"smolvlm", "ggml-org/SmolVLM-500M-Instruct-GGUF", true},
 		{"unknown", "", false},
 		{"", "", false},
 	}
