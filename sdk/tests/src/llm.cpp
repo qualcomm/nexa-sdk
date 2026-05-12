@@ -231,20 +231,20 @@ void register_llm_tests(TestRegistry<geniex_LLM> &registry) {
 
     // Common tests for all plugins
     REGISTER_TEST(registry, GenerateBasic, auto cfg = geniex_GenerationConfig{}; cfg.max_tokens = 32;
-        geniex_LlmGenerateInput input{};
-        input.prompt_utf8 = " 🥳 🎂 Once upon a time";
-        input.config      = &cfg;
-        geniex_LlmGenerateOutput output{};
-        int32_t                  res = geniex_llm_generate(model, &input, &output);
-        CHECK_ML_ERROR(res);
-        GENIEX_LOG_INFO("{}", output);
+                  geniex_LlmGenerateInput input{};
+                  input.prompt_utf8 = " 🥳 🎂 Once upon a time";
+                  input.config      = &cfg;
+                  geniex_LlmGenerateOutput output{};
+                  int32_t                  res = geniex_llm_generate(model, &input, &output);
+                  CHECK_ML_ERROR(res);
+                  GENIEX_LOG_INFO("{}", output);
 
-        REQUIRE(output.full_text != nullptr);
-        CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
-        free(output.full_text);
+                  REQUIRE(output.full_text != nullptr);
+                  CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
+                  free(output.full_text);
 
-        CHECK(output.profile_data.prompt_tokens > 0);
-        CHECK(output.profile_data.generated_tokens > 0););
+                  CHECK(output.profile_data.prompt_tokens > 0);
+                  CHECK(output.profile_data.generated_tokens > 0););
 
     //     // Test reading input from file (Android NPU only)
     // #if defined(__ANDROID__)
@@ -297,72 +297,72 @@ void register_llm_tests(TestRegistry<geniex_LLM> &registry) {
     // #endif
 
     REGISTER_TEST(registry, GenerateStream, auto cfg = geniex_GenerationConfig{}; cfg.max_tokens = 32;
-        geniex_LlmGenerateInput input{};
-        input.prompt_utf8 = " 🥳 🎂 Once upon a time";
-        input.config      = &cfg;
-        input.on_token    = stream_callback;
-        geniex_LlmGenerateOutput output{};
+                  geniex_LlmGenerateInput input{};
+                  input.prompt_utf8 = " 🥳 🎂 Once upon a time";
+                  input.config      = &cfg;
+                  input.on_token    = stream_callback;
+                  geniex_LlmGenerateOutput output{};
 
-        int32_t res = geniex_llm_generate(model, &input, &output);
-        CHECK_ML_ERROR(res);
+                  int32_t res = geniex_llm_generate(model, &input, &output);
+                  CHECK_ML_ERROR(res);
 
-        std::cout << std::endl;  // Add newline after streaming output
+                  std::cout << std::endl;  // Add newline after streaming output
 
-        // Validate that all streamed tokens were valid UTF-8
-        validate_and_reset_utf8_state(&output););
+                  // Validate that all streamed tokens were valid UTF-8
+                  validate_and_reset_utf8_state(&output););
 
     REGISTER_TEST(registry, GenerateWithTokenIds, auto cfg = geniex_GenerationConfig{}; cfg.max_tokens = 32;
-        geniex_LlmGenerateInput input{};
-        // token id in this model's tokenizer for ` 🥳 🎂 Once upon a time`
-        std::vector<int32_t> token_ids = {11162, 98, 111, 11162, 236, 224, 9646, 5193, 264, 882};
-        input.input_ids                = token_ids.data();
-        input.input_ids_count          = (int32_t)token_ids.size();
-        input.config                   = &cfg;
-        geniex_LlmGenerateOutput output{};
-        int32_t                  res = geniex_llm_generate(model, &input, &output);
-        CHECK_ML_ERROR(res);
-        GENIEX_LOG_INFO("{}", output);
+                  geniex_LlmGenerateInput input{};
+                  // token id in this model's tokenizer for ` 🥳 🎂 Once upon a time`
+                  std::vector<int32_t> token_ids = {11162, 98, 111, 11162, 236, 224, 9646, 5193, 264, 882};
+                  input.input_ids                = token_ids.data();
+                  input.input_ids_count          = (int32_t)token_ids.size();
+                  input.config                   = &cfg;
+                  geniex_LlmGenerateOutput output{};
+                  int32_t                  res = geniex_llm_generate(model, &input, &output);
+                  CHECK_ML_ERROR(res);
+                  GENIEX_LOG_INFO("{}", output);
 
-        REQUIRE(output.full_text != nullptr);
-        CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
-        free(output.full_text);
+                  REQUIRE(output.full_text != nullptr);
+                  CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
+                  free(output.full_text);
 
-        CHECK(output.profile_data.prompt_tokens > 0);
-        CHECK(output.profile_data.generated_tokens > 0););
+                  CHECK(output.profile_data.prompt_tokens > 0);
+                  CHECK(output.profile_data.generated_tokens > 0););
 
     REGISTER_TEST(registry, GenerateChat, std::vector<geniex_LlmChatMessage> messages;
-        messages.push_back({"user", " 🥳 🎂 Once upon a time"});
+                  messages.push_back({"user", " 🥳 🎂 Once upon a time"});
 
-        geniex_LlmApplyChatTemplateInput apply_input{};
-        apply_input.messages              = messages.data();
-        apply_input.message_count         = (int32_t)messages.size();
-        apply_input.add_generation_prompt = true;
-        geniex_LlmApplyChatTemplateOutput apply_output{};
-        int32_t apply_res = geniex_llm_apply_chat_template(model, &apply_input, &apply_output);
-        REQUIRE_ML_ERROR(apply_res);
+                  geniex_LlmApplyChatTemplateInput apply_input{};
+                  apply_input.messages              = messages.data();
+                  apply_input.message_count         = (int32_t)messages.size();
+                  apply_input.add_generation_prompt = true;
+                  geniex_LlmApplyChatTemplateOutput apply_output{};
+                  int32_t apply_res = geniex_llm_apply_chat_template(model, &apply_input, &apply_output);
+                  REQUIRE_ML_ERROR(apply_res);
 
-        auto cfg       = geniex_GenerationConfig{};
-        cfg.max_tokens = 32;
-        geniex_LlmGenerateInput input{};
-        input.prompt_utf8 = apply_output.formatted_text;
-        input.config      = &cfg;
-        input.on_token    = stream_callback;
-        input.user_data   = nullptr;
-        geniex_LlmGenerateOutput output{};
+                  auto cfg       = geniex_GenerationConfig{};
+                  cfg.max_tokens = 32;
+                  geniex_LlmGenerateInput input{};
+                  input.prompt_utf8 = apply_output.formatted_text;
+                  input.config      = &cfg;
+                  input.on_token    = stream_callback;
+                  input.user_data   = nullptr;
+                  geniex_LlmGenerateOutput output{};
 
-        int32_t res = geniex_llm_generate(model, &input, &output);
-        CHECK_ML_ERROR(res);
+                  int32_t res = geniex_llm_generate(model, &input, &output);
+                  CHECK_ML_ERROR(res);
 
-        std::cout << std::endl;  // Add newline after streaming output
+                  std::cout << std::endl;  // Add newline after streaming output
 
-        REQUIRE(output.full_text != nullptr);
-        GENIEX_LOG_INFO("Output from basic generation: {}", output.full_text);
-        CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
-        if (apply_output.formatted_text) free(apply_output.formatted_text);
-        free(output.full_text);
+                  REQUIRE(output.full_text != nullptr);
+                  GENIEX_LOG_INFO("Output from basic generation: {}", output.full_text);
+                  CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
+                  if (apply_output.formatted_text) free(apply_output.formatted_text);
+                  free(output.full_text);
 
-        // Validate that all streamed tokens were valid UTF-8
-        validate_and_reset_utf8_state(););
+                  // Validate that all streamed tokens were valid UTF-8
+                  validate_and_reset_utf8_state(););
 
     REGISTER_TEST(
         registry, GenerateChatMultiRound, struct Rounds { std::string user_message; };
@@ -411,34 +411,34 @@ void register_llm_tests(TestRegistry<geniex_LLM> &registry) {
         validate_and_reset_utf8_state(););
 
     REGISTER_TEST(registry, GenerateWithSampling, auto sampler_config = geniex_SamplerConfig{};
-        sampler_config.temperature        = 100.0;
-        sampler_config.top_p              = 0.9;
-        sampler_config.top_k              = 10;
-        sampler_config.min_p              = 0.0;
-        sampler_config.repetition_penalty = 1.2;
-        sampler_config.presence_penalty   = 1.0;
-        sampler_config.frequency_penalty  = 1.0;
-        sampler_config.seed               = 42;
+                  sampler_config.temperature        = 100.0;
+                  sampler_config.top_p              = 0.9;
+                  sampler_config.top_k              = 10;
+                  sampler_config.min_p              = 0.0;
+                  sampler_config.repetition_penalty = 1.2;
+                  sampler_config.presence_penalty   = 1.0;
+                  sampler_config.frequency_penalty  = 1.0;
+                  sampler_config.seed               = 42;
 
-        auto cfg           = geniex_GenerationConfig{};
-        cfg.max_tokens     = 32;
-        cfg.sampler_config = &sampler_config;
+                  auto cfg           = geniex_GenerationConfig{};
+                  cfg.max_tokens     = 32;
+                  cfg.sampler_config = &sampler_config;
 
-        geniex_LlmGenerateInput input{};
-        input.prompt_utf8 = " 🥳 🎂 Once upon a time";
-        input.config      = &cfg;
-        geniex_LlmGenerateOutput output{};
+                  geniex_LlmGenerateInput input{};
+                  input.prompt_utf8 = " 🥳 🎂 Once upon a time";
+                  input.config      = &cfg;
+                  geniex_LlmGenerateOutput output{};
 
-        int32_t res = geniex_llm_generate(model, &input, &output);
-        CHECK_ML_ERROR(res);
-        GENIEX_LOG_INFO("{}", output);
+                  int32_t res = geniex_llm_generate(model, &input, &output);
+                  CHECK_ML_ERROR(res);
+                  GENIEX_LOG_INFO("{}", output);
 
-        REQUIRE(output.full_text != nullptr);
-        CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
-        free(output.full_text);
+                  REQUIRE(output.full_text != nullptr);
+                  CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
+                  free(output.full_text);
 
-        CHECK(output.profile_data.prompt_tokens > 0);
-        CHECK(output.profile_data.generated_tokens > 0););
+                  CHECK(output.profile_data.prompt_tokens > 0);
+                  CHECK(output.profile_data.generated_tokens > 0););
 
     REGISTER_TEST(
         registry,
@@ -535,12 +535,12 @@ void register_llm_tests(TestRegistry<geniex_LLM> &registry) {
 
     if (PluginCapabilities::has_tool_call(plugin_name)) {
         REGISTER_TEST(registry, ToolCallBasic, geniex_LlmChatMessage message; message.role = "user";
-            message.content = "What is the weather in San Francisco?";
+                      message.content = "What is the weather in San Francisco?";
 
-            geniex_LlmApplyChatTemplateInput input{};
-            input.messages      = &message;
-            input.message_count = 1;
-            input.tools         = R"([{
+                      geniex_LlmApplyChatTemplateInput input{};
+                      input.messages      = &message;
+                      input.message_count = 1;
+                      input.tools         = R"([{
                 "type": "function",
                 "function": {
                     "name": "get_current_weather",
@@ -562,56 +562,56 @@ void register_llm_tests(TestRegistry<geniex_LLM> &registry) {
                 }
             }])";
 
-            geniex_LlmApplyChatTemplateOutput output{};
-            int32_t                           res = geniex_llm_apply_chat_template(model, &input, &output);
-            CHECK_ML_ERROR(res);
+                      geniex_LlmApplyChatTemplateOutput output{};
+                      int32_t                           res = geniex_llm_apply_chat_template(model, &input, &output);
+                      CHECK_ML_ERROR(res);
 
-            REQUIRE(output.formatted_text != nullptr);
-            GENIEX_LOG_INFO("{}", output);
+                      REQUIRE(output.formatted_text != nullptr);
+                      GENIEX_LOG_INFO("{}", output);
 
-            auto cfg       = geniex_GenerationConfig{};
-            cfg.max_tokens = 32;
-            geniex_LlmGenerateInput gen_input{};
-            gen_input.prompt_utf8 = output.formatted_text;
-            gen_input.config      = &cfg;
-            geniex_LlmGenerateOutput gen_output{};
-            int32_t                  gen_res = geniex_llm_generate(model, &gen_input, &gen_output);
-            CHECK_ML_ERROR(gen_res);
-            GENIEX_LOG_INFO("{}", gen_output);
+                      auto cfg       = geniex_GenerationConfig{};
+                      cfg.max_tokens = 32;
+                      geniex_LlmGenerateInput gen_input{};
+                      gen_input.prompt_utf8 = output.formatted_text;
+                      gen_input.config      = &cfg;
+                      geniex_LlmGenerateOutput gen_output{};
+                      int32_t                  gen_res = geniex_llm_generate(model, &gen_input, &gen_output);
+                      CHECK_ML_ERROR(gen_res);
+                      GENIEX_LOG_INFO("{}", gen_output);
 
-            CHECK(gen_output.full_text != nullptr);
-            if (gen_output.full_text) free(gen_output.full_text);
-            free(output.formatted_text););
+                      CHECK(gen_output.full_text != nullptr);
+                      if (gen_output.full_text) free(gen_output.full_text);
+                      free(output.formatted_text););
     }
 
     if (PluginCapabilities::has_json(plugin_name)) {
         REGISTER_TEST(registry, GenerateJson, auto sampler_config = geniex_SamplerConfig{};
-            sampler_config.enable_json = true;
+                      sampler_config.enable_json = true;
 
-            auto cfg = geniex_GenerationConfig{};
-            // Using a larger max_tokens to allow the model to generate a complete
-            // json
-            cfg.max_tokens     = 64;
-            cfg.sampler_config = &sampler_config;
+                      auto cfg = geniex_GenerationConfig{};
+                      // Using a larger max_tokens to allow the model to generate a complete
+                      // json
+                      cfg.max_tokens     = 64;
+                      cfg.sampler_config = &sampler_config;
 
-            geniex_LlmGenerateInput input{};
-            input.prompt_utf8 =
-                "Generate information of a cat, including only the "
-                "following information: name, breed, age, color";
-            input.config = &cfg;
-            geniex_LlmGenerateOutput output{};
+                      geniex_LlmGenerateInput input{};
+                      input.prompt_utf8 =
+                          "Generate information of a cat, including only the "
+                          "following information: name, breed, age, color";
+                      input.config = &cfg;
+                      geniex_LlmGenerateOutput output{};
 
-            int32_t res = geniex_llm_generate(model, &input, &output);
-            CHECK_ML_ERROR(res);
-            GENIEX_LOG_INFO("{}", output);
+                      int32_t res = geniex_llm_generate(model, &input, &output);
+                      CHECK_ML_ERROR(res);
+                      GENIEX_LOG_INFO("{}", output);
 
-            REQUIRE(output.full_text != nullptr);
-            CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
+                      REQUIRE(output.full_text != nullptr);
+                      CHECK(utf8::is_valid(output.full_text, output.full_text + std::strlen(output.full_text)));
 
-            auto parse_json = nlohmann::json::parse(output.full_text);
-            CHECK(parse_json.size() >= 0);
+                      auto parse_json = nlohmann::json::parse(output.full_text);
+                      CHECK(parse_json.size() >= 0);
 
-            free(output.full_text););
+                      free(output.full_text););
     }
 }
 

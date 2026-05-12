@@ -66,40 +66,7 @@ The `arm64-windows-snapdragon-release` preset requires:
 - **Windows Driver Kit** — provides `inf2cat.exe`
 - **Self-signed HTP cert** (`.pfx`) and Windows test-signing enabled — see [run.md § Self-signed fallback](run.md#self-signed-fallback) for cert generation and test-signing setup
 
-For a minimal NPU build that skips Hexagon/OpenCL and drives the NPU only through QAIRT, use the `arm64-windows-snapdragon-cpu-release` preset instead.
-
 ## Build the SDK
-
-### Linux (cross-compile from x86_64)
-
-Start the Snapdragon Linux toolchain container — follow [llama.cpp's instructions](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/snapdragon/linux.md#snapdragon-based-linux-devices) to launch:
-
-```bash
-docker run --rm -u $(id -u):$(id -g) \
-    --volume $(pwd):/workspace \
-    --platform linux/amd64 \
-    ghcr.io/snapdragon-toolchain/arm64-linux:v0.1
-```
-
-Install build tools and Rust inside the container:
-
-```bash
-# Root shell (docker exec -u 0 -it <container_id> bash):
-apt update -y && apt install -y make gcc
-# Exit back to the normal user shell, then:
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source $HOME/.cargo/env
-rustup target add aarch64-unknown-linux-gnu
-```
-
-Build the SDK with the `arm64-linux-snapdragon-debug` preset:
-
-```bash
-cd sdk
-cmake --preset arm64-linux-snapdragon-debug -B build-linux .
-cmake --build build-linux -j
-cmake --install build-linux --prefix pkg-geniex
-```
 
 ### Windows ARM64 (Snapdragon)
 
@@ -113,39 +80,72 @@ cmake --install build-linux --prefix pkg-geniex
 
 ```powershell
 cd sdk
-cmake --preset arm64-windows-snapdragon-release -DGENIEX_TEST=OFF
-cmake --build --preset arm64-windows-snapdragon-release -j 8
-cmake --install build-arm64-windows-snapdragon-release --prefix pkg-geniex
+cmake --preset arm64-windows-snapdragon-release -B build
+cmake --build build -j
+cmake --install build --prefix pkg-geniex
 ```
 
-Swap the preset to `arm64-windows-snapdragon-cpu-release` for the QAIRT-only minimal build described above.
+### Linux (cross-compile from x86_64)
 
-### Android (cross-compile from Linux)
+Build the SDK inside the derived Snapdragon Linux toolchain container — it extends [ghcr.io/snapdragon-toolchain/arm64-linux](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/snapdragon/linux.md#snapdragon-based-linux-devices) with `build-essential`, `ccache`, `rustup`, the `aarch64-unknown-linux-gnu` Rust target, and the cc-rs cross-compiler symlinks baked in (see [`.github/docker/toolchain-linux.Dockerfile`](../.github/docker/toolchain-linux.Dockerfile)). Run from the repo root.
 
-Start the Snapdragon Android toolchain container — follow [llama.cpp's instructions](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/snapdragon/README.md#android) to launch:
+One-shot:
 
 ```bash
 docker run --rm -u $(id -u):$(id -g) \
     --volume $(pwd):/workspace \
+    --workdir /workspace/sdk \
+    -e CCACHE_DIR=/workspace/.ccache \
     --platform linux/amd64 \
-    ghcr.io/snapdragon-toolchain/arm64-android:v0.3
+    ghcr.io/qcom-ai-hub/geniex-toolchain-linux:v0.0.1 \
+    bash -c 'cmake --preset arm64-linux-snapdragon-debug -B build-linux . \
+      && cmake --build build-linux -j \
+      && cmake --install build-linux --prefix pkg-geniex'
 ```
 
-Install build tools and Rust inside the container:
+Interactive:
 
 ```bash
-# Root shell (docker exec -u 0 -it <container_id> bash):
-apt update -y && apt install -y make gcc
-# Exit back to the normal user shell, then:
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source $HOME/.cargo/env
-rustup target add aarch64-linux-android
+docker run --rm -it -u $(id -u):$(id -g) \
+    --volume $(pwd):/workspace \
+    --workdir /workspace/sdk \
+    -e CCACHE_DIR=/workspace/.ccache \
+    --platform linux/amd64 \
+    ghcr.io/qcom-ai-hub/geniex-toolchain-linux:v0.0.1 bash
+# then, inside the container:
+cmake --preset arm64-linux-snapdragon-debug -B build-linux .
+cmake --build build-linux -j
+cmake --install build-linux --prefix pkg-geniex
 ```
 
-Build the SDK with the `arm64-android-snapdragon-debug` preset:
+### Android (cross-compile from Linux)
+
+Build the SDK inside the derived Snapdragon Android toolchain container — it extends [ghcr.io/snapdragon-toolchain/arm64-android](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/snapdragon/README.md#android) with `build-essential`, `ccache`, `rustup`, and the `aarch64-linux-android` Rust target baked in (see [`.github/docker/toolchain-android.Dockerfile`](../.github/docker/toolchain-android.Dockerfile)). Run from the repo root.
+
+One-shot:
 
 ```bash
-cd sdk
+docker run --rm -u $(id -u):$(id -g) \
+    --volume $(pwd):/workspace \
+    --workdir /workspace/sdk \
+    -e CCACHE_DIR=/workspace/.ccache \
+    --platform linux/amd64 \
+    ghcr.io/qcom-ai-hub/geniex-toolchain-android:v0.0.1 \
+    bash -c 'cmake --preset arm64-android-snapdragon-debug -B build-android . \
+      && cmake --build build-android -j \
+      && cmake --install build-android --prefix pkg-geniex'
+```
+
+Interactive:
+
+```bash
+docker run --rm -it -u $(id -u):$(id -g) \
+    --volume $(pwd):/workspace \
+    --workdir /workspace/sdk \
+    -e CCACHE_DIR=/workspace/.ccache \
+    --platform linux/amd64 \
+    ghcr.io/qcom-ai-hub/geniex-toolchain-android:v0.0.1 bash
+# then, inside the container:
 cmake --preset arm64-android-snapdragon-debug -B build-android .
 cmake --build build-android -j
 cmake --install build-android --prefix pkg-geniex

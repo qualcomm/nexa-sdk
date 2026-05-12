@@ -55,9 +55,6 @@ func TestModelInfo(t *testing.T) {
 	if mf.PluginId != "qairt" {
 		t.Errorf("PluginId: got %q, want qairt", mf.PluginId)
 	}
-	if mf.DeviceId == "" {
-		t.Errorf("DeviceId should be set to the matched chipset")
-	}
 }
 
 func TestGetFileContent(t *testing.T) {

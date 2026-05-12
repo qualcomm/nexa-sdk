@@ -14,6 +14,10 @@
 
 package types
 
+// ManifestFileName is the name of the per-model manifest file written into
+// every model directory.
+const ManifestFileName = "geniex.json"
+
 type ModelType string
 
 const (
@@ -37,12 +41,10 @@ type ModelManifest struct {
 	ModelName string // model arch name like "qwen3-4b", "yolov12", etc.
 	ModelType ModelType
 	PluginId  string
-	DeviceId  string
 
-	ModelFile     map[string]ModelFileInfo // quant -> modelfile
-	MMProjFile    ModelFileInfo
-	TokenizerFile ModelFileInfo
-	ExtraFiles    []ModelFileInfo
+	ModelFile  map[string]ModelFileInfo // quant -> modelfile
+	MMProjFile ModelFileInfo
+	ExtraFiles []ModelFileInfo
 }
 
 func (m ModelManifest) GetSize() int64 {
@@ -55,9 +57,6 @@ func (m ModelManifest) GetSize() int64 {
 	}
 	if m.MMProjFile.Downloaded {
 		count += m.MMProjFile.Size
-	}
-	if m.TokenizerFile.Downloaded {
-		count += m.TokenizerFile.Size
 	}
 	for _, v := range m.ExtraFiles {
 		if v.Downloaded {

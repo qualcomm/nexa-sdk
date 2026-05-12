@@ -2,30 +2,46 @@
   {
     "id": "Qwen3-0.6B-GGUF",
     "displayName": "Qwen3-0.6B-GGUF",
-    "modelName": "Qwen3-0.6B-Q8_0.gguf",
+    "modelName": "Qwen/Qwen3-0.6B-GGUF",
+    "quant": "Q8_0",
+    "hub": "HUGGINGFACE",
     "type": "chat",
-    "versionCode": 1,
-    "pluginIds": 7,
-    "modelUrl": "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf"
+    "pluginIds": 7
   },
   {
-    "id": "granite4_micro",
-    "displayName": "Granite4-Micro-NPU",
-    "modelName": "geniex.json",
+    "id": "Llama-3.2-3B-Instruct-GGUF",
+    "displayName": "Llama-3.2-3B-Instruct (GGUF)",
+    "modelName": "unsloth/Llama-3.2-3B-Instruct-GGUF",
+    "quant": "Q4_K_M",
+    "hub": "HUGGINGFACE",
     "type": "chat",
-    "versionCode": 1,
-    "pluginIds": 4,
-    "baseUrl": "https://nexa-public-storage.s3-us-west-2.amazonaws.com/models/paulzhuQCOM/Qwen3-4B-Instruct-2507/",
-    "modelUrl": "geniex.json"
+    "pluginIds": 7
   },
   {
-    "id": "Qwen3-4B-Instruct-NPU",
-    "displayName": "Qwen3-4B-Instruct-NPU",
-    "modelName": "geniex.json",
+    "id": "Qwen3.5-0.8B-GGUF",
+    "displayName": "Qwen3.5-0.8B (GGUF)",
+    "modelName": "unsloth/Qwen3.5-0.8B-GGUF",
+    "quant": "Q4_K_M",
+    "hub": "HUGGINGFACE",
     "type": "chat",
-    "versionCode": 1,
-    "pluginIds": 4,
-    "baseUrl": "https://nexa-public-storage.s3-us-west-2.amazonaws.com/models/paulzhuQCOM/Qwen3-4B-Instruct-2507/",
-    "modelUrl": "geniex.json"
+    "pluginIds": 7
+  },
+  {
+    "id": "Qwen3-4B-Instruct-2507",
+    "displayName": "Qwen3-4B-Instruct-2507 (NPU)",
+    "modelName": "qualcomm/Qwen3-4B-Instruct-2507",
+    "hub": "AUTO",
+    "chipset": "SM8750",
+    "type": "chat",
+    "pluginIds": 4
+  },
+  {
+    "id": "Phi-3.5-mini-instruct",
+    "displayName": "Phi-3.5-mini-instruct (NPU)",
+    "modelName": "qualcomm/Phi-3.5-mini-instruct",
+    "hub": "AUTO",
+    "chipset": "SM8750",
+    "type": "chat",
+    "pluginIds": 4
   }
 ]

@@ -30,11 +30,30 @@ import (
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/types"
 )
 
-// isBundlePath checks if a path is a macOS bundle (.mlmodelc or .mlpackage)
-// These are directory references, not downloadable files
-func isBundlePath(path string) bool {
-	return strings.HasSuffix(strings.ToLower(path), ".mlmodelc") ||
-		strings.HasSuffix(strings.ToLower(path), ".mlpackage")
+// readManifestAt reads and unmarshals the manifest file at the given directory
+// path. It does NOT acquire the model lock — callers are responsible for
+// locking when needed.
+func readManifestAt(dir string) (*types.ModelManifest, error) {
+	data, err := os.ReadFile(filepath.Join(dir, types.ManifestFileName))
+	if err != nil {
+		return nil, err
+	}
+	var mf types.ModelManifest
+	if err := sonic.Unmarshal(data, &mf); err != nil {
+		return nil, fmt.Errorf("parse manifest: %w", err)
+	}
+	return &mf, nil
+}
+
+// writeManifestAt marshals mf and writes it to types.ManifestFileName inside dir.
+// It does NOT acquire the model lock — callers are responsible for locking
+// when needed.
+func writeManifestAt(dir string, mf types.ModelManifest) error {
+	data, _ := sonic.Marshal(mf) // Marshal of a plain struct never fails
+	if err := os.WriteFile(filepath.Join(dir, types.ManifestFileName), data, 0o664); err != nil {
+		return fmt.Errorf("write manifest: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) ensureEnoughDiskSpace(requiredBytes int64) error {
@@ -82,7 +101,7 @@ func (s *Store) Remove(name string) error {
 		return err
 	}
 	defer s.UnlockModel(name)
-	return os.RemoveAll(filepath.Join(s.home, "models", name))
+	return os.RemoveAll(s.ModelfilePath(name, ""))
 }
 
 // Clean removes all stored models and the models directory
@@ -108,26 +127,12 @@ func (s *Store) Clean() int {
 }
 
 func (s *Store) GetManifest(name string) (*types.ModelManifest, error) {
-	err := s.LockModel(name)
-	if err != nil {
+	if err := s.LockModel(name); err != nil {
 		return nil, err
 	}
 	defer s.UnlockModel(name)
 
-	dir := filepath.Join(s.home, "models")
-	// Read manifest file
-	data, e := os.ReadFile(filepath.Join(dir, name, "geniex.json"))
-	if e != nil {
-		return nil, e
-	}
-
-	// Parse manifest JSON
-	model := types.ModelManifest{}
-	e = sonic.Unmarshal(data, &model)
-	if e != nil {
-		return nil, e
-	}
-	return &model, nil
+	return readManifestAt(s.ModelfilePath(name, ""))
 }
 
 // Pull downloads a model from HuggingFace and stores it locally
@@ -149,7 +154,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 			return
 		}
 
-		modelDir := filepath.Join(s.home, "models", mf.Name)
+		modelDir := s.ModelfilePath(mf.Name, "")
 		hasProgress := false
 		if entries, _ := os.ReadDir(modelDir); entries != nil {
 			for _, e := range entries {
@@ -176,22 +181,12 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		var needs []model_hub.ModelFileInfo
 		for _, f := range mf.ModelFile {
 			if f.Downloaded {
-				// Skip bundle paths (.mlmodelc and .mlpackage) - they are directory references, not files
-				// Only the individual files within the bundles will be downloaded via ExtraFiles
-				if isBundlePath(f.Name) {
-					continue
-				}
 				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
 		}
 		if mf.MMProjFile.Name != "" {
 			if mf.MMProjFile.Downloaded {
 				needs = append(needs, model_hub.ModelFileInfo{Name: mf.MMProjFile.Name, Size: mf.MMProjFile.Size})
-			}
-		}
-		if mf.TokenizerFile.Name != "" {
-			if mf.TokenizerFile.Downloaded {
-				needs = append(needs, model_hub.ModelFileInfo{Name: mf.TokenizerFile.Name, Size: mf.TokenizerFile.Size})
 			}
 		}
 		for _, f := range mf.ExtraFiles {
@@ -222,21 +217,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 			return
 		}
 
-		model := types.ModelManifest{
-			Name:          mf.Name,
-			ModelName:     mf.ModelName,
-			ModelType:     mf.ModelType,
-			PluginId:      mf.PluginId,
-			DeviceId:      mf.DeviceId,
-			ModelFile:     mf.ModelFile,
-			MMProjFile:    mf.MMProjFile,
-			TokenizerFile: mf.TokenizerFile,
-			ExtraFiles:    mf.ExtraFiles,
-		}
-		manifestPath := filepath.Join(modelDir, "geniex.json")
-		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
-		err = os.WriteFile(manifestPath, manifestData, 0o664)
-		if err != nil {
+		if err := writeManifestAt(s.ModelfilePath(mf.Name, ""), mf); err != nil {
 			errC <- err
 			return
 		}
@@ -265,15 +246,8 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 		var needs []model_hub.ModelFileInfo
 		for q, f := range nmf.ModelFile {
 			if f.Downloaded && !omf.ModelFile[q].Downloaded {
-				// Skip bundle paths (.mlmodelc and .mlpackage) - they are directory references, not files
-				if isBundlePath(f.Name) {
-					continue
-				}
 				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
-		}
-		if nmf.TokenizerFile.Downloaded && !omf.TokenizerFile.Downloaded {
-			needs = append(needs, model_hub.ModelFileInfo{Name: nmf.TokenizerFile.Name, Size: nmf.TokenizerFile.Size})
 		}
 		for q, f := range nmf.ExtraFiles {
 			if f.Downloaded && !omf.ExtraFiles[q].Downloaded {
@@ -292,13 +266,13 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 		}
 
 		// Create model directory structure
-		err := os.MkdirAll(filepath.Join(s.home, "models", nmf.Name), 0o770)
+		err := os.MkdirAll(s.ModelfilePath(nmf.Name, ""), 0o770)
 		if err != nil {
 			errC <- err
 			return
 		}
 
-		resCh, errCh := model_hub.StartDownload(ctx, nmf.Name, filepath.Join(s.home, "models", nmf.Name), needs)
+		resCh, errCh := model_hub.StartDownload(ctx, nmf.Name, s.ModelfilePath(nmf.Name, ""), needs)
 		for d := range resCh {
 			infoC <- d
 		}
@@ -307,21 +281,7 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 			return
 		}
 
-		model := types.ModelManifest{
-			Name:          nmf.Name,
-			ModelName:     nmf.ModelName,
-			ModelType:     nmf.ModelType,
-			PluginId:      nmf.PluginId,
-			DeviceId:      nmf.DeviceId,
-			ModelFile:     nmf.ModelFile,
-			MMProjFile:    nmf.MMProjFile,
-			TokenizerFile: nmf.TokenizerFile,
-			ExtraFiles:    nmf.ExtraFiles,
-		}
-		manifestPath := filepath.Join(s.home, "models", nmf.Name, "geniex.json")
-		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
-		err = os.WriteFile(manifestPath, manifestData, 0o664)
-		if err != nil {
+		if err := writeManifestAt(s.ModelfilePath(nmf.Name, ""), nmf); err != nil {
 			errC <- err
 			return
 		}
@@ -341,6 +301,24 @@ func (s *Store) ModelDirPath() string {
 // ModelfilePath returns the full path to a model's data file
 func (s *Store) ModelfilePath(name string, file string) string {
 	return filepath.Join(s.home, "models", name, file)
+}
+
+// SetModelType updates the ModelType field in an already-downloaded model's
+// manifest. It is safe to call concurrently — the model lock is held for the
+// duration of the read-modify-write.
+func (s *Store) SetModelType(name string, modelType types.ModelType) error {
+	if err := s.LockModel(name); err != nil {
+		return err
+	}
+	defer s.UnlockModel(name)
+
+	dir := s.ModelfilePath(name, "")
+	mf, err := readManifestAt(dir)
+	if err != nil {
+		return fmt.Errorf("read manifest: %w", err)
+	}
+	mf.ModelType = modelType
+	return writeManifestAt(dir, *mf)
 }
 
 func (s *Store) scanModelDir() ([]string, error) {
