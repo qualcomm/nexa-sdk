@@ -10,13 +10,12 @@ import Feedback from '/snippets/page-feedback.mdx';
 To use the API, first start the GenieXSDK Docker container in server mode:
 
 ```bash bash
-export NEXA_TOKEN="YOUR_LONG_TOKEN_HERE"
-docker run --rm -d -p 18181:18181 --privileged \
-  -v /path/to/data:/data \
+docker run -it --rm --privileged \
+  -v "$PWD/data:/data" \
   -v /usr/lib:/opt/qcom-lib:ro \
-  -v /etc/machine-id:/etc/machine-id:ro \
-  -e NEXA_TOKEN \
-  geniex-ai/geniexsdk serve
+  --network=host \
+  ghcr.io/qcom-ai-hub/geniex-cli:latest \
+  serve
 ```
 The server runs on `http://127.0.0.1:18181` by default. Keep the container running, and make your requests from another terminal or application.
 
@@ -25,11 +24,7 @@ You can also access the interactive Swagger UI documentation at [`http://127.0.0
 </Info>
 
 <Note>
-Replace `YOUR_LONG_TOKEN_HERE` with your actual GenieX token. You can obtain a token by creating an account at [sdk.geniex.ai](https://sdk.geniex.ai) and generating one in **Deployment → Create Token**.
-</Note>
-
-<Note>
-The `--privileged` flag is required for NPU access.
+The `--privileged` flag is required for NPU access. `geniex serve` won't auto download models — make sure to pre-download the models you intend to use.
 </Note>
 
 ## Model Choice
@@ -49,6 +44,39 @@ The GenieXSDK REST API provides OpenAI-compatible endpoints for various AI tasks
 <Info>
 All API endpoints, request/response formats, and usage examples are documented in the [CLI REST API page](/en/geniex-cli/GenieXAPI). The API interface is identical whether running via CLI or Docker - only the server startup method differs.
 </Info>
+
+## **Python Example (OpenAI SDK)**
+
+Because the server speaks the OpenAI protocol, you can point the official `openai` Python client at the local endpoint and reuse any existing OpenAI code. Install the SDK with `pip install openai`, then:
+
+```python python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://127.0.0.1:18181/v1",
+    api_key="geniex",  # any non-empty string; the server does not check it
+)
+
+stream = client.chat.completions.create(
+    model="Qwen/Qwen3-0.6B-GGUF:Q4_0",  # org/repo[:quant] — Q4_0 has the best Hexagon NPU support
+    messages=[
+        {"role": "user", "content": "Hello! Briefly introduce yourself."},
+    ],
+    max_tokens=256,
+    temperature=0.7,
+    stream=True,
+)
+
+for chunk in stream:
+    delta = chunk.choices[0].delta.content
+    if delta:
+        print(delta, end="", flush=True)
+print()
+```
+
+<Note>
+Replace the `model` value with a model you have already pulled into the container's `/data` volume. `geniex serve` does not auto-download models. The optional `:<quant>` suffix selects a quantization variant (e.g. `Q4_0`, `Q4_K_M`, `Q8_0`) — `Q4_0` is recommended for the llama.cpp Hexagon NPU backend.
+</Note>
 
 <br />
 
