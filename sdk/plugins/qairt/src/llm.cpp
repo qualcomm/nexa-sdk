@@ -13,7 +13,6 @@
 #define portable_strdup strdup
 #endif
 
-#include "external/json.hpp"
 #include "llm_model_registry.h"  // provided by geniex-qairt/models/
 #include "logging.h"
 #include "pipeline/chat_template.h"
@@ -21,6 +20,13 @@
 #include "qnn_runtime_utils.h"
 #include "sampler_config_utils.h"
 #include "types.h"
+#include "utils/detail/json.hpp"  // qualla::ordered_json — vendored nlohmann/json
+                                  // already pulled in transitively via QnnApi.
+                                  // We deliberately do NOT use sdk/include/external/json.hpp
+                                  // here: nlohmann v3.12 (SDK) and qualla v3.11 (qnn-api)
+                                  // share NLOHMANN_* ABI macros, so including both in the
+                                  // same TU triggers macro redefinition / template arity
+                                  // mismatch errors.
 
 namespace fs = std::filesystem;
 
@@ -172,7 +178,7 @@ int32_t QairtLlm::apply_chat_template(
     // must call reset() first.
     if (is_first_turn_ && input->tools && input->tools[0] != '\0') {
         try {
-            auto j = nlohmann::ordered_json::parse(input->tools);
+            auto j = qualla::ordered_json::parse(input->tools);
             if (!j.is_array()) {
                 GENIEX_LOG_ERROR("tools JSON must be an array");
                 return GENIEX_ERROR_COMMON_INVALID_INPUT;
