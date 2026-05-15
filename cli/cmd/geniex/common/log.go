@@ -44,7 +44,6 @@ func ApplyLogLevel() {
 	level := config.Get().Log
 
 	geniex_sdk.EnableBridgeLog(true)
-	geniex_sdk.SetLogLevel(level)
 
 	switch level {
 	case LogLevelNone:

@@ -69,7 +69,8 @@ inline void geniex_log_internal(geniex_LogLevel level, fmt::format_string<Args..
 #endif  // GENIEX_DEBUG
 
 // TRACE remains compile-time gated: only emitted in GENIEX_DEBUG builds.
-// DEBUG/INFO/WARN/ERROR are always compiled; filtering happens at runtime via geniex_log_level.
+// DEBUG/INFO/WARN/ERROR are always forwarded to the log callback; the
+// embedder is responsible for any further filtering.
 #ifdef GENIEX_DEBUG
 #define GENIEX_LOG_TRACE(...) GENIEX_LEVEL_LOG(GENIEX_LOG_LEVEL_TRACE, __VA_ARGS__)
 #else
