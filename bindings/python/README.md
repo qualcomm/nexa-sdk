@@ -54,10 +54,12 @@ local path to a `.gguf` file or a pre-downloaded directory.
 
 ### VLM
 
-```python
-from geniex import AutoModelForVision2Seq
+`AutoModelForCausalLM` auto-detects multimodal models and returns a `GeniexVLM`:
 
-model = AutoModelForVision2Seq.from_pretrained("Qwen/Qwen3-VL-2B-Instruct-GGUF", device_map="auto")
+```python
+from geniex import AutoModelForCausalLM
+
+model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen3-VL-2B-Instruct-GGUF", device_map="auto")
 messages = [{
     "role": "user",
     "content": [
@@ -103,10 +105,14 @@ Friendly aliases accepted by `device_map`:
 | `hybrid` | empty `device_id`, `ngl=999`       | `NPU` + warning   | llama.cpp's per-tensor HTP+CPU scheduler — the fast path on Snapdragon. Used as the default when `device_map="auto"`. |
 
 `device_map="auto"` (the default) picks `hybrid` for `llama_cpp` and
-`npu` for `qairt`. Pass a concrete id as `device_map="<plugin>:<device_id>"`
-for full control (e.g. `"llama_cpp:HTP0,HTP1,HTP2,HTP3"`). Run
-`geniex-py devices` or `geniex._ffi.get_device_list(plugin)` to
-enumerate what your host actually exposes.
+`npu` for `qairt`. When the model was pulled via `geniex.model_manager`
+the manifest already records its plugin, so a bare alias binds to that
+plugin — `device_map="npu"` on a cached llama_cpp model resolves to
+`llama_cpp:HTP0`, not qairt. Pass a concrete id as
+`device_map="<plugin>:<device_id>"` for full control (e.g.
+`"llama_cpp:HTP0,HTP1,HTP2,HTP3"`). Run `geniex-py devices` or
+`geniex._ffi.get_device_list(plugin)` to enumerate what your host
+actually exposes.
 
 ## CLI
 
