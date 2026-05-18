@@ -87,8 +87,8 @@ jobs:
       - name: Smoke-test the binding
         shell: bash
         env:
-          PYTHONPATH: bindings/python
-          GENIEX_LIB_PATH: sdk/pkg-geniex/lib
+          PYTHONPATH: ${{ github.workspace }}/bindings/python
+          GENIEX_LIB_PATH: ${{ github.workspace }}/sdk/pkg-geniex/lib
         run: |
           set -euo pipefail
           python -c "import geniex; geniex.init(); print('plugins:', geniex.get_plugin_list()); geniex.deinit()"
@@ -107,8 +107,8 @@ jobs:
       - name: Run pytest — API subset
         shell: bash
         env:
-          PYTHONPATH: bindings/python
-          GENIEX_LIB_PATH: sdk/pkg-geniex/lib
+          PYTHONPATH: ${{ github.workspace }}/bindings/python
+          GENIEX_LIB_PATH: ${{ github.workspace }}/sdk/pkg-geniex/lib
         run: |
           set -euo pipefail
           python -m pytest tests -m api --junitxml=.pytest-junit-api.xml
@@ -116,8 +116,8 @@ jobs:
       - name: Run pytest — llama_cpp CPU subset
         shell: bash
         env:
-          PYTHONPATH: bindings/python
-          GENIEX_LIB_PATH: sdk/pkg-geniex/lib
+          PYTHONPATH: ${{ github.workspace }}/bindings/python
+          GENIEX_LIB_PATH: ${{ github.workspace }}/sdk/pkg-geniex/lib
         run: |
           set -euo pipefail
           python -m pytest tests -m "llama_cpp and device_cpu" --junitxml=.pytest-junit-llama_cpp-cpu.xml
