@@ -1,13 +1,13 @@
 ---
-title: "CLI Reference"
-description: "This page documents all available CLI commands with usage examples."
+title: "CLI reference"
+description: "Every GenieX CLI command and flag, with usage examples."
 ---
 
 import Feedback from "/snippets/page-feedback.mdx";
 
-## **Model Inference**
+## **Model inference**
 
-### **geniex pull**
+### **`geniex pull`**
 
 Download a model and store it locally.
 
@@ -15,11 +15,12 @@ Download a model and store it locally.
 geniex pull <model-name>
 ```
 
-The CLI guides you through a setup process:
+The CLI guides you through setup:
 
 **1. Device selection**
 
-On first run (for both QAIRT and llama.cpp plugins), you will be prompted to select your device:
+On first run (for both QAIRT and llama.cpp plugins), pick your device:
+
 ```powershell
 Select your device
 ┃ > Snapdragon X Elite CRD
@@ -27,14 +28,16 @@ Select your device
 ┃   Snapdragon X2 Elite CRD
 ```
 
-To change your device later:
+To change later:
+
 ```powershell
 geniex config set device
 ```
 
-**2. Quantization selection (llama.cpp plugin only)**
+**2. Quantization (llama.cpp only)**
 
-For llama.cpp models, the CLI prompts you to pick a quantized version:
+For GGUF models the CLI prompts you to pick a quantization:
+
 ```powershell
 Choose a quant version to download
 > Q4_0       [1.2 GiB] (default)
@@ -42,12 +45,11 @@ Choose a quant version to download
   F16        [3.8 GiB]
 ```
 
-<Tip>`Q4_0` is recommended for best Hexagon NPU performance.</Tip>
+<Tip>`Q4_0` has the best Hexagon NPU support. See [Quantization](/en/models/quantization).</Tip>
 
-QAIRT plugin models come pre-quantized — no selection needed.
+QAIRT models are pre-quantized — no choice needed.
 
-
-### **geniex infer — LLM**
+### **`geniex infer` — LLM**
 
 Launch an interactive chat session with a language model.
 
@@ -55,14 +57,14 @@ Launch an interactive chat session with a language model.
 geniex infer qualcomm/Qwen3-4B
 ```
 
-**Thinking mode** — control whether the model shows its reasoning before responding:
+**Thinking mode** — control whether the model shows reasoning before responding:
 
 ```powershell
 geniex infer qualcomm/Qwen3-4B --think      # show reasoning steps
 geniex infer qualcomm/Qwen3-4B --no-think   # respond directly
 ```
 
-**Device selection** — choose which backend to run on (default: `npu`):
+**Device selection** — choose the backend (default: `npu`):
 
 ```powershell
 # llama.cpp models support all backends
@@ -74,9 +76,9 @@ geniex infer unsloth/Qwen3.5-0.8B-GGUF --device cpu
 geniex infer qualcomm/Qwen3-4B --device npu
 ```
 
-<Warning>QAIRT models run on NPU only. Using `--device cpu` or `--device gpu` with a QAIRT model will return an error.</Warning>
+<Warning>QAIRT models run on NPU only. Using `--device cpu` or `--device gpu` with a QAIRT model returns an error.</Warning>
 
-### **geniex infer — VLM**
+### **`geniex infer` — VLM**
 
 Run vision-language inference with text-only or image input:
 
@@ -84,19 +86,25 @@ Run vision-language inference with text-only or image input:
 geniex infer Qualcomm/Qwen2.5-VL-7B-Instruct-GGUF
 ```
 
-If you only want text input, simply launch the command and begin chatting.
-To have the model respond from an image, provide the **absolute path** or simply drag the image file into your terminal, for example:
+For text-only, just launch and chat. For image input, provide the **absolute path** or drag the file into your terminal:
 
 ```bash
 Describe this picture </full/path/to/image.png>
 ```
 
+## **`geniex serve`**
 
-## **Configuration Flags**
+Start the OpenAI-compatible local server. See [Local server](/en/run/cli/local-server) for the API.
 
-These flags can be passed to `geniex infer` to control model loading and generation behavior.
+```bash
+geniex serve
+```
 
-### Sampler Flags
+## **Configuration flags**
+
+These flags can be passed to `geniex infer` to control model loading and generation.
+
+### Sampler flags
 
 Control how the model selects tokens during generation.
 
@@ -114,7 +122,7 @@ Control how the model selects tokens during generation.
 | `--grammar-string` | string | — | Inline grammar in GBNF string format. |
 | `--enable-json` | — | — | Force JSON-only output. |
 
-### Model Flags
+### Model flags
 
 Control model loading, context, and generation limits.
 
@@ -128,17 +136,15 @@ Control model loading, context, and generation limits.
 | `--think` / `--no-think` | bool | `true` | Enable or disable thinking mode for reasoning models. |
 | `-s`, `--system-prompt` | string | — | System prompt to set model behavior. |
 
----
-
-## **Utility Commands**
+## **Utility commands**
 
 | Command | Description | Example |
 |---|---|---|
 | `geniex list` | Display all downloaded models with their names and sizes. | `geniex list` |
 | `geniex remove <model>` | Remove a specific local model by name. | `geniex remove unsloth/Qwen3-0.6B-GGUF` |
 | `geniex clean` | Delete all locally cached models. | `geniex clean` |
-| `geniex infer -h` | Show help menu for `geniex infer`. | `geniex infer -h` |
-| `geniex serve -h` | Show help menu for `geniex serve`. | `geniex serve -h` |
+| `geniex infer -h` | Show help for `geniex infer`. | `geniex infer -h` |
+| `geniex serve -h` | Show help for `geniex serve`. | `geniex serve -h` |
 
 <br />
 

@@ -1,0 +1,53 @@
+---
+title: "Choose your backend"
+description: "Decide between the llama.cpp and QAIRT runtime backends based on your model and device."
+---
+
+import Feedback from "/snippets/page-feedback.mdx";
+
+GenieX runs models through one of two backends. Pick based on the model format you have, where you want to run it, and which Snapdragon hardware you're on.
+
+## **At a glance**
+
+| | **llama.cpp** | **QAIRT** |
+|---|---|---|
+| **Model format** | GGUF (any community model) | AI Hub pre-compiled bundles |
+| **Devices** | NPU / GPU / CPU | NPU only |
+| **Where it runs** | Windows on Arm, Android, Linux/Docker | Windows on Arm, Android |
+| **Quantization picked by** | You (`Q4_0`, `Q8_0`, `F16`, …) | Pre-quantized in the bundle |
+| **Best for** | Bringing your own model from Hugging Face | Highest NPU performance on supported AI Hub models |
+
+## **Pick llama.cpp if…**
+
+- You want to run **any GGUF model** from Hugging Face — Qwen, Phi, Gemma, Granite, Qwen3-VL, etc.
+- You need to **target CPU or GPU** as well as NPU (e.g. fallback paths, IoT devices without HTP).
+- You're prototyping and want the broadest model selection.
+
+`Q4_0` is the recommended quantization — it has the best Hexagon NPU support in llama.cpp.
+
+See [Backends → llama.cpp](/en/backends/llama-cpp) for full details.
+
+## **Pick QAIRT if…**
+
+- You want the **fastest NPU path** on Snapdragon, and your model is available on Qualcomm AI Hub.
+- You're shipping on **Snapdragon 8 Elite** (Android) or **Snapdragon X** (Windows on Arm) and you can use a pre-compiled bundle.
+- You don't need GPU/CPU fallback.
+
+QAIRT is NPU-only — passing `cpu` or `gpu` is coerced to NPU with a warning. The KV cache and context length are baked into the AI Hub bundle.
+
+See [Backends → QAIRT](/en/backends/qairt) for full details.
+
+## **Defaults**
+
+If you don't pass a device, GenieX picks one for you:
+
+| Backend | Default device |
+|---|---|
+| `llama_cpp` | `hybrid` (HTP + CPU per-tensor scheduling — fastest path on Snapdragon) |
+| `qairt` | `npu` |
+
+Some model families override this — for example, `gpt-oss` falls back to `npu` on `llama_cpp` because it can't run on the hybrid path.
+
+<br />
+
+<Feedback/>

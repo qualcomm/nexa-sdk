@@ -1,0 +1,59 @@
+---
+title: "Install"
+description: "Install the GenieX Python SDK on Windows on Arm."
+---
+
+import Feedback from "/snippets/page-feedback.mdx";
+
+The GenieX Python SDK ships as an ARM64 wheel for Windows on Arm.
+
+## **Prerequisites**
+
+- Snapdragon X-series device (X Elite or X2 Elite). See [Supported devices](/en/get-started/devices).
+- **ARM64 Python 3.13** — install [Python 3.13.3 for ARM64](https://www.python.org/ftp/python/3.13.3/python-3.13.3-arm64.exe).
+
+## **Install via pip**
+
+Create a virtual environment and install from test PyPI:
+
+```powershell windows
+python -m venv geniex-env
+.\geniex-env\Scripts\Activate.ps1
+pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple geniex
+```
+
+This pulls the package from [test PyPI](https://test.pypi.org/project/geniex/).
+
+<Note>
+**Troubleshooting: SSL / certificate errors (corporate proxy / QDC)**
+
+If installation fails with an SSL certificate error — common on corporate networks with TLS inspection, including **Qualcomm Developer Cloud (QDC)** — pre-download the SDK manually and point the installer at it. Run these PowerShell commands **before** `pip install`:
+
+```powershell windows
+$env:GENIEX_VERSION = "v0.1.5"
+$base = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/$env:GENIEX_VERSION"
+$zip  = "geniex-sdk-windows-arm64-$env:GENIEX_VERSION.zip"
+
+Invoke-WebRequest "$base/$zip"        -OutFile $zip
+Invoke-WebRequest "$base/$zip.sha256" -OutFile "$zip.sha256"
+
+$env:GENIEX_SDK_DOWNLOAD_URL = "file:///$($(Get-Location).Path.Replace('\','/'))"
+pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple geniex
+
+Remove-Item $zip, "$zip.sha256"
+Remove-Item Env:GENIEX_SDK_DOWNLOAD_URL
+```
+</Note>
+
+## **Verify**
+
+```python
+import geniex
+print(geniex.version())
+```
+
+Now jump to the [Quickstart](/en/run/python/quickstart).
+
+<br />
+
+<Feedback/>

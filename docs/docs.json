@@ -39,49 +39,72 @@
             "tab": "GenieX",
             "groups": [
               {
-                "group": "GenieX CLI",
-                "icon": "code",
+                "group": "Get Started",
+                "icon": "rocket",
                 "pages": [
-                  "en/geniex-cli/quickstart",
-                  "en/geniex-cli/GenieXAPI",
-                  "en/geniex-cli/GenieXCLI"
+                  "en/get-started/what-is-geniex",
+                  "en/get-started/quickstart",
+                  "en/get-started/choose-backend",
+                  "en/get-started/devices"
                 ]
               },
               {
-                "group": "Python Library",
-                "icon": "python",
+                "group": "Models",
+                "icon": "cube",
                 "pages": [
-                  "en/geniex-python/quickstart",
-                  "en/geniex-python/api-reference"
+                  "en/models/supported",
+                  "en/models/quantization",
+                  "en/models/bring-your-own"
                 ]
               },
               {
-                "group": "Android SDK",
-                "icon": "android",
+                "group": "Backends",
+                "icon": "layer-group",
                 "pages": [
-                  "en/geniex-android/quickstart",
-                  "en/geniex-android/model-tutorial",
-                  "en/geniex-android/api-reference"
+                  "en/backends/llama-cpp",
+                  "en/backends/qairt"
                 ]
               },
               {
-                "group": "Misc",
+                "group": "Run",
+                "icon": "play",
                 "pages": [
                   {
-                    "group": "Supported Models",
+                    "group": "Command Line",
+                    "icon": "terminal",
                     "pages": [
-                      "en/geniex-cli/npu",
-                      "en/geniex-cli/gguf"
+                      "en/run/cli/install",
+                      "en/run/cli/quickstart",
+                      "en/run/cli/local-server",
+                      "en/run/cli/reference"
                     ]
                   },
                   {
-                    "group": "Device Coverage",
+                    "group": "Python",
+                    "icon": "python",
                     "pages": [
-                      "en/geniex-cli/devices-compute",
-                      "en/geniex-cli/devices-mobile",
-                      "en/geniex-cli/devices-iot"
+                      "en/run/python/install",
+                      "en/run/python/quickstart",
+                      "en/run/python/api-reference"
+                    ]
+                  },
+                  {
+                    "group": "Android (Kotlin)",
+                    "icon": "android",
+                    "pages": [
+                      "en/run/android/install",
+                      "en/run/android/quickstart",
+                      "en/run/android/api-reference"
                     ]
                   }
+                ]
+              },
+              {
+                "group": "Resources",
+                "icon": "circle-question",
+                "pages": [
+                  "en/resources/faq",
+                  "en/resources/troubleshooting"
                 ]
               }
             ]

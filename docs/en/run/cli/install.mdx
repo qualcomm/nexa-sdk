@@ -1,0 +1,80 @@
+---
+title: "Install"
+description: "Install the GenieX CLI on Windows on Arm, or run it via Docker on Linux ARM64."
+---
+
+import Feedback from "/snippets/page-feedback.mdx";
+
+The CLI ships as a native Windows on Arm executable, and as a Linux ARM64 Docker image for Dragonwing IoT and similar devices.
+
+<Tabs>
+  <Tab title="Windows on Arm">
+    ### **Prerequisites**
+
+    - Snapdragon X-series device (X Elite or X2 Elite). See [Supported devices](/en/get-started/devices).
+    - PowerShell or any shell available on Windows on Arm.
+
+    ### **Download**
+
+    <Card title="GenieX CLI installer" icon="download" href="https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/geniex-cli.exe">
+      Latest GenieX CLI for Windows on Arm. Click the downloaded `.exe` and follow the prompts.
+    </Card>
+
+    The installer is not yet code-signed — Windows SmartScreen will warn you. Click **More info → Run anyway**.
+
+    ### **Add to PATH**
+
+    Make `geniex` available in your shell:
+
+    ```powershell windows
+    Set-Alias geniex (where.exe geniex)
+    ```
+
+    ### **Verify**
+
+    ```powershell windows
+    geniex --help
+    ```
+
+    Now jump to the [Quickstart](/en/run/cli/quickstart).
+  </Tab>
+
+  <Tab title="Linux (Docker)">
+    The Linux path runs through a container image built for Linux ARM64 with NPU access (Dragonwing IQ9 and similar IoT platforms).
+
+    ### **Prerequisites**
+
+    - Linux ARM64 host with Docker installed.
+    - Qualcomm IoT device — see [Supported devices](/en/get-started/devices#iot-linux-arm64).
+    - GitHub Personal Access Token (PAT) with read access to GHCR.
+
+    ### **Pull the image**
+
+    Authenticate to GitHub Container Registry, then pull:
+
+    ```bash bash
+    export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxx
+    docker login ghcr.io -u <your-github-username> -p "$GITHUB_TOKEN"
+
+    docker pull ghcr.io/qcom-ai-hub/geniex-cli:latest
+    ```
+
+    ### **Run interactively**
+
+    ```bash bash
+    docker run -it --rm --privileged \
+      -v "$PWD/data:/data" \
+      -v /usr/lib:/opt/qcom-lib:ro \
+      ghcr.io/qcom-ai-hub/geniex-cli:latest \
+      infer Qwen/Qwen3-0.6B-GGUF
+    ```
+
+    <Note>The `--privileged` flag is required for NPU access. The Linux ARM64 image targets [Docker / IoT NPU models](/en/models/supported#docker-iot-npu-on-linux-arm64) — a different curated list than the Windows CLI.</Note>
+
+    For server mode, see [Local server](/en/run/cli/local-server).
+  </Tab>
+</Tabs>
+
+<br />
+
+<Feedback/>
