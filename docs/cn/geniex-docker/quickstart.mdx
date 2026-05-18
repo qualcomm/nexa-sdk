@@ -3,6 +3,12 @@ title: 快速入门
 description: 几分钟内开始在 Linux ARM64 上使用 GenieX SDK Docker。
 ---
 
+<Warning>
+本页中文翻译尚未与最新英文文档同步。最新内容请参考 [English documentation](/en/get-started/what-is-geniex)。
+
+This Chinese translation is not yet in sync with the latest English docs. For the latest content, see the [English documentation](/en/get-started/what-is-geniex).
+</Warning>
+
 import Feedback from "/snippets/page-feedback.mdx";
 
 ## **教程视频**
@@ -20,15 +26,14 @@ import Feedback from "/snippets/page-feedback.mdx";
 
 ### **拉取 Docker 镜像**
 
-使用你的 GitHub PAT（个人访问令牌）和 GitHub 用户名登录 GitHub Container Registry (GHCR)：
+使用你的 GitHub PAT（个人访问令牌）登录 GitHub Container Registry (GHCR)：
 
 ```bash bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxx
-export GITHUB_USERNAME=your_github_username
-docker login ghcr.io -u "$GITHUB_USERNAME" -p "$GITHUB_TOKEN"
+docker login ghcr.io -u zackli_QCOM -p "$GITHUB_TOKEN"
 ```
 
-登录成功后会显示 "Login Succeeded" 消息。然后拉取最新 GenieX SDK Docker 镜像：
+从 Docker Hub 拉取最新 GenieX SDK Docker 镜像：
 
 ```bash bash
 docker pull ghcr.io/qcom-ai-hub/geniex-cli:latest

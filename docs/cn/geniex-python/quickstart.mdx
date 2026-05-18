@@ -3,34 +3,43 @@ title: 快速入门
 description: 开始使用 GenieX Python SDK——通过 QAIRT 和 llama.cpp 插件。
 ---
 
+<Warning>
+本页中文翻译尚未与最新英文文档同步。最新内容请参考 [English documentation](/en/get-started/what-is-geniex)。
+
+This Chinese translation is not yet in sync with the latest English docs. For the latest content, see the [English documentation](/en/get-started/what-is-geniex).
+</Warning>
+
 import Feedback from "/snippets/page-feedback.mdx";
 
 
 
 ## **前置条件**
 
-GenieX Python SDK 需要 ARM64 版本的 Python 3.10+。
+GenieX Python SDK 需要 ARM64 版本的 Python。在安装之前，请下载并安装 [Python 3.13.3 for ARM64](https://www.python.org/ftp/python/3.13.3/python-3.13.3-arm64.exe)。
 
-| 平台 | Python 要求 |
-|------|------------|
-| Windows ARM64 | [Python 3.13.3 for ARM64](https://www.python.org/ftp/python/3.13.3/python-3.13.3-arm64.exe) |
-| Linux ARM64 | 系统 Python 3.10+（aarch64）— 可通过 `apt` 或发行版包管理器安装 |
+## **方法 1：使用 Python 脚本**
+
+对于 QDC，我们推荐使用以下 Python 脚本方法。
 
 ## **安装**
 
-<Tabs>
-  <Tab title="Windows ARM64">
-    ### **Windows ARM64**
+在 QDC 上，创建虚拟环境并使用 pip 安装 GenieX Python SDK：
+
+```powershell
+python -m venv geniex-env
+.\geniex-env\Scripts\Activate.ps1
+pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple geniex
+```
+这将从 [test PyPI](https://test.pypi.org/project/geniex/) 下载 Python 包。
 
     对于 QDC，我们推荐使用以下 Python 脚本方法。
 
     创建虚拟环境并使用 pip 安装 GenieX Python SDK：
 
-    ```powershell
-    python -m venv geniex-env
-    .\geniex-env\Scripts\Activate.ps1
-    pip install -U -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple geniex
-    ```
+```powershell
+$env:GENIEX_VERSION = "v0.1.5"
+$base = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/$env:GENIEX_VERSION"
+$zip  = "geniex-sdk-windows-arm64-$env:GENIEX_VERSION.zip"
 
     这将从 [test PyPI](https://test.pypi.org/project/geniex/) 下载 Python 包。
 

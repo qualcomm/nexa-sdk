@@ -1,0 +1,79 @@
+---
+title: "Local Server"
+description: "Run an OpenAI-compatible HTTP API via Docker on Linux ARM64."
+---
+
+import Feedback from "/snippets/page-feedback.mdx";
+
+GenieX in Docker can run as an OpenAI-compatible REST API server for integration with applications and agentic workflows.
+
+## **Prerequisites**
+
+- Docker image pulled — see [Quickstart](/en/run/docker/quickstart).
+- A model pre-downloaded. `geniex serve` does **not** auto-download models — run `infer` or `pull` first.
+
+## **Start the server**
+
+```bash bash
+docker run -it --rm --privileged \
+  -v "$PWD/data:/data" \
+  -v /usr/lib:/opt/qcom-lib:ro \
+  --network=host \
+  ghcr.io/qcom-ai-hub/geniex-cli:latest \
+  serve
+```
+
+<Note>
+The `--privileged` flag is required for NPU/GPU device access. `--network=host` exposes the server on your host's network so you can reach it at `http://localhost:18181`.
+</Note>
+
+The server runs on `http://127.0.0.1:18181` by default. Keep the container running and make requests from another terminal.
+
+<Info>
+Access the interactive Swagger UI at `http://127.0.0.1:18181/docs/ui` to explore and test endpoints from your browser.
+</Info>
+
+## **API endpoints**
+
+- **`POST /v1/chat/completions`** — create model responses for conversations (LLM and VLM).
+- **`GET /v1/models`** — list available models.
+- **`GET /v1/models/{model}`** — retrieve information about a specific model.
+
+For detailed request/response formats and examples, see the [CLI Local Server](/en/run/cli/local-server) documentation — the API interface is identical.
+
+## **Python client (OpenAI SDK)**
+
+Because the server speaks the OpenAI protocol, you can point the official `openai` Python client at the local endpoint. Install with `pip install openai`, then:
+
+```python python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://127.0.0.1:18181/v1",
+    api_key="geniex",  # any non-empty string; the server does not check it
+)
+
+stream = client.chat.completions.create(
+    model="unsloth/Qwen3-4B-GGUF:Q4_0",  # org/repo[:quant] — Q4_0 has the best Hexagon NPU support
+    messages=[
+        {"role": "user", "content": "Hello! Briefly introduce yourself."},
+    ],
+    max_tokens=256,
+    temperature=0.7,
+    stream=True,
+)
+
+for chunk in stream:
+    delta = chunk.choices[0].delta.content
+    if delta:
+        print(delta, end="", flush=True)
+print()
+```
+
+<Note>
+Replace the `model` value with a model you have already pulled. The optional `:<quant>` suffix selects a quantization variant (e.g. `Q4_0`, `Q4_K_M`, `Q8_0`) — `Q4_0` is recommended for the llama.cpp Hexagon NPU backend.
+</Note>
+
+<br />
+
+<Feedback/>
