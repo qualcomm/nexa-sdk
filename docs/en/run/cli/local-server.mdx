@@ -15,7 +15,7 @@ GenieX includes a built-in inference server that exposes an **OpenAI-compatible 
 ## **Start the server**
 
 <Tabs>
-  <Tab title="Windows on Arm">
+  <Tab title="Windows ARM64">
     Pull a model:
 
     ```bash bash
@@ -31,7 +31,7 @@ GenieX includes a built-in inference server that exposes an **OpenAI-compatible 
     The server runs on `http://127.0.0.1:18181` by default. Keep this terminal open and make requests from another one. Run `geniex serve -h` for all configurable options.
   </Tab>
 
-  <Tab title="Linux (Docker)">
+  <Tab title="Linux ARM64">
     ```bash bash
     docker run -it --rm --privileged \
       -v "$PWD/data:/data" \

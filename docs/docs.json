@@ -91,20 +91,20 @@
                     ]
                   },
                   {
+                    "group": "Linux ARM64",
+                    "icon": "docker",
+                    "pages": [
+                      "en/run/docker/quickstart",
+                      "en/run/docker/local-server"
+                    ]
+                  },
+                  {
                     "group": "Android (Kotlin)",
                     "icon": "android",
                     "pages": [
                       "en/run/android/install",
                       "en/run/android/quickstart",
                       "en/run/android/api-reference"
-                    ]
-                  },
-                  {
-                    "group": "Linux (Docker)",
-                    "icon": "docker",
-                    "pages": [
-                      "en/run/docker/quickstart",
-                      "en/run/docker/local-server"
                     ]
                   }
                 ]

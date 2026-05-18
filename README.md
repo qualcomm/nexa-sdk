@@ -25,7 +25,7 @@ Download `geniex-cli-setup-windows-arm64-<TAG>.exe` and the matching `geniex-sdk
 
 If the SDK name ends in `-selfsigned`, first follow [notes/run.md § Self-signed fallback](notes/run.md#self-signed-fallback) to import `ggml-htp-v1.cer` and enable test-signing. Full walkthrough: [notes/run.md § Running a prebuilt CI release](notes/run.md#running-a-prebuilt-ci-release-windows-on-snapdragon).
 
-### Linux (Docker)
+### Linux ARM64
 
 ```bash
 docker pull ghcr.io/qcom-ai-hub/geniex-cli:<TAG>
