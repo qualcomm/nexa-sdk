@@ -91,8 +91,7 @@ int32_t QairtLlm::create_impl(const geniex_LlmCreateInput* input) {
     if (input->tokenizer_path && input->tokenizer_path[0] != '\0') {
         model_cfg.tokenizer_path = input->tokenizer_path;
     } else {
-        model_cfg.tokenizer_path =
-            qairt::runtime::find_optional_file(model_dir, "tokenizer.json").value_or("");
+        model_cfg.tokenizer_path = qairt::runtime::find_optional_file(model_dir, "tokenizer.json").value_or("");
     }
     if (model_cfg.tokenizer_path.empty()) {
         GENIEX_LOG_ERROR("tokenizer.json not found in: {}", model_dir.string());

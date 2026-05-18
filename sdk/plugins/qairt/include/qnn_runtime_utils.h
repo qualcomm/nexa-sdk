@@ -31,8 +31,7 @@ inline std::vector<std::string> collect_bin_files(const std::filesystem::path& d
     return bins;
 }
 
-inline std::optional<std::string> find_optional_file(const std::filesystem::path& dir,
-                                                     const char* filename) {
+inline std::optional<std::string> find_optional_file(const std::filesystem::path& dir, const char* filename) {
     const auto file_path = dir / filename;
     if (std::filesystem::exists(file_path)) {
         return file_path.string();
