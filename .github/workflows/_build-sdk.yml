@@ -123,11 +123,11 @@ jobs:
           # so `ccache --max-size` below edits the workspace config.
           $env:CCACHE_DIR = "${{ github.workspace }}/.ccache"
           Add-Content $env:GITHUB_ENV "CCACHE_DIR=$env:CCACHE_DIR"
-          # CCACHE_BASEDIR rewrites absolute workspace paths to relative,
-          # so cache entries survive runner-to-runner workspace path drift.
           # SLOPPINESS tolerates __DATE__/__TIME__ and mtime jitter that
-          # llama.cpp / ggml sources trip over.
-          Add-Content $env:GITHUB_ENV "CCACHE_BASEDIR=$env:GITHUB_WORKSPACE"
+          # llama.cpp / ggml sources trip over. CCACHE_BASEDIR is *not*
+          # set: workspace paths on the self-hosted Windows runner are
+          # stable, and changing it would invalidate every existing
+          # entry (different hash input).
           Add-Content $env:GITHUB_ENV "CCACHE_SLOPPINESS=time_macros,include_file_mtime,include_file_ctime"
           ccache --max-size=5G
 
@@ -179,7 +179,6 @@ jobs:
             -e EXTRA_CMAKE_FLAGS \
             -e PRESET \
             -e CCACHE_DIR=/workspace/.ccache \
-            -e CCACHE_BASEDIR=/workspace \
             -e CCACHE_SLOPPINESS=time_macros,include_file_mtime,include_file_ctime \
             -e HOST_UID="$uid" \
             -e HOST_GID="$gid" \
