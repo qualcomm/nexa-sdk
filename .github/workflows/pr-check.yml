@@ -82,7 +82,7 @@ jobs:
 
   build-docker:
     name: build-docker
-    needs: [build-cli]
+    needs: [build-sdk]
     uses: ./.github/workflows/_build-docker.yml
     secrets: inherit
     with:
