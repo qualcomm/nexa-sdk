@@ -411,7 +411,7 @@ jobs:
 
   publish-docker:
     name: publish-docker
-    needs: [resolve-tag, build-cli]
+    needs: [resolve-tag, build-sdk]
     permissions:
       contents: read
       packages: write
