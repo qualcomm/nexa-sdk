@@ -98,6 +98,14 @@
                       "en/run/android/quickstart",
                       "en/run/android/api-reference"
                     ]
+                  },
+                  {
+                    "group": "Linux (Docker)",
+                    "icon": "docker",
+                    "pages": [
+                      "en/run/docker/quickstart",
+                      "en/run/docker/local-server"
+                    ]
                   }
                 ]
               },
