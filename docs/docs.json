@@ -25,9 +25,19 @@
     "global": {
       "anchors": [
         {
+          "anchor": "GitHub",
+          "href": "https://github.com/qualcomm/nexa-sdk",
+          "icon": "github"
+        },
+        {
           "anchor": "Website",
           "href": "https://aihub.qualcomm.com/",
           "icon": "globe"
+        },
+        {
+          "anchor": "Slack",
+          "href": "https://nexa-ai-community.slack.com/ssb/redirect",
+          "icon": "slack"
         }
       ]
     },
