@@ -58,14 +58,6 @@
                 ]
               },
               {
-                "group": "Backends",
-                "icon": "layer-group",
-                "pages": [
-                  "en/backends/llama-cpp",
-                  "en/backends/qairt"
-                ]
-              },
-              {
                 "group": "Run",
                 "icon": "play",
                 "pages": [
