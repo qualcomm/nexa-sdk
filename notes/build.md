@@ -16,7 +16,7 @@ bazelisk run //cli -- infer Qwen/Qwen3-0.6B-GGUF
 > `//cli` is a convenience alias for `//cli/cmd/geniex:geniex`. Both are used interchangeably in these docs.
 
 > [!IMPORTANT]
-> Build and install the SDK bridge into `sdk/pkg-geniex/` **first** — Bazel expects `sdk/pkg-geniex/lib/geniex.dll` (Windows) or `sdk/pkg-geniex/lib/libgeniex.so` (Linux) to already exist. See [Build the SDK](#build-the-sdk) below.
+> Building the CLI drives the SDK's CMake preset automatically via `//sdk:cmake_build`. The preset is selected from the host platform (`@platforms//os:linux` → `arm64-linux-snapdragon-release` today; Windows / Android branches wire up next). The resulting `sdk/build-<preset>/` directory persists between Bazel invocations so ninja can incrementally rebuild. Manual `cmake --preset` flows under [Build the SDK](#build-the-sdk) still work and remain the supported path for ad-hoc / CI builds.
 
 ## CLI build options
 

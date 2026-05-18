@@ -1,47 +1,89 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_import", "cc_library")
 load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
 load("//scripts:runfiles_symlink.bzl", "runfiles_symlinks")
+load(":cmake.bzl", "cmake_preset_build", "select_output_group")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "_sdk_srcs",
+    srcs = glob(
+        [
+            "CMakeLists.txt",
+            "CMakePresets.json",
+            "cmake/**",
+            "include/**",
+            "src/**",
+            "plugins/**",
+            "tests/**",
+            "patches/**",
+            "model-manager/**",
+        ],
+        exclude = [
+            "build*/**",
+            "pkg-geniex/**",
+            "**/.venv/**",
+            "**/target/**",
+        ],
+    ),
+)
+
+cmake_preset_build(
+    name = "cmake_build",
+    preset = select({
+        "@platforms//os:linux": "arm64-linux-snapdragon-release",
+    }),
+    srcs = [":_sdk_srcs"],
+)
+
+select_output_group(
+    name = "_cmake_libgeniex",
+    target = ":cmake_build",
+    group = "shared_library",
+)
+
+select_output_group(
+    name = "_cmake_header",
+    target = ":cmake_build",
+    group = "header",
+)
+
+select_output_group(
+    name = "_cmake_plugins",
+    target = ":cmake_build",
+    group = "plugins",
+)
+
 runfiles_symlinks(
     name = "sdk_runtime",
-    data = select({
-        "@platforms//os:windows": glob(
-            [
-                "pkg-geniex/lib/**/*.dll",
-                "pkg-geniex/lib/**/*.so",
-                "pkg-geniex/lib/**/*.cat",
-            ],
-            allow_empty = True,
-        ),
-        "@platforms//os:linux": glob(
-            ["pkg-geniex/lib/**/*.so"],
-            allow_empty = True,
-        ),
-    }),
-    strip_prefix = "sdk/pkg-geniex/lib/",
+    data = [
+        ":_cmake_libgeniex",
+        ":_cmake_plugins",
+    ],
+    strip_prefix = "sdk/cmake_out/",
+)
+
+cc_import(
+    name = "_libgeniex_import",
+    shared_library = ":_cmake_libgeniex",
 )
 
 cc_library(
     name = "sdk_lib",
-    srcs = select({
-        "@platforms//os:windows": ["pkg-geniex/lib/geniex.dll"],
-        "@platforms//os:linux": ["pkg-geniex/lib/libgeniex.so"],
-    }),
-    hdrs = ["pkg-geniex/include/geniex.h"],
+    hdrs = [":_cmake_header"],
     data = [":sdk_runtime"],
-    includes = ["pkg-geniex/include"],
+    includes = ["cmake_out"],
     linkopts = select({
         "@platforms//os:linux": ["-Wl,-rpath,."],
         "//conditions:default": [],
     }),
+    deps = [":_libgeniex_import"],
 )
 
 pkg_files(
     name = "artifact",
     srcs = [":sdk_runtime"],
-    strip_prefix = strip_prefix.from_pkg("pkg-geniex/lib"),
+    strip_prefix = strip_prefix.from_pkg("cmake_out"),
 )
 
 alias(
