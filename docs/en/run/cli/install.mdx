@@ -39,7 +39,54 @@ The CLI ships as a native Windows ARM64 executable, and as a Linux ARM64 Docker 
     Now jump to the [Quickstart](/en/run/cli/quickstart).
   </Tab>
 
-  <Tab title="Linux ARM64">
+  <Tab title="Linux ARM64 (Native)">
+    Install directly on a Snapdragon ARM64 Linux host (EVK, container, or any device with a Qualcomm BSP) — no Docker required.
+
+    ### **Prerequisites**
+
+    - Linux ARM64 host.
+    - Qualcomm IoT device — see [Supported devices](/en/get-started/devices#iot-linux-arm64).
+
+    ### **Install**
+
+    ```bash bash
+    curl -fsSL https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/install.sh | sh
+    ```
+
+    The script downloads the latest stable release, verifies its SHA256, and installs atomically. It runs without `sudo`:
+
+    - **Root** (EVK / container) → binary in `/usr/local/lib/geniex/`, launcher at `/usr/local/bin/geniex`.
+    - **Non-root** → binary in `${XDG_DATA_HOME:-~/.local/share}/geniex/`, launcher at `~/.local/bin/geniex`.
+
+    Common flags (pass after `sh -s --`):
+
+    ```bash bash
+    # Pin a specific version
+    curl -fsSL .../install.sh | sh -s -- --version v0.1.8
+
+    # Custom install prefix
+    curl -fsSL .../install.sh | sh -s -- --prefix /opt/geniex
+    ```
+
+    ### **Add to PATH**
+
+    If the launcher directory isn't on your `PATH`, the installer prints the exact line to add — typically:
+
+    ```bash bash
+    echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc   # or ~/.zshrc / ~/.profile
+    ```
+
+    Open a new shell or `source` that file.
+
+    ### **Verify**
+
+    ```bash bash
+    geniex --help
+    ```
+
+  </Tab>
+
+  <Tab title="Linux ARM64 (Docker)">
     The Linux path runs through a container image built for Linux ARM64 with NPU access (Dragonwing IQ9 and similar IoT platforms).
 
     ### **Prerequisites**
@@ -70,10 +117,12 @@ The CLI ships as a native Windows ARM64 executable, and as a Linux ARM64 Docker 
       ghcr.io/qcom-ai-hub/geniex-cli:latest
     ```
 
-    Then run a model from the container shell:
+    ### **Verify**
+
+    Then run a test command from the container shell:
 
     ```bash bash
-    geniex infer Qwen/Qwen3-0.6B-GGUF
+    geniex --help
     ```
 
     <Note>The `--privileged` flag is required for NPU access.</Note>
