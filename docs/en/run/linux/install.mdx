@@ -1,0 +1,63 @@
+---
+title: "Linux (Docker) Install"
+description: "Run GenieX via Docker on Linux ARM64 with NPU access."
+---
+
+import Feedback from "/snippets/page-feedback.mdx";
+
+The Linux Docker path runs through a container image built for Linux ARM64 with NPU access (Dragonwing IQ9 and similar IoT platforms).
+
+### **Prerequisites**
+
+- Linux ARM64 host with Docker installed.
+- Qualcomm IoT device — see [Supported devices](/en/get-started/devices#iot-linux-arm64).
+- GitHub Personal Access Token (PAT) with read access to GHCR.
+
+### **Pull the image**
+
+Authenticate to GitHub Container Registry, then pull:
+
+```bash bash
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxx
+docker login ghcr.io -u <your-github-username> -p "$GITHUB_TOKEN"
+
+docker pull ghcr.io/qcom-ai-hub/geniex-cli:latest
+```
+
+### **Run interactively**
+
+Drop into an interactive shell inside the container:
+
+```bash bash
+docker run -it --rm --privileged \
+  -v "$PWD/data:/data" \
+  -v /usr/lib:/opt/qcom-lib:ro \
+  ghcr.io/qcom-ai-hub/geniex-cli:latest
+```
+
+### **Verify**
+
+Then run a test command from the container shell:
+
+```bash bash
+geniex --help
+```
+
+<Note>The `--privileged` flag is required for NPU access.</Note>
+
+For server mode, see [Local server](/en/run/cli/local-server).
+
+## **CLI**
+
+For the full CLI Docker install guide, see [CLI Install — Linux ARM64 (Docker)](/en/run/cli/install).
+
+
+## **Python**
+
+For the full Python install guide on native Linux ARM64, see [Python Install — Linux ARM64](/en/run/python/install).
+
+The Python SDK can be installed inside the Docker container or directly on the Linux ARM64 host. See the [Linux ARM64 tab](/en/run/python/install) for native install instructions.
+
+<br />
+
+<Feedback/>

@@ -91,6 +91,13 @@
                     ]
                   },
                   {
+                    "group": "Linux (Docker)",
+                    "icon": "docker",
+                    "pages": [
+                      "en/run/linux/install"
+                    ]
+                  },
+                  {
                     "group": "Android (Kotlin)",
                     "icon": "android",
                     "pages": [
@@ -159,6 +166,13 @@
                       "cn/run/python/install",
                       "cn/run/python/quickstart",
                       "cn/run/python/api-reference"
+                    ]
+                  },
+                  {
+                    "group": "Linux (Docker)",
+                    "icon": "docker",
+                    "pages": [
+                      "cn/run/linux/install"
                     ]
                   },
                   {
