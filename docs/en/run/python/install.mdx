@@ -1,5 +1,5 @@
 ---
-title: "Install"
+title: "Python Install"
 description: "Install the GenieX Python SDK on Windows ARM64 or Linux ARM64."
 ---
 
@@ -36,7 +36,7 @@ The GenieX Python SDK ships as an ARM64 wheel for Windows ARM64 and Linux ARM64.
     If installation fails with an SSL certificate error — common on corporate networks with TLS inspection, including **Qualcomm Developer Cloud (QDC)** — pre-download the SDK manually and point the installer at it. Run these PowerShell commands **before** `pip install`:
 
     ```powershell
-    $env:GENIEX_VERSION = "v0.1.5"
+    $env:GENIEX_VERSION = "v0.1.8"
     $base = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/$env:GENIEX_VERSION"
     $zip  = "geniex-sdk-windows-arm64-$env:GENIEX_VERSION.zip"
 
