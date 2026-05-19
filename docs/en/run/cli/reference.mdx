@@ -60,8 +60,8 @@ geniex infer qualcomm/Qwen3-4B
 **Thinking mode** — control whether the model shows reasoning before responding:
 
 ```powershell
-geniex infer qualcomm/Qwen3-4B --think      # show reasoning steps
-geniex infer qualcomm/Qwen3-4B --no-think   # respond directly
+geniex infer qualcomm/Qwen3-4B --think         # show reasoning steps
+geniex infer qualcomm/Qwen3-4B --think=false   # respond directly
 ```
 
 **Device selection** — choose the backend (default: `npu`):
@@ -133,7 +133,7 @@ Control model loading, context, and generation limits.
 | `--max-tokens` | int | `2048` | Maximum tokens to generate per response. |
 | `--stop` | string[] | — | Stop sequences (can be specified multiple times). |
 | `--stop-file` | string | — | File containing stop sequences (one per line). |
-| `--think` / `--no-think` | bool | `true` | Enable or disable thinking mode for reasoning models. |
+| `--think` / `--think=false` | bool | `true` | Enable or disable thinking mode for reasoning models. |
 | `-s`, `--system-prompt` | string | — | System prompt to set model behavior. |
 
 ## **Utility commands**

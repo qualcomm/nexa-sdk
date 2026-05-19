@@ -60,8 +60,8 @@ geniex infer qualcomm/Qwen3-4B
 **思考模式** —— 控制模型是否在回复前展示推理过程：
 
 ```powershell
-geniex infer qualcomm/Qwen3-4B --think      # 展示推理步骤
-geniex infer qualcomm/Qwen3-4B --no-think   # 直接回复
+geniex infer qualcomm/Qwen3-4B --think         # 展示推理步骤
+geniex infer qualcomm/Qwen3-4B --think=false   # 直接回复
 ```
 
 **设备选择** —— 选择运行后端（默认：`npu`）：
@@ -133,7 +133,7 @@ geniex serve
 | `--max-tokens` | int | `2048` | 每次响应生成的最大 token 数。 |
 | `--stop` | string[] | — | 停止序列（可多次指定）。 |
 | `--stop-file` | string | — | 包含停止序列的文件（每行一个）。 |
-| `--think` / `--no-think` | bool | `true` | 启用或禁用推理模型的思考模式。 |
+| `--think` / `--think=false` | bool | `true` | 启用或禁用推理模型的思考模式。 |
 | `-s`, `--system-prompt` | string | — | 设置模型行为的系统提示。 |
 
 ## **实用命令**
