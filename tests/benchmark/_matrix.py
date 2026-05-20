@@ -47,13 +47,24 @@ class BenchCell:
         return f'{slug}-{self.backend}-{self.device}'
 
 
-LLM_CELLS: list[BenchCell] = [
-    BenchCell(LLAMA_CPP_LLM_MODEL, LLAMA_CPP_LLM_QUANT, 'llama_cpp', 'cpu'),
-    BenchCell(LLAMA_CPP_LLM_MODEL, LLAMA_CPP_LLM_QUANT, 'llama_cpp', 'gpu'),
-    BenchCell(LLAMA_CPP_LLM_MODEL, LLAMA_CPP_LLM_QUANT, 'llama_cpp', 'npu'),
-    BenchCell(LLAMA_CPP_LLM_MODEL, LLAMA_CPP_LLM_QUANT, 'llama_cpp', 'hybrid'),
-    BenchCell(QAIRT_LLM_MODEL, None, 'qairt', 'npu'),
+# (model_id, quant) pairs for the llama_cpp side. Pulled automatically from
+# Hugging Face on first use; pick small models so the matrix stays cheap.
+LLAMA_CPP_MODELS: list[tuple[str, str | None]] = [
+    (LLAMA_CPP_LLM_MODEL, LLAMA_CPP_LLM_QUANT),
+    ('bartowski/Qwen_Qwen3-1.7B-GGUF', 'Q4_0'),
+    ('bartowski/Llama-3.2-1B-Instruct-GGUF', 'Q4_0'),
 ]
+
+# QAIRT models are not auto-pulled — must be cached via `geniex-py pull` first.
+QAIRT_MODELS: list[tuple[str, str | None]] = [
+    (QAIRT_LLM_MODEL, None),
+]
+
+_LLAMA_CPP_DEVICES = ('cpu', 'gpu', 'npu', 'hybrid')
+
+LLM_CELLS: list[BenchCell] = [
+    BenchCell(model, quant, 'llama_cpp', dev) for model, quant in LLAMA_CPP_MODELS for dev in _LLAMA_CPP_DEVICES
+] + [BenchCell(model, quant, 'qairt', 'npu') for model, quant in QAIRT_MODELS]
 
 _SNAPDRAGON_DEVICES = {'gpu', 'npu', 'hybrid'}
 
