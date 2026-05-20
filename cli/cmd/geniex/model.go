@@ -62,12 +62,13 @@ func pull() *cobra.Command {
 	pullCmd.Flags().StringVarP(&localPath, "local-path", "", "", "[localfs] path to local directory or aihub zip file")
 	pullCmd.Flags().StringVarP(&modelType, "model-type", "", "", "specify model type to use: [llm|vlm]")
 
-	pullCmd.Run = func(cmd *cobra.Command, args []string) {
+	pullCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		name, quant := model_hub.NormalizeModelName(args[0])
 		if err := pullModel(name, quant); err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to pull model: %s", err))
-			os.Exit(1)
+			return err
 		}
+		return nil
 	}
 
 	return pullCmd
@@ -85,7 +86,7 @@ func remove() *cobra.Command {
 
 	removeCmd.Args = cobra.MatchAll(cobra.MinimumNArgs(1), cobra.OnlyValidArgs)
 
-	removeCmd.Run = func(cmd *cobra.Command, args []string) {
+	removeCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		s := store.Get()
 		for _, arg := range args {
 			name, quant := model_hub.NormalizeModelName(arg)
@@ -95,10 +96,11 @@ func remove() *cobra.Command {
 			}
 			if err := s.Remove(name, quant); err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to remove %s: %s", label, err))
-				os.Exit(1)
+				return err
 			}
 			fmt.Println(render.GetTheme().Success.Sprintf("✔  Removed %s", label))
 		}
+		return nil
 	}
 
 	return removeCmd
@@ -135,12 +137,12 @@ func list() *cobra.Command {
 		Long:    "Display all cached models in a formatted table, showing model names, types, and sizes.",
 	}
 
-	listCmd.Run = func(cmd *cobra.Command, args []string) {
+	listCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		s := store.Get()
 		models, e := s.List()
 		if e != nil {
-			fmt.Println(e)
-			os.Exit(1)
+			fmt.Println(render.GetTheme().Error.Sprint(e))
+			return e
 		}
 
 		// Create formatted table output
@@ -183,6 +185,7 @@ func list() *cobra.Command {
 			}
 		}
 		tw.Render()
+		return nil
 	}
 
 	return listCmd

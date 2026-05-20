@@ -68,7 +68,6 @@ func (p *Processor) Process() error {
 			if errors.Is(err, io.EOF) {
 				return nil
 			}
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
 			return err
 		}
 

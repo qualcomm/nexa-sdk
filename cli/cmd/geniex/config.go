@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"runtime"
 	"slices"
 	"sort"
@@ -75,19 +74,20 @@ func configGetCmd() *cobra.Command {
 			"Available keys: " + strings.Join(store.ConfigKeys, ", "),
 		Args:      cobra.MatchAll(cobra.ExactArgs(1), validConfigKeyArg),
 		ValidArgs: store.ConfigKeys,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			value, ok, err := store.Get().ConfigGet(key)
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Failed to get configuration: %s", err))
-				os.Exit(1)
+				return err
 			}
 			if !ok {
 				// Unset keys print nothing so the output is easy to use in
 				// scripts (e.g. `$(geniex config get device)`).
-				return
+				return nil
 			}
 			fmt.Println(value)
+			return nil
 		},
 	}
 }
@@ -101,29 +101,34 @@ func configSetCmd() *cobra.Command {
 			"Available keys: " + strings.Join(store.ConfigKeys, ", "),
 		Args:      cobra.MatchAll(cobra.RangeArgs(1, 2), validConfigKeyArg),
 		ValidArgs: store.ConfigKeys,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 
 			// Device key with no explicit value: launch interactive picker.
 			switch key {
 			case store.ConfigKeyDevice:
 				if len(args) == 1 {
-					pickDevice(cmd.Context())
-					return
+					if err := pickDevice(cmd.Context()); err != nil {
+						fmt.Println(render.GetTheme().Error.Sprintf("Failed to pick device: %s", err))
+						return err
+					}
+					return nil
 				}
 			default:
 				if len(args) < 2 {
-					fmt.Println(render.GetTheme().Error.Sprintf("Key %q requires a value argument", key))
-					return
+					err := fmt.Errorf("key %q requires a value argument", key)
+					fmt.Println(render.GetTheme().Error.Sprint(err))
+					return err
 				}
 			}
 
 			value := args[1]
 			if err := store.Get().ConfigSet(key, value); err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Failed to set configuration: %s", err))
-				os.Exit(1)
+				return err
 			}
 			fmt.Println(render.GetTheme().Info.Sprintf("%s = %s", key, value))
+			return nil
 		},
 	}
 }
@@ -244,11 +249,11 @@ func configListCmd() *cobra.Command {
 		Short: "List all configuration values",
 		Long:  "Display all known configuration keys and their corresponding values. Unset keys are shown as blank.",
 		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := store.Get().ConfigList()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Failed to read configuration: %s", err))
-				os.Exit(1)
+				return err
 			}
 
 			keys := make([]string, 0, len(store.ConfigKeys))
@@ -259,6 +264,7 @@ func configListCmd() *cobra.Command {
 				value := cfg[key]
 				fmt.Println(render.GetTheme().Info.Sprintf("%s: %s", key, value))
 			}
+			return nil
 		},
 	}
 }
