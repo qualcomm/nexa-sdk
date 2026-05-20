@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"os/exec"
 	"runtime"
@@ -45,8 +44,16 @@ func RootCmd() *cobra.Command {
 	cobra.EnableCommandSorting = false
 
 	rootCmd := &cobra.Command{
-		Use: "geniex",
+		Use:          "geniex",
+		SilenceUsage: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			// Once flag-parsing has succeeded we silence cobra's own error
+			// printer: subcommand RunE callbacks already render their own
+			// (often multi-line) error blocks before returning. Leaving the
+			// flag-parse phase un-silenced preserves cobra's "unknown flag" /
+			// "unknown command" messages (#636).
+			cmd.SilenceErrors = true
+
 			// Register ModelHub
 			s := store.Get()
 			model_hub.RegisterHub(model_hub.NewHuggingFace())
@@ -119,7 +126,6 @@ func main() {
 	applyHelpStyle(cmd)
 	cmd.SetErr(render.NewStyledWriter(os.Stderr, render.GetTheme().Error))
 	if err := cmd.Execute(); err != nil {
-		slog.Error("geniex failed", "err", err)
 		os.Exit(1)
 	}
 }

@@ -129,29 +129,31 @@ func infer() *cobra.Command {
 
 	inferCmd.SetUsageFunc(flagGroupedUsage)
 
-	inferCmd.Run = func(cmd *cobra.Command, args []string) {
+	inferCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		s := store.Get()
 
 		name, quant := model_hub.NormalizeModelName(args[0])
 		manifest, err := ensureModelAvailable(s, name, quant)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-			os.Exit(1)
+			return err
 		}
 
 		if quant != "" {
 			if fileinfo, exist := manifest.ModelFile[quant]; !exist {
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: precision %s not found", quant))
-				os.Exit(1)
+				err = fmt.Errorf("precision %s not found", quant)
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+				return err
 			} else if !fileinfo.Downloaded {
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: precision %s not downloaded", quant))
-				os.Exit(1)
+				err = fmt.Errorf("precision %s not downloaded", quant)
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+				return err
 			}
 		} else {
 			sq, err := selectQuant(manifest)
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-				os.Exit(1)
+				return err
 			}
 			quant = sq
 		}
@@ -165,15 +167,17 @@ func infer() *cobra.Command {
 			checkDependency()
 			err = inferVLM(manifest, quant)
 		default:
-			fmt.Println(render.GetTheme().Error.Sprintf("unsupported model type: %s", manifest.ModelType))
-			os.Exit(1)
+			geniex_sdk.DeInit()
+			err = fmt.Errorf("unsupported model type: %s", manifest.ModelType)
+			fmt.Println(render.GetTheme().Error.Sprint(err))
+			return err
 		}
 
 		geniex_sdk.DeInit()
 
 		switch err {
 		case nil:
-			os.Exit(0)
+			return nil
 		case geniex_sdk.ErrCommonParamNotSupported:
 			// TODO: Once the C API exposes geniex_get_last_error_detail() (a thread-local
 			// detail string set by the plugin before returning an error code), the specific
@@ -220,7 +224,7 @@ func infer() *cobra.Command {
 		default:
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 		}
-		os.Exit(1)
+		return err
 	}
 	return inferCmd
 }
@@ -334,12 +338,12 @@ func resolveNglNctx(manifest *types.ModelManifest) (resolvedNgl, resolvedNctx in
 // --device picks the plugin's preferred default (hybrid for llama.cpp,
 // npu for qairt — with model-specific overrides, e.g. gpt-oss on
 // llama_cpp defaults to npu).
-func resolveDevice(manifest *types.ModelManifest) (deviceID string, nglOverride int32) {
+func resolveDevice(manifest *types.ModelManifest) (deviceID string, nglOverride int32, err error) {
 	effectiveNgl, _ := resolveNglNctx(manifest)
 	deviceID, nglOverride, warning, err := geniex_sdk.ResolveDevice(manifest.PluginId, manifest.ModelName, device, effectiveNgl)
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-		os.Exit(1)
+		return
 	}
 	if warning != "" {
 		fmt.Println(render.GetTheme().Warning.Sprintf("Warning: %s", warning))
@@ -369,7 +373,10 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 
-	deviceID, nglResolved := resolveDevice(manifest)
+	deviceID, nglResolved, err := resolveDevice(manifest)
+	if err != nil {
+		return err
+	}
 	_, nctxResolved := resolveNglNctx(manifest)
 
 	spin := render.NewSpinner("loading model...")
@@ -537,7 +544,10 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 	if manifest.MMProjFile.Name != "" {
 		mmprojfile = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 	}
-	deviceID, nglResolved := resolveDevice(manifest)
+	deviceID, nglResolved, err := resolveDevice(manifest)
+	if err != nil {
+		return err
+	}
 	_, nctxResolved := resolveNglNctx(manifest)
 
 	spin := render.NewSpinner("loading model...")
