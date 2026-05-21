@@ -35,8 +35,9 @@ pub struct ManifestHint {
     pub config_json_bytes: Option<Vec<u8>>,
 }
 
-/// Quantization priority order (earlier = preferred). Mirrors the Go CLI.
-const QUANT_PRIORITY: &[&str] = &["Q8_0", "Q4_K_M", "Q4_0"];
+/// Quantization priority order (earlier = preferred). Mirrors the Go CLI's
+/// `quantPriority` in `cli/cmd/geniex/model.go`. Update both sides together.
+pub(crate) const QUANT_PRIORITY: &[&str] = &["Q8_0", "Q4_K_M", "Q4_0"];
 
 /// Infer a manifest by scanning `src_dir` for model files.
 pub fn infer_manifest_from_dir(
