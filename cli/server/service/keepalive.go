@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
-	"slices"
 	"sync"
 	"time"
 
@@ -128,17 +127,20 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			modelfile = s.ModelfilePath(manifest.Name, fileinfo.Name)
 		}
 	} else {
-		// fallback to first downloaded model file
+		// No quant requested: pick by model_hub.QuantPriority, with
+		// lexicographic min as the fallback for unrecognised quants.
 		quants := make([]string, 0, len(manifest.ModelFile))
-		for quant, v := range manifest.ModelFile {
+		for q, v := range manifest.ModelFile {
 			if v.Downloaded {
-				quants = append(quants, quant)
-				break
+				quants = append(quants, q)
 			}
 		}
-		quant = slices.Min(quants)
+		if len(quants) == 0 {
+			return nil, fmt.Errorf("no downloaded quant for model %s", name)
+		}
+		quant = model_hub.PickDefaultQuant(quants)
 		slog.Debug("KeepAliveGet quant fallback", "quant", quant)
-		modelfile = s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name) // at least one is downloaded
+		modelfile = s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 	}
 
 	// Check if model already exists in cache

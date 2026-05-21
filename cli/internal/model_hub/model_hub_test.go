@@ -110,6 +110,26 @@ func TestChoosePluginId(t *testing.T) {
 	}
 }
 
+func TestPickDefaultQuant(t *testing.T) {
+	cases := []struct {
+		name      string
+		available []string
+		want      string
+	}{
+		{"priority wins over lex order", []string{"Q4_0", "Q4_K_M", "Q8_0"}, "Q8_0"},
+		{"partial priority", []string{"Q4_0", "Q5_K_M"}, "Q4_0"},
+		{"none in priority falls back to lex min", []string{"Q6_K", "Q5_K_M"}, "Q5_K_M"},
+		{"single non-priority quant", []string{"IQ4_XS"}, "IQ4_XS"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := PickDefaultQuant(tc.available); got != tc.want {
+				t.Errorf("PickDefaultQuant(%v) = %q, want %q", tc.available, got, tc.want)
+			}
+		})
+	}
+}
+
 func BenchmarkDownload(b *testing.B) {
 	files, _, err := ModelInfo(context.Background(), MODEL_NAME)
 	if err != nil {

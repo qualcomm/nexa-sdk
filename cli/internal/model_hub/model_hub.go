@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync/atomic"
 
@@ -313,6 +314,25 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 	}()
 
 	return resCh, errCh
+}
+
+// QuantPriority mirrors `QUANT_PRIORITY` in
+// sdk/model-manager/crates/core/src/manifest_builder.rs. Update both sides
+// together — pull (chooseFiles) and load (KeepAliveGet) read from the same
+// list so a no-quant pull and a no-quant load agree on which file wins.
+var QuantPriority = []string{"Q8_0", "Q4_K_M", "Q4_0"}
+
+// PickDefaultQuant returns the highest-priority quant from `available`
+// according to QuantPriority. Quants outside the priority list fall back to
+// lexicographic min, matching the historical `slices.Min` behaviour.
+// Caller must ensure the slice is non-empty.
+func PickDefaultQuant(available []string) string {
+	for _, p := range QuantPriority {
+		if slices.Contains(available, p) {
+			return p
+		}
+	}
+	return slices.Min(available)
 }
 
 // NormalizeModelName splits "<name>[:<quant>]" and applies shortcuts:
