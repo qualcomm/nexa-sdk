@@ -498,19 +498,6 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 				}
 				return err
 			},
-
-			SaveKVCache: func(path string) error {
-				_, err := p.SaveKVCache(geniex_sdk.LlmSaveKVCacheInput{Path: path})
-				return err
-			},
-
-			LoadKVCache: func(path string) error {
-				_, err := p.LoadKVCache(geniex_sdk.LlmLoadKVCacheInput{Path: path})
-				if err == nil {
-					history = nil
-				}
-				return err
-			},
 		}
 		defer repl.Close()
 		processor.GetPrompt = repl.GetPrompt
