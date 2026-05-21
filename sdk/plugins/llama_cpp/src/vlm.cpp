@@ -227,7 +227,8 @@ int32_t LlamaVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
 
     if (input->config && input->config->audio_paths && input->config->audio_count > 0 && this->ctx_vision) {
         if (!this->supports_audio) {
-            GENIEX_LOG_WARN("model does not support audio input; skipping {} audio file(s)", input->config->audio_count);
+            GENIEX_LOG_WARN(
+                "model does not support audio input; skipping {} audio file(s)", input->config->audio_count);
         } else {
             GENIEX_LOG_DEBUG("processing {} audio file(s)", input->config->audio_count);
             for (int i = 0; i < input->config->audio_count; ++i) {

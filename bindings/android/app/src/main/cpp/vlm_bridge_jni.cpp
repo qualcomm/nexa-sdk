@@ -72,8 +72,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_Vlm_reset(JNIEnv* env,
 }
 
 // JNI: getCapabilities - Query mmproj-reported modality support
-extern "C" JNIEXPORT jobject JNICALL
-Java_com_geniex_sdk_jni_Vlm_getCapabilities(JNIEnv* env, jobject, jlong handle) {
+extern "C" JNIEXPORT jobject JNICALL Java_com_geniex_sdk_jni_Vlm_getCapabilities(JNIEnv* env, jobject, jlong handle) {
     if (!handle) {
         throw_runtime_exception(env, "VLM getCapabilities failed: invalid handle");
         return nullptr;
