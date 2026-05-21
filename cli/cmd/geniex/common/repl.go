@@ -31,15 +31,11 @@ var help = [][2]string{
 	{"/?, /h, /help", "Show this help message"},
 	{"/exit", "Exit the REPL"},
 	{"/clear", "Clear the screen and conversation history"},
-	{"/load <filename>", "Load conversation history from a file"},
-	{"/save <filename>", "Save conversation history to a file"},
 	{"/mic", "Record audio for transcription"},
 }
 
 type Repl struct {
-	Reset       func() error
-	SaveKVCache func(path string) error
-	LoadKVCache func(path string) error
+	Reset func() error
 
 	Record          func() (*string, error)
 	RecordImmediate bool
@@ -53,15 +49,8 @@ type Repl struct {
 func (r *Repl) GetPrompt() (string, error) {
 	if !r.init {
 		// fill default functions
-		notSupport := fmt.Errorf("NotSupport")
 		if r.Reset == nil {
 			r.Reset = func() error { return nil }
-		}
-		if r.SaveKVCache == nil {
-			r.SaveKVCache = func(path string) error { return notSupport }
-		}
-		if r.LoadKVCache == nil {
-			r.LoadKVCache = func(path string) error { return notSupport }
 		}
 		if r.Record == nil {
 			r.Record = func() (*string, error) { return nil, geniex_sdk.ErrCommonNotSupport }
@@ -142,43 +131,6 @@ func (r *Repl) GetPrompt() (string, error) {
 			r.Reset()
 			recordAudios = nil
 			fmt.Print("\033[H\033[2J")
-			continue
-
-		case "/load":
-			if len(fields) != 2 {
-				fmt.Println(render.GetTheme().Error.Sprintf("Usage: /load <filename>"))
-				fmt.Println()
-				continue
-			}
-			r.Reset()
-			err := r.LoadKVCache(fields[1])
-			if err != nil {
-				if errors.Is(err, geniex_sdk.ErrCommonNotSupport) {
-					fmt.Println(render.GetTheme().Warning.Sprintf("Load conversation history is not supported for this model yet"))
-					fmt.Println()
-				} else {
-					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					fmt.Println()
-				}
-			}
-			continue
-
-		case "/save":
-			if len(fields) != 2 {
-				fmt.Println(render.GetTheme().Error.Sprintf("Usage: /save <filename>"))
-				fmt.Println()
-				continue
-			}
-			err := r.SaveKVCache(fields[1])
-			if err != nil {
-				if errors.Is(err, geniex_sdk.ErrCommonNotSupport) {
-					fmt.Println(render.GetTheme().Warning.Sprintf("Save conversation history is not supported for this model yet"))
-					fmt.Println()
-				} else {
-					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					fmt.Println()
-				}
-			}
 			continue
 
 		case "/mic":
