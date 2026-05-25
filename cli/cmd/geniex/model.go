@@ -330,7 +330,6 @@ func pullModel(name string, quant string) error {
 	files, hmf, err := model_hub.ModelInfo(context.TODO(), name)
 	spin.Stop()
 	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("Get ModelInfo error: %s", err))
 		return err
 	}
 
@@ -353,7 +352,6 @@ func pullModel(name string, quant string) error {
 		// choose quant to download
 		err := chooseQuantFiles(quant, mf)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			return err
 		}
 
@@ -367,7 +365,6 @@ func pullModel(name string, quant string) error {
 
 		for err := range errCh {
 			bar.Clear()
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			return err
 		}
 	} else {
@@ -389,7 +386,6 @@ func pullModel(name string, quant string) error {
 
 		err := chooseFiles(name, quant, files, &manifest)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			return err
 		}
 
@@ -420,7 +416,6 @@ func pullModel(name string, quant string) error {
 
 		for err := range errCh {
 			bar.Clear()
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			return err
 		}
 
