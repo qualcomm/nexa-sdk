@@ -201,6 +201,12 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		defer close(errC)
 		defer close(infoC)
 
+		if err := s.LockModel(mf.Name); err != nil {
+			errC <- err
+			return
+		}
+		defer s.UnlockModel(mf.Name)
+
 		// check free disk space
 		if err := s.ensureEnoughDiskSpace(mf.GetSize()); err != nil {
 			errC <- err
@@ -218,17 +224,11 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 			}
 		}
 		if !hasProgress {
-			if err := s.Remove(mf.Name, ""); err != nil {
+			if err := os.RemoveAll(modelDir); err != nil {
 				errC <- err
 				return
 			}
 		}
-
-		if err := s.LockModel(mf.Name); err != nil {
-			errC <- err
-			return
-		}
-		defer s.UnlockModel(mf.Name)
 
 		// filter download file
 		var needs []model_hub.ModelFileInfo
