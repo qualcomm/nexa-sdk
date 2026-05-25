@@ -29,6 +29,7 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <time.h>
 
 /* Default prompt mirrors tests/benchmark/_runner.py:28-31 verbatim. */
 static const char* const DEFAULT_PROMPT =
@@ -235,6 +236,11 @@ static const char* arg_value(int argc, char** argv, int* i, const char* flag) {
     return argv[*i];
 }
 
+/* Optional per-token sleep (for the on_token-overhead study). Read once at
+ * startup; default 0 = no-op callback (the production case). Hot path stays
+ * branch-predictable. */
+static int g_token_callback_delay_us = 0;
+
 static void parse_args(int argc, char** argv, options_t* o) {
     o->plugin          = NULL;
     o->device          = "auto";
@@ -317,6 +323,8 @@ static void parse_args(int argc, char** argv, options_t* o) {
             o->matrix_file = arg_value(argc, argv, &i, a);
         } else if (strcmp(a, "--output-json-dir") == 0) {
             o->output_json_dir = arg_value(argc, argv, &i, a);
+        } else if (strcmp(a, "--token-callback-delay-us") == 0) {
+            g_token_callback_delay_us = atoi(arg_value(argc, argv, &i, a));
         } else {
             fprintf(stderr, "ERROR: unknown arg %s\n", a);
             usage(argv[0]);
@@ -348,10 +356,24 @@ static void parse_args(int argc, char** argv, options_t* o) {
     }
 }
 
-/* No-op streaming callback. The benchmark only cares about ProfileData. */
+static void busy_wait_us(int us) {
+    if (us <= 0) return;
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    long target_ns = (long)us * 1000L;
+    do {
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+    } while (((t1.tv_sec - t0.tv_sec) * 1000000000L + (t1.tv_nsec - t0.tv_nsec)) < target_ns);
+}
+
+/* Streaming callback. By default a no-op (the C consumer's expected pattern).
+ * --token-callback-delay-us N inflates each call to N microseconds via
+ * monotonic-clock busy-wait, simulating the ~per-token overhead a Python
+ * binding pays for ctypes wrapper + GIL acquire/release. */
 static bool on_token(const char* token, void* user_data) {
     (void)token;
     (void)user_data;
+    busy_wait_us(g_token_callback_delay_us);
     return true;
 }
 
