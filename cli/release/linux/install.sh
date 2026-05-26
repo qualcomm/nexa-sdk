@@ -35,39 +35,27 @@ PREFIX=""
 QUIET=0
 SKIP_CHECKS=0
 
-# Qualcomm driver libs: full SONAMEs (_QCOM_LIBS) + unversioned aliases
-# (_QCOM_SHORT_ALIASES) in cli/release/linux/BUILD.bazel. Both are required:
-# our binaries NEED short names (e.g. libggml-opencl.so → libOpenCL.so).
-QCOM_LIBS="
-libCB.so
+# Required shared libraries: Qualcomm driver SONAMEs (_QCOM_LIBS in
+# cli/release/linux/BUILD.bazel) plus trixie.yaml's runtime packages
+# (libatomic1, libglib2.0-0t64). Short-name aliases (_QCOM_SHORT_ALIASES)
+# are not checked: on host installs the dynamic linker resolves short
+# names to versioned SONAMEs via ldconfig's cache, so the .so.1 files
+# alone are sufficient. (Those aliases are only materialised inside the
+# Docker image, where the host /usr/lib bind mount has no ldconfig cache.)
+REQUIRED_LIBS="
 libCB.so.1
 libOpenCL.so.1
-libOpenCL_adreno.so
 libOpenCL_adreno.so.1
-libadreno_utils.so
 libadreno_utils.so.1
-libcdsprpc.so
-libcdsprpc.so.1
+libatomic.so.1
 libcdsprpc.so.1.0.0
-libdmabufheap.so.0
 libdmabufheap.so.0.0.0
-libgsl.so
+libglib-2.0.so.0
 libgsl.so.1
-libllvm-glnext.so
 libllvm-glnext.so.1
-libllvm-qcom.so
 libllvm-qcom.so.1
-libllvm-qgl.so
 libllvm-qgl.so.1
-libpropertyvault.so.0
 libpropertyvault.so.0.0.0
-"
-
-# Required system libs from trixie.yaml. ca-certificates is left to the
-# downloader's own error path; sox is optional (audio I/O).
-SYSTEM_DEPS="
-libatomic.so.1:libatomic1
-libglib-2.0.so.0:libglib2.0-0t64
 "
 
 # qcom-adreno version is embedded in the ICD loader's debug path.
@@ -209,17 +197,15 @@ version_ge() {
     [ "$_lo" = "$2" ]
 }
 
-check_qcom_libs() {
+check_required_libs() {
     _missing=""
-    for _lib in $QCOM_LIBS; do
-        if ! find_lib "$_lib" >/dev/null; then
-            _missing="${_missing} ${_lib}"
-        fi
+    for _lib in $REQUIRED_LIBS; do
+        find_lib "$_lib" >/dev/null || _missing="${_missing} ${_lib}"
     done
     if [ -n "$_missing" ]; then
-        err "missing Qualcomm driver libraries (expected on Snapdragon Linux):"
+        err "missing required shared libraries:"
         for _m in $_missing; do err "  - $_m"; done
-        err "install the Qualcomm graphics/compute driver package, or rerun with --skip-checks"
+        err "install the Qualcomm driver package and Debian: libatomic1 libglib2.0-0t64, or rerun with --skip-checks"
         return 1
     fi
     return 0
@@ -247,36 +233,12 @@ check_qcom_driver_version() {
     return 1
 }
 
-check_system_deps() {
-    _missing=""
-    # SYSTEM_DEPS entries are `<soname>:<pkg>`.
-    _ifs="$IFS"
-    IFS='
-'
-    for _entry in $SYSTEM_DEPS; do
-        [ -z "$_entry" ] && continue
-        _soname=${_entry%%:*}
-        _pkg=${_entry#*:}
-        find_lib "$_soname" >/dev/null || _missing="${_missing} ${_pkg}(${_soname})"
-    done
-    IFS="$_ifs"
-    if [ -n "$_missing" ]; then
-        err "missing system dependencies:"
-        for _m in $_missing; do err "  - $_m"; done
-        err "install via your distro's package manager (Debian: apt-get install libatomic1 libglib2.0-0t64), or rerun with --skip-checks"
-        return 1
-    fi
-    return 0
-}
-
 if [ "$SKIP_CHECKS" -eq 1 ]; then
-    say "Skipping QCOM driver and system-library checks (--skip-checks)"
+    say "Skipping driver and library checks (--skip-checks)"
 else
-    say "Checking Qualcomm driver libraries"
-    check_qcom_libs        || exit 1
+    say "Checking required libraries"
+    check_required_libs       || exit 1
     check_qcom_driver_version || exit 1
-    say "Checking system libraries"
-    check_system_deps      || exit 1
 fi
 
 DOWNLOADER=$(pick_cmd curl wget) || {
