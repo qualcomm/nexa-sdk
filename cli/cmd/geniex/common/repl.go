@@ -136,13 +136,13 @@ func (r *Repl) GetPrompt() (string, error) {
 
 		case "/mic":
 			if r.Record == nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fields[0]))
+				PrintErrorf("Unknown command: %s", fields[0])
 				fmt.Println()
 				continue
 			}
 			outputFile, err := r.Record()
 			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+				PrintError(err)
 				fmt.Println()
 			}
 			if outputFile != nil {
@@ -154,7 +154,7 @@ func (r *Repl) GetPrompt() (string, error) {
 			continue
 
 		default:
-			fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fields[0]))
+			PrintErrorf("Unknown command: %s", fields[0])
 			fmt.Println()
 			continue
 		}

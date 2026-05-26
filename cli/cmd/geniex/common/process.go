@@ -78,7 +78,7 @@ func (p *Processor) Process() error {
 			var parseErr error
 			prompt, images, audios, parseErr = p.parseFiles(line)
 			if parseErr != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", parseErr))
+				PrintError(parseErr)
 				fmt.Println()
 				continue
 			}
@@ -128,13 +128,13 @@ func (p *Processor) Process() error {
 		switch {
 		case err == nil:
 		case errors.Is(err, ErrNoAudio):
-			fmt.Println(render.GetTheme().Error.Sprintf("No audio file provided, please provide an audio file or use /mic command"))
+			PrintErrorf("No audio file provided, please provide an audio file or use /mic command")
 			fmt.Println()
 		case errors.Is(err, ErrNoImage):
-			fmt.Println(render.GetTheme().Error.Sprintf("No image file provided, please provide an image file"))
+			PrintErrorf("No image file provided, please provide an image file")
 			fmt.Println()
 		case errors.Is(err, ErrContextLengthExceeded):
-			fmt.Println(render.GetTheme().Error.Sprintf("Model context length exceeded; output above is truncated"))
+			PrintErrorf("Model context length exceeded; output above is truncated")
 			fmt.Println()
 		default:
 			return err

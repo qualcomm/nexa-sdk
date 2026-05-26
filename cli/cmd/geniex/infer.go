@@ -135,24 +135,24 @@ func infer() *cobra.Command {
 		name, quant := model_hub.NormalizeModelName(args[0])
 		manifest, err := ensureModelAvailable(s, name, quant)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+			common.PrintError(err)
 			return err
 		}
 
 		if quant != "" {
 			if fileinfo, exist := manifest.ModelFile[quant]; !exist {
 				err = fmt.Errorf("precision %s not found", quant)
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+				common.PrintError(err)
 				return err
 			} else if !fileinfo.Downloaded {
 				err = fmt.Errorf("precision %s not downloaded", quant)
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+				common.PrintError(err)
 				return err
 			}
 		} else {
 			sq, err := selectQuant(manifest)
 			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+				common.PrintError(err)
 				return err
 			}
 			quant = sq
@@ -168,7 +168,7 @@ func infer() *cobra.Command {
 		default:
 			geniex_sdk.DeInit()
 			err = fmt.Errorf("unsupported model type: %s", manifest.ModelType)
-			fmt.Println(render.GetTheme().Error.Sprint(err))
+			common.PrintError(err)
 			return err
 		}
 
@@ -221,7 +221,7 @@ func infer() *cobra.Command {
 		case geniex_sdk.ErrLlmTokenizationContextLength:
 			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
 		default:
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+			common.PrintError(err)
 		}
 		return err
 	}

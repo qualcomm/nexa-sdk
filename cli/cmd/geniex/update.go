@@ -32,6 +32,7 @@ import (
 	"golang.org/x/mod/semver"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/qcom-it-nexa-ai/geniex/cli/cmd/geniex/common"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/downloader"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/render"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/store"
@@ -58,7 +59,7 @@ func update() *cobra.Command {
 		Long:    "Update geniex to the latest version",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := runUpdate(cmd, args); err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Update failed: %s", err))
+				common.PrintErrorf("Update failed: %s", err)
 			}
 		},
 	}

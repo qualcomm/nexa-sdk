@@ -66,14 +66,14 @@ func run() *cobra.Command {
 		modelInfo, err := client.Models.Get(context.TODO(), name)
 		if err != nil {
 			if _, ok := err.(net.Error); ok {
-				fmt.Println(render.GetTheme().Error.Sprintf("Is server running? Please check your network. \n\t%s", err))
+				common.PrintErrorf("Is server running? Please check your network. \n\t%s", err)
 				return err
 			}
 			if e, ok := err.(*openai.Error); ok && e.StatusCode == http.StatusNotFound {
-				fmt.Println(render.GetTheme().Error.Sprintf("Model or precision not found: %s, Please download first", name))
+				common.PrintErrorf("Model or precision not found: %s, Please download first", name)
 				return err
 			}
-			fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
+			common.PrintErrorf("get model error: %s", err.Error())
 			return err
 		}
 
@@ -85,12 +85,12 @@ func run() *cobra.Command {
 			err = runCompletions(manifest, quant)
 		default:
 			err = fmt.Errorf("unsupported model type: %s", manifest.ModelType)
-			fmt.Println(render.GetTheme().Error.Sprint(err))
+			common.PrintError(err)
 			return err
 		}
 
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+			common.PrintError(err)
 			return err
 		}
 		return nil

@@ -29,6 +29,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/qcom-it-nexa-ai/geniex/cli/cmd/geniex/common"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/model_hub"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/model_hub/aihub"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/render"
@@ -63,7 +64,7 @@ func pull() *cobra.Command {
 	pullCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		name, quant := model_hub.NormalizeModelName(args[0])
 		if err := pullModel(name, quant); err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to pull model: %s", err))
+			common.PrintError(err)
 			return err
 		}
 		return nil
@@ -113,7 +114,7 @@ func remove() *cobra.Command {
 				label = name + ":" + quant
 			}
 			if err := s.Remove(name, quant); err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to remove %s: %s", label, err))
+				common.PrintErrorf("Failed to remove %s: %s", label, err)
 				lastErr = err
 				continue
 			}
@@ -160,7 +161,7 @@ func list() *cobra.Command {
 		s := store.Get()
 		models, e := s.List()
 		if e != nil {
-			fmt.Println(render.GetTheme().Error.Sprint(e))
+			common.PrintError(e)
 			return e
 		}
 
@@ -244,7 +245,7 @@ func setTypeCmd() *cobra.Command {
 
 			// Verify the model is present before prompting for a type.
 			if _, err := store.Get().GetManifest(name); err != nil {
-				fmt.Fprintln(os.Stderr, render.GetTheme().Error.Sprintf("Model %q not found: %s", name, err))
+				common.PrintErrorf("Model %q not found: %s", name, err)
 				return
 			}
 
@@ -263,8 +264,7 @@ func setTypeCmd() *cobra.Command {
 					for i, t := range types.AllModelTypes {
 						validStrs[i] = string(t)
 					}
-					fmt.Fprintln(os.Stderr, render.GetTheme().Error.Sprintf(
-						"Unknown model type %q (valid: %s)", args[1], strings.Join(validStrs, ", ")))
+					common.PrintErrorf("Unknown model type %q (valid: %s)", args[1], strings.Join(validStrs, ", "))
 					return
 				}
 			} else {
@@ -278,7 +278,7 @@ func setTypeCmd() *cobra.Command {
 			}
 
 			if err := store.Get().SetModelType(name, mt); err != nil {
-				fmt.Fprintln(os.Stderr, render.GetTheme().Error.Sprintf("Failed to update model type: %s", err))
+				common.PrintErrorf("Failed to update model type: %s", err)
 				return
 			}
 			fmt.Println(render.GetTheme().Success.Sprintf("✔  %s → %s", name, mt))

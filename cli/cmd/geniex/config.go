@@ -25,6 +25,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
+	"github.com/qcom-it-nexa-ai/geniex/cli/cmd/geniex/common"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/model_hub/aihub"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/qaihm"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/render"
@@ -78,7 +79,7 @@ func configGetCmd() *cobra.Command {
 			key := args[0]
 			value, ok, err := store.Get().ConfigGet(key)
 			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Failed to get configuration: %s", err))
+				common.PrintErrorf("Failed to get configuration: %s", err)
 				return err
 			}
 			if !ok {
@@ -109,7 +110,7 @@ func configSetCmd() *cobra.Command {
 			case store.ConfigKeyDevice:
 				if len(args) == 1 {
 					if err := pickDevice(cmd.Context()); err != nil {
-						fmt.Println(render.GetTheme().Error.Sprintf("Failed to pick device: %s", err))
+						common.PrintErrorf("Failed to pick device: %s", err)
 						return err
 					}
 					return nil
@@ -117,14 +118,14 @@ func configSetCmd() *cobra.Command {
 			default:
 				if len(args) < 2 {
 					err := fmt.Errorf("key %q requires a value argument", key)
-					fmt.Println(render.GetTheme().Error.Sprint(err))
+					common.PrintError(err)
 					return err
 				}
 			}
 
 			value := args[1]
 			if err := store.Get().ConfigSet(key, value); err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Failed to set configuration: %s", err))
+				common.PrintErrorf("Failed to set configuration: %s", err)
 				return err
 			}
 			fmt.Println(render.GetTheme().Info.Sprintf("%s = %s", key, value))
@@ -183,7 +184,7 @@ func loadPlatform(ctx context.Context) (*qaihm.PlatformInfo, error) {
 	plat, err := client.LoadPlatformDirect(ctx)
 	spin.Stop()
 	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("Failed to fetch device list: %s", err))
+		common.PrintErrorf("Failed to fetch device list: %s", err)
 		return nil, err
 	}
 	return plat, nil
@@ -208,7 +209,7 @@ func pickDeviceFrom(plat *qaihm.PlatformInfo) error {
 		osType = qaihm.OperatingSystemType_OPERATING_SYSTEM_TYPE_QC_LINUX
 	default:
 		err := fmt.Errorf("unsupported operating system %q for AI Hub device selection", runtime.GOOS)
-		fmt.Println(render.GetTheme().Error.Sprint(err.Error()))
+		common.PrintError(err)
 		return err
 	}
 
@@ -222,7 +223,7 @@ func pickDeviceFrom(plat *qaihm.PlatformInfo) error {
 		options = append(options, huh.NewOption(d.GetName(), d.GetChipset()))
 	}
 	if len(options) == 0 {
-		fmt.Println(render.GetTheme().Error.Sprint("No devices found for this operating system."))
+		common.PrintErrorf("No devices found for this operating system.")
 		return fmt.Errorf("no devices available")
 	}
 
@@ -236,7 +237,7 @@ func pickDeviceFrom(plat *qaihm.PlatformInfo) error {
 	}
 
 	if err := store.Get().ConfigSet(store.ConfigKeyDevice, selected); err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("Failed to save device: %s", err))
+		common.PrintErrorf("Failed to save device: %s", err)
 		return err
 	}
 	fmt.Println(render.GetTheme().Info.Sprintf("device = %s (%s)", displayByChipset[selected], selected))
@@ -252,7 +253,7 @@ func configListCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := store.Get().ConfigList()
 			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Failed to read configuration: %s", err))
+				common.PrintErrorf("Failed to read configuration: %s", err)
 				return err
 			}
 
