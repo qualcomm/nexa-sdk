@@ -35,13 +35,7 @@ PREFIX=""
 QUIET=0
 SKIP_CHECKS=0
 
-# Required shared libraries: Qualcomm driver SONAMEs (_QCOM_LIBS in
-# cli/release/linux/BUILD.bazel) plus trixie.yaml's runtime packages
-# (libatomic1, libglib2.0-0t64). Short-name aliases (_QCOM_SHORT_ALIASES)
-# are not checked: on host installs the dynamic linker resolves short
-# names to versioned SONAMEs via ldconfig's cache, so the .so.1 files
-# alone are sufficient. (Those aliases are only materialised inside the
-# Docker image, where the host /usr/lib bind mount has no ldconfig cache.)
+# QCOM driver SONAMEs (_QCOM_LIBS in BUILD.bazel) + trixie.yaml runtime libs.
 REQUIRED_LIBS="
 libCB.so.1
 libOpenCL.so.1
@@ -58,9 +52,11 @@ libllvm-qgl.so.1
 libpropertyvault.so.0.0.0
 "
 
-# qcom-adreno version is embedded in the ICD loader's debug path.
-MIN_QCOM_DRIVER="1.838.3"
-QCOM_DRIVER_PROBE_LIB="libOpenCL.so.1"
+# Driver probes: `<label>:<lib>:<debug-path-prefix>:<min-ver>`.
+DRIVER_PROBES="
+GPU (Adreno):libOpenCL.so.1:qcom-adreno:1.838.3
+NPU (FastRPC):libcdsprpc.so.1.0.0:fastrpc:15.0
+"
 
 usage() {
     cat <<EOF
@@ -211,34 +207,50 @@ check_required_libs() {
     return 0
 }
 
-check_qcom_driver_version() {
-    _probe=$(find_lib "$QCOM_DRIVER_PROBE_LIB") || return 0
+check_driver_versions() {
     if ! command -v strings >/dev/null 2>&1; then
-        say "Note: 'strings' not on PATH — skipping QCOM driver version check"
+        say "Note: 'strings' not on PATH — skipping driver version checks"
         return 0
     fi
-    _ver=$(strings -a "$_probe" 2>/dev/null \
-        | sed -n 's,.*qcom-adreno/\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*,\1,p' \
-        | sort -V | tail -n1)
-    if [ -z "$_ver" ]; then
-        say "Note: could not detect QCOM driver version from $_probe — continuing"
-        return 0
+    _ifs="$IFS"
+    IFS='
+'
+    _failed=0
+    for _entry in $DRIVER_PROBES; do
+        [ -z "$_entry" ] && continue
+        _label=$(printf '%s' "$_entry" | cut -d: -f1)
+        _lib=$(printf   '%s' "$_entry" | cut -d: -f2)
+        _prefix=$(printf '%s' "$_entry" | cut -d: -f3)
+        _min=$(printf    '%s' "$_entry" | cut -d: -f4)
+        _path=$(find_lib "$_lib") || continue
+        _ver=$(strings -a "$_path" 2>/dev/null \
+            | sed -n "s#.*${_prefix}/\([0-9][0-9]*\(\.[0-9][0-9]*\)\{1,2\}\).*#\1#p" \
+            | sort -V | tail -n1)
+        if [ -z "$_ver" ]; then
+            say "Note: could not detect $_label driver version from $_path — continuing"
+            continue
+        fi
+        if version_ge "$_ver" "$_min"; then
+            say "$_label driver: $_ver (>= $_min)"
+        else
+            err "$_label driver $_ver is older than required $_min ($_path)"
+            _failed=1
+        fi
+    done
+    IFS="$_ifs"
+    if [ "$_failed" -eq 1 ]; then
+        err "update the Qualcomm driver packages, or rerun with --skip-checks"
+        return 1
     fi
-    if version_ge "$_ver" "$MIN_QCOM_DRIVER"; then
-        say "QCOM driver: $_ver (>= $MIN_QCOM_DRIVER)"
-        return 0
-    fi
-    err "QCOM driver $_ver is older than required $MIN_QCOM_DRIVER"
-    err "update the Qualcomm graphics/compute driver, or rerun with --skip-checks"
-    return 1
+    return 0
 }
 
 if [ "$SKIP_CHECKS" -eq 1 ]; then
     say "Skipping driver and library checks (--skip-checks)"
 else
     say "Checking required libraries"
-    check_required_libs       || exit 1
-    check_qcom_driver_version || exit 1
+    check_required_libs   || exit 1
+    check_driver_versions || exit 1
 fi
 
 DOWNLOADER=$(pick_cmd curl wget) || {
