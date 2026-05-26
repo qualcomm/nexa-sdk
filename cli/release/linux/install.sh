@@ -35,8 +35,14 @@ PREFIX=""
 QUIET=0
 SKIP_CHECKS=0
 
-# Qualcomm user-space driver libs the runtime dlopens. Mirrors _QCOM_LIBS in
-# cli/release/linux/BUILD.bazel — keep both lists in sync.
+# Qualcomm user-space driver libs. Mirrors _QCOM_LIBS (full SONAMEs the
+# driver package ships) and _QCOM_SHORT_ALIASES (unversioned aliases that
+# our shipped artifacts and the GPU driver's own dlopen chain look up by
+# short name) in cli/release/linux/BUILD.bazel — keep all three lists in
+# sync. We require both: the full SONAMEs prove the driver package is
+# installed, the aliases prove ld.so can resolve the names our binaries
+# actually link against (e.g. libggml-opencl.so NEEDs `libOpenCL.so`, not
+# `libOpenCL.so.1`).
 QCOM_LIBS="
 libOpenCL.so.1
 libOpenCL_adreno.so.1
@@ -49,6 +55,17 @@ libllvm-glnext.so.1
 libpropertyvault.so.0.0.0
 libdmabufheap.so.0.0.0
 libcdsprpc.so.1.0.0
+libOpenCL_adreno.so
+libCB.so
+libadreno_utils.so
+libgsl.so
+libllvm-qcom.so
+libllvm-qgl.so
+libllvm-glnext.so
+libpropertyvault.so.0
+libdmabufheap.so.0
+libcdsprpc.so
+libcdsprpc.so.1
 "
 
 # System libs / tools required at runtime. Mirrors trixie.yaml's required
@@ -61,9 +78,12 @@ libglib-2.0.so.0:libglib2.0-0t64
 file:/etc/ssl/certs/ca-certificates.crt:ca-certificates
 "
 
-# Minimum qcom-adreno driver version (extracted from libgsl.so.1's debug
-# path). Bump when the SDK starts depending on a newer driver.
+# Minimum qcom-adreno driver version. We extract it from libOpenCL.so.1
+# (the ICD loader is in our DT_NEEDED chain and embeds the driver's
+# /usr/src/debug/qcom-adreno/<ver>/ build path). Bump when the SDK starts
+# depending on a newer driver.
 MIN_QCOM_DRIVER="1.838.3"
+QCOM_DRIVER_PROBE_LIB="libOpenCL.so.1"
 
 usage() {
     cat <<EOF
@@ -219,17 +239,17 @@ check_qcom_libs() {
 }
 
 check_qcom_driver_version() {
-    _gsl=$(find_lib libgsl.so.1) || return 0  # already reported by check_qcom_libs
+    _probe=$(find_lib "$QCOM_DRIVER_PROBE_LIB") || return 0  # already reported by check_qcom_libs
     if ! command -v strings >/dev/null 2>&1; then
         say "Note: 'strings' not on PATH — skipping QCOM driver version check"
         return 0
     fi
-    # libgsl.so.1 embeds debug paths like /usr/src/debug/qcom-adreno/<ver>/...
-    _ver=$(strings -a "$_gsl" 2>/dev/null \
+    # The driver libs embed debug paths like /usr/src/debug/qcom-adreno/<ver>/...
+    _ver=$(strings -a "$_probe" 2>/dev/null \
         | sed -n 's,.*qcom-adreno/\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*,\1,p' \
         | sort -V | tail -n1)
     if [ -z "$_ver" ]; then
-        say "Note: could not detect QCOM driver version from $_gsl — continuing"
+        say "Note: could not detect QCOM driver version from $_probe — continuing"
         return 0
     fi
     if version_ge "$_ver" "$MIN_QCOM_DRIVER"; then
