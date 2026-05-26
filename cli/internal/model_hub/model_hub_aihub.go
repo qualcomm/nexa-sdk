@@ -106,7 +106,7 @@ func (h *AIHub) ModelInfo(ctx context.Context, name string) ([]ModelFileInfo, er
 
 	zipSize, err := aihub.HeadContentLength(ctx, asset.GetDownloadUrl())
 	if err != nil {
-		return nil, fmt.Errorf("HEAD %s: %w", asset.GetDownloadUrl(), err)
+		return nil, &HubUnreachableError{Hub: "Qualcomm AI Hub", URL: asset.GetDownloadUrl(), Err: err}
 	}
 
 	zipURL := asset.GetDownloadUrl()
