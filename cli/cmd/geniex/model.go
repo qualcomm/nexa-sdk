@@ -189,7 +189,7 @@ func list() *cobra.Command {
 				tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.GetSize())), strings.Join(func() []string {
 					quants := make([]string, 0)
 					for q := range model.ModelFile {
-						if model.ModelFile[q].Downloaded && q != "N/A" {
+						if model.ModelFile[q].Downloaded && q != types.QuantNA {
 							quants = append(quants, q)
 						}
 					}
@@ -437,7 +437,7 @@ var quantRegix = regexp.MustCompile(`(` + strings.Join([]string{
 func getQuant(name string) string {
 	quant := strings.ToUpper(quantRegix.FindString(name))
 	if quant == "" {
-		quant = "N/A"
+		quant = types.QuantNA
 	}
 	return quant
 }
@@ -599,7 +599,7 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 		if len(files) == 1 {
 			// single file (typically the AI Hub .zip)
 			mainFile := files[0]
-			res.ModelFile["N/A"] = types.ModelFileInfo{
+			res.ModelFile[types.QuantNA] = types.ModelFileInfo{
 				Name:       mainFile.Name,
 				Downloaded: true,
 				Size:       mainFile.Size,
