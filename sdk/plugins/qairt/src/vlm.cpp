@@ -15,13 +15,14 @@
 #define portable_strdup strdup
 #endif
 
-#include "geniex-proc/types.h"  // ChatMessage, MMContent, Role::, Modality::
+#include "dispatch.h"             // provided by geniex-qairt/models/
+#include "geniex-proc/types.h"    // ChatMessage, MMContent, Role::, Modality::
+#include "llm/llm_spec_loader.h"  // parseGenieSamplerConfig
 #include "logging.h"
 #include "pipeline/vlm_pipeline.h"
 #include "qnn_runtime_utils.h"
 #include "sampler_config_utils.h"
 #include "types.h"
-#include "vlm_model_registry.h"  // vlm_model_registry()
 
 namespace fs = std::filesystem;
 
@@ -36,11 +37,10 @@ constexpr const char* kDefaultSystemPrompt = "You are a helpful AI assistant.";
 QairtVlm::~QairtVlm() = default;
 
 int32_t QairtVlm::create_impl(const geniex_VlmCreateInput* input) {
-    if (!input || !input->model_name || !input->model_path) {
+    if (!input || !input->model_path) {
         return GENIEX_ERROR_COMMON_INVALID_INPUT;
     }
 
-    model_name_      = input->model_name;
     enable_thinking_ = input->config.enable_thinking;
 
     // Reject llama.cpp-only parameters that have no meaning in the QAIRT plugin
@@ -53,17 +53,11 @@ int32_t QairtVlm::create_impl(const geniex_VlmCreateInput* input) {
         return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
     }
 
-    // Look up model in VLM registry
-    auto& registry = vlm_model_registry();
-    auto  it       = registry.find(model_name_);
-    if (it == registry.end()) {
-        GENIEX_LOG_ERROR("Unknown QAIRT VLM model name: {}", model_name_);
-        return GENIEX_ERROR_COMMON_MODEL_INVALID;
-    }
-
     // Derive model directory from the model_path
     fs::path model_path(input->model_path);
     fs::path model_dir = model_path.parent_path();
+
+    bundle_sampler_ = parseGenieSamplerConfig(model_dir);
 
     QnnRuntimeConfig runtime_cfg = qairt::runtime::make_qnn_runtime_config(model_dir);
 
@@ -122,8 +116,9 @@ int32_t QairtVlm::create_impl(const geniex_VlmCreateInput* input) {
         vision_cfg.model_paths = {resolved_vision_bin};
     }
     if (vision_cfg.model_paths.empty()) {
-        GENIEX_LOG_WARN("No vision encoder found for VLM model '{}' — text-only mode", model_name_);
+        GENIEX_LOG_WARN("No vision encoder found in {} — text-only mode", model_dir.string());
     }
+    has_vision_encoder_        = !vision_cfg.model_paths.empty();
     vision_cfg.htp_config_path = llm_cfg.htp_config_path;
 
     // ── Build VLMConfig and create pipeline ───────────────────────────────────
@@ -131,14 +126,23 @@ int32_t QairtVlm::create_impl(const geniex_VlmCreateInput* input) {
     vlm_cfg.llm_config    = std::move(llm_cfg);
     vlm_cfg.vision_config = std::move(vision_cfg);
 
-    auto pipe = it->second.make_pipeline(runtime_cfg, vlm_cfg);
+    // Dispatcher reads metadata.json `model_id` from the bundle and routes to
+    // the matching VLM family factory (currently qwen2_5_vl_*).
+    auto pipe = makeVLMPipeline(runtime_cfg, vlm_cfg);
     if (!pipe) {
-        GENIEX_LOG_ERROR("Failed to create QAIRT VLM pipeline for model: {}", model_name_);
+        GENIEX_LOG_ERROR("Failed to create QAIRT VLM pipeline from bundle: {}", model_dir.string());
         return GENIEX_ERROR_COMMON_MODEL_LOAD;
     }
     pipeline_ = std::make_unique<VLMPipeline>(std::move(*pipe));
 
-    GENIEX_LOG_DEBUG("QAIRT VLM created successfully: model={}", model_name_);
+    GENIEX_LOG_DEBUG("QAIRT VLM created successfully from bundle: {}", model_dir.string());
+    return GENIEX_SUCCESS;
+}
+
+int32_t QairtVlm::get_capabilities(geniex_VlmCapabilities* output) {
+    if (!output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+    output->supports_vision = has_vision_encoder_;
+    output->supports_audio  = false;
     return GENIEX_SUCCESS;
 }
 
@@ -252,7 +256,7 @@ int32_t QairtVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
     GenerationConfig gen_cfg{};
     if (input->config) {
         gen_cfg.max_tokens = input->config->max_tokens > 0 ? input->config->max_tokens : 512;
-        qairt::apply_sampler_config(input->config->sampler_config, gen_cfg);
+        qairt::apply_sampler_config(input->config->sampler_config, gen_cfg, bundle_sampler_);
     }
     gen_cfg.thinking_mode = enable_thinking_;
 
@@ -267,14 +271,8 @@ int32_t QairtVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
     // Commit pending history size before running — this turn is now in the KV cache.
     history_size_ = pending_history_size_ + 1;
 
-    // Run VLM pipeline (incremental — only new messages since last generate() are in the prompt)
-    GenerateResult result;
-    try {
-        result = pipeline_->generate(input->prompt_utf8, image_paths, gen_cfg, on_token_fn);
-    } catch (const ContextLengthExceededError& e) {
-        GENIEX_LOG_ERROR("QAIRT VLM generate: context length exceeded: {}", e.what());
-        return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
-    }
+    // Run VLM pipeline (incremental — only new messages since last generate() are in the prompt).
+    GenerateResult result = pipeline_->generate(input->prompt_utf8, image_paths, gen_cfg, on_token_fn);
 
     // Map result to output
     output->full_text = portable_strdup(result.full_text.c_str());
@@ -291,19 +289,23 @@ int32_t QairtVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
                                                 ? static_cast<double>(result.prompt_tokens) / (result.ttft_ms / 1000.0)
                                                 : 0.0;
 
-    // Stop reason
+    // Stop reason.
     static const char* kStopEos    = "eos";
     static const char* kStopLength = "length";
     static const char* kStopUser   = "user";
     if (result.stop_reason == "eos")
         output->profile_data.stop_reason = kStopEos;
-    else if (result.stop_reason == "length")
+    else if (result.stop_reason == "length" || result.stop_reason == "context_length")
         output->profile_data.stop_reason = kStopLength;
     else if (result.stop_reason == "user")
         output->profile_data.stop_reason = kStopUser;
     else
         output->profile_data.stop_reason = kStopEos;
 
+    if (result.stop_reason == "context_length") {
+        GENIEX_LOG_WARN("QAIRT VLM generate: context length exceeded (partial result populated)");
+        return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
+    }
     return GENIEX_SUCCESS;
 }
 

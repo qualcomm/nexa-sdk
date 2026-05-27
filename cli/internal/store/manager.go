@@ -15,6 +15,7 @@
 package store
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -55,7 +56,8 @@ func (s *Store) init() {
 		// Get user's cache directory (OS-specific)
 		homeDir, e := os.UserHomeDir()
 		if e != nil {
-			panic(e)
+			fmt.Fprintf(os.Stderr, "geniex: failed to resolve user home directory: %s\n", e)
+			os.Exit(1)
 		}
 
 		// Set geniex cache directory
@@ -65,9 +67,10 @@ func (s *Store) init() {
 
 	// Create models directory structure
 	for _, d := range []string{"models"} {
-		e := os.MkdirAll(filepath.Join(s.home, d), 0o770)
-		if e != nil {
-			panic(e)
+		path := filepath.Join(s.home, d)
+		if e := os.MkdirAll(path, 0o770); e != nil {
+			fmt.Fprintf(os.Stderr, "geniex: failed to create data directory %s: %s\n", path, e)
+			os.Exit(1)
 		}
 	}
 
@@ -96,19 +99,17 @@ func (s *Store) cleanCorruptedDirectories() {
 
 	for _, models := range models {
 		slog.Info("Checking model directory", "name", models)
+		if err := s.LockModel(models); err != nil {
+			slog.Warn("Skipping cleanup of directory", "name", models, "err", err)
+			continue
+		}
 		if s.isCorruptedModelDirectory(models) {
-			if err := s.LockModel(models); err != nil {
-				slog.Warn("Skipping cleanup of directory", "name", models, "err", err)
-				continue
-			}
-
 			slog.Info("Cleaning corrupted model directory", "name", models)
 			if err := os.RemoveAll(s.ModelfilePath(models, "")); err != nil {
 				slog.Error("Failed to remove corrupted directory", "name", models, "err", err)
 			}
-
-			s.UnlockModel(models)
 		}
+		s.UnlockModel(models)
 	}
 }
 
@@ -127,6 +128,5 @@ func (s *Store) isCorruptedModelDirectory(name string) bool {
 			return false
 		}
 	}
-	slog.Info("Cleaning corrupted model directory", "name", name)
 	return true
 }

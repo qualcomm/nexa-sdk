@@ -203,9 +203,12 @@ header p {
   color: #b9b9ba !important;
 }
 
-h1#page-title {
-  font-weight: 600;
-  font-size: 32px;
+h1#page-title,
+#header h1 {
+  font-weight: 600 !important;
+  font-size: 30px !important;
+  line-height: 1.2 !important;
+  margin-bottom: 8px !important;
 }
 
 #header .prose p {
@@ -702,6 +705,8 @@ nav a:has(img.nav-logo) *,
   padding-top: 10px !important;
   padding-bottom: 0 !important;
   height: auto !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
   border-bottom: 1px solid #0000001a !important;
 }
 
@@ -847,6 +852,8 @@ button[data-state="active"] > div.absolute {
   border-top-right-radius: 0 !important;
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
   background-color: #f7f7f8 !important;
   --shiki-light-bg: #f7f7f8 !important;
   --shiki-bg: #f7f7f8 !important;
@@ -1024,8 +1031,9 @@ ul#sidebar-group li div.group:hover {
   padding-right: 40px;
 }
 
-#header {
-  margin-bottom: 24px;
+#header .prose,
+#header p {
+  display: none !important;
 }
 
 .flex.flex-col.gap-8 {

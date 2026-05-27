@@ -37,6 +37,7 @@ static void set_token(const char* token) {
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -55,7 +56,8 @@ func (s SDKError) Error() string {
 }
 
 func SDKErrorCode(err error) int32 {
-	if sdkErr, ok := err.(SDKError); ok {
+	var sdkErr SDKError
+	if errors.As(err, &sdkErr) {
 		return int32(sdkErr)
 	}
 	return -1
@@ -92,9 +94,13 @@ func Version() string {
 	return C.GoString(C.geniex_version())
 }
 
-// QairtVersion returns the bundled QAIRT runtime version string.
-func QairtVersion() string {
-	return C.GoString(C.geniex_qairt_version())
+// GetPluginVersion returns the version string the plugin reports for itself
+// (e.g. QAIRT runtime version, llama.cpp build commit). Returns the empty
+// string when the plugin is not registered.
+func GetPluginVersion(pluginID string) string {
+	cID := C.CString(pluginID)
+	defer C.free(unsafe.Pointer(cID))
+	return C.GoString(C.geniex_get_plugin_version(cID))
 }
 
 type PluginListOutput struct {

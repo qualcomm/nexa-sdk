@@ -4,16 +4,16 @@ Multi-platform AI inference runtime for Snapdragon / Hexagon — runs LLMs on NP
 
 > Status: pre-1.0, under active development. Public API and tags may change; see [notes/release.md](notes/release.md).
 
-## Backends
+## Runtimes & compute units
 
-| Backend       | Hardware       | Model format | Plugin enabled by                         |
-| ------------- | -------------- | ------------ | ----------------------------------------- |
-| Hexagon (HTP) | Snapdragon NPU | GGUF         | `llama_cpp` + `-DGGML_HEXAGON=ON`         |
-| OpenCL        | Adreno GPU     | GGUF         | `llama_cpp` + `-DGGML_OPENCL=ON`          |
-| QAIRT / QNN   | Snapdragon NPU | QAIRT `.bin` | `qairt` + `-DGENIEX_PLUGIN_QAIRT=ON`      |
-| CPU           | Any            | GGUF         | `llama_cpp` (default; disable both flags) |
+| Runtime / GGML backend | Compute unit   | Model format | Enabled by                                |
+| ---------------------- | -------------- | ------------ | ----------------------------------------- |
+| llama.cpp / Hexagon    | Snapdragon NPU | GGUF         | `llama_cpp` + `-DGGML_HEXAGON=ON`         |
+| llama.cpp / OpenCL     | Adreno GPU     | GGUF         | `llama_cpp` + `-DGGML_OPENCL=ON`          |
+| QAIRT / QNN            | Snapdragon NPU | QAIRT `.bin` | `qairt` + `-DGENIEX_PLUGIN_QAIRT=ON`      |
+| llama.cpp / CPU        | Any            | GGUF         | `llama_cpp` (default; disable both flags) |
 
-The `llama_cpp` and `qairt` plugins both target the NPU but through **separate user-space stacks** (ggml-hexagon DSP skels vs. Qualcomm QNN) that consume **different model formats**. They are not substitutes. QAIRT libs are bundled under `third-party/geniex-qairt/`; Hexagon and OpenCL SDKs are external installs.
+The `llama_cpp` and `qairt` runtimes both target the NPU but through **separate user-space stacks** (ggml-hexagon DSP skels vs. Qualcomm QNN) that consume **different model formats**. They are not substitutes. QAIRT libs are bundled under `third-party/geniex-qairt/`; Hexagon and OpenCL SDKs are external installs.
 
 ## Install
 
@@ -25,7 +25,32 @@ Download `geniex-cli-setup-windows-arm64-<TAG>.exe` and the matching `geniex-sdk
 
 If the SDK name ends in `-selfsigned`, first follow [notes/run.md § Self-signed fallback](notes/run.md#self-signed-fallback) to import `ggml-htp-v1.cer` and enable test-signing. Full walkthrough: [notes/run.md § Running a prebuilt CI release](notes/run.md#running-a-prebuilt-ci-release-windows-on-snapdragon).
 
-### Linux (Docker)
+### Linux ARM64
+
+Install on a Snapdragon device (EVK, container, or any ARM64 Linux with a Qualcomm BSP):
+
+```bash
+curl -fsSL https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/install.sh | sh
+```
+
+If the launcher's directory isn't on your `PATH` yet, the installer prints the exact line to add — typically:
+
+```bash
+echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc   # or ~/.zshrc / ~/.profile
+```
+
+Open a new shell or `source` that file, then use it:
+
+```bash
+geniex pull Qwen/Qwen3-0.6B-GGUF
+geniex infer Qwen/Qwen3-0.6B-GGUF -p "Hello, in one short sentence please."
+```
+
+Pin a version: `... | sh -s -- --version v0.1.8`. Override the install location: `... | sh -s -- --prefix /opt/geniex`. Other flags: `-q`, `--help`.
+
+---
+
+Prefer Docker (versioned image, repeatable, no host-side install):
 
 ```bash
 docker pull ghcr.io/qcom-ai-hub/geniex-cli:<TAG>
@@ -91,7 +116,7 @@ For contribution to this project, see docs below to build and test your changes.
 | File                               | Topic                                                                 |
 | ---------------------------------- | --------------------------------------------------------------------- |
 | [notes/build.md](notes/build.md)     | Build CLI, SDK, and Python bindings (Linux / Windows ARM64 / Android) |
-| [notes/run.md](notes/run.md)         | Backend selection, model pull, Windows self-signed HTP fallback       |
+| [notes/run.md](notes/run.md)         | Runtime / compute-unit selection, model pull, Windows self-signed HTP fallback |
 | [notes/release.md](notes/release.md) | SemVer tag procedure, channels, Hexagon HTP signing pipeline          |
 | [notes/AI.md](notes/AI.md)           | Claude Code integration (slash commands, skills)                      |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Commits, branches, PR format, FFI-update rule                         |

@@ -47,7 +47,7 @@ const (
 	defaultChunkSize  = 4 * 1024 * 1024
 	defaultNumWorkers = 16
 
-	linuxInstallScriptURL = "https://raw.githubusercontent.com/qcom-ai-hub/geniex/main/cli/release/linux/install.sh"
+	linuxInstallScriptURL = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/install.sh"
 )
 
 func update() *cobra.Command {
@@ -56,10 +56,8 @@ func update() *cobra.Command {
 		Use:     "update",
 		Short:   "update geniex",
 		Long:    "Update geniex to the latest version",
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := runUpdate(cmd, args); err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Update failed: %s", err))
-			}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runUpdate(cmd, args)
 		},
 	}
 }

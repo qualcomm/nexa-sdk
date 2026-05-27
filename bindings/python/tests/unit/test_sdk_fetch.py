@@ -86,6 +86,7 @@ class _RangeAwareHandler(http.server.BaseHTTPRequestHandler):
     server_version = 'geniex-sdk-fetch-test/1.0'
 
     range_supported = True
+    sha_available = True
 
     def log_message(self, *args, **kwargs):  # silence noisy stderr in tests
         return
@@ -94,7 +95,7 @@ class _RangeAwareHandler(http.server.BaseHTTPRequestHandler):
         path = self.path
         if path == f'/{ASSET}':
             return SDK_ZIP_BYTES
-        if path == f'/{ASSET}.sha256':
+        if path == f'/{ASSET}.sha256' and self.sha_available:
             import hashlib
 
             digest = hashlib.sha256(SDK_ZIP_BYTES).hexdigest()
@@ -217,6 +218,59 @@ def test_full_fallback_when_range_unsupported(tmp_path, monkeypatch, http_server
     assert not (lib / 'qairt').exists()
 
 
+def test_override_succeeds_without_sha_sidecar(tmp_path, monkeypatch, http_server):
+    """Override mode is QA's local-staging path: only the .zip may exist.
+
+    Regression for #669 — the fetcher used to hard-fail when the sidecar was
+    absent, even though range-fetch validates each entry via CRC32 and the
+    user has explicitly opted into the override source.
+    """
+    _patch_platform(monkeypatch)
+    _, base_url = http_server
+    _set_override(monkeypatch, base_url)
+    monkeypatch.setattr(_RangeAwareHandler, 'sha_available', False)
+
+    sdk_fetch.fetch(tmp_path, RELEASE_TAG, backends=('llama-cpp',))
+
+    lib = tmp_path / 'lib'
+    assert (lib / 'libgeniex.so').read_bytes() == CORE_BODY
+    assert (lib / 'llama_cpp' / 'ggml.so').read_bytes() == LLAMA_FILE_BODY
+
+
+def test_override_full_fallback_succeeds_without_sha_sidecar(tmp_path, monkeypatch, http_server):
+    _patch_platform(monkeypatch)
+    _, base_url = http_server
+    _set_override(monkeypatch, base_url)
+    monkeypatch.setattr(_RangeAwareHandler, 'sha_available', False)
+    monkeypatch.setattr(_RangeAwareHandler, 'range_supported', False)
+
+    sdk_fetch.fetch(tmp_path, RELEASE_TAG, backends=('llama-cpp',))
+
+    lib = tmp_path / 'lib'
+    assert (lib / 'libgeniex.so').exists()
+    assert (lib / 'llama_cpp' / 'ggml.so').exists()
+
+
+def test_default_source_still_requires_sha_sidecar(tmp_path, monkeypatch):
+    """Public default sources (s3, github) keep enforcing the sidecar.
+
+    Anything reaching `_try_one_source` with a non-`override` name and no
+    sidecar must fail — unattended pip installs never silently skip the
+    integrity check.
+    """
+    errors: list[str] = []
+    monkeypatch.setattr(sdk_fetch, '_try_download', lambda url: None)
+    ok = sdk_fetch._try_one_source(
+        's3',
+        'https://example.invalid/geniex.zip',
+        tmp_path / 'lib',
+        frozenset({'llama-cpp'}),
+        errors,
+    )
+    assert ok is False
+    assert errors and errors[-1].endswith('.sha256: download failed')
+
+
 def test_unknown_backend_rejected(tmp_path):
     with pytest.raises(ValueError, match='unknown backends'):
         sdk_fetch.fetch(tmp_path, RELEASE_TAG, backends=('not-a-backend',))
@@ -240,6 +294,34 @@ def test_skipped_when_env_flag_set(tmp_path, monkeypatch):
     sdk_fetch.fetch(tmp_path, RELEASE_TAG, backends=('llama-cpp',))
 
     assert not (tmp_path / 'lib').exists()
+
+
+def test_default_sources_url_shape(tmp_path, monkeypatch):
+    """S3 default uses the flat layout; GitHub default keeps /{tag}.
+
+    Regression for the case where ``pip install`` against the public mirror
+    failed because the S3 source still appended ``/{release_tag}/`` — but the
+    release pipeline switched to a flat ``qai-hub-geniex/`` prefix.
+    """
+    _patch_platform(monkeypatch)
+    monkeypatch.delenv('GENIEX_SDK_DOWNLOAD_URL', raising=False)
+    monkeypatch.delenv('GENIEX_SKIP_SDK_DOWNLOAD', raising=False)
+
+    seen: list[tuple[str, str]] = []
+
+    def fake_try(name, zip_url, lib_dir, backends, errors):
+        seen.append((name, zip_url))
+        return False  # force the loop to walk every default source
+
+    monkeypatch.setattr(sdk_fetch, '_try_one_source', fake_try)
+
+    with pytest.raises(RuntimeError, match='Failed to fetch SDK'):
+        sdk_fetch.fetch(tmp_path, RELEASE_TAG, backends=('llama-cpp',))
+
+    assert seen == [
+        ('s3', f'{sdk_fetch.DEFAULT_S3_BASE_URL}/{ASSET}'),
+        ('github', f'{sdk_fetch.DEFAULT_BASE_URL}/{RELEASE_TAG}/{ASSET}'),
+    ]
 
 
 def test_classify_entry_filters_paths():

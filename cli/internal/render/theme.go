@@ -16,6 +16,7 @@ package render
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"sync"
 
@@ -31,6 +32,11 @@ type Theme struct {
 	Success Style
 	Warning Style
 	Error   Style
+
+	Reference Style
+	Heading   Style
+	Command   Style
+	Flag      Style
 
 	Quant       Style
 	Prompt      Style
@@ -71,11 +77,17 @@ func (t *Theme) Reset() {
 
 func noColorTheme() *Theme {
 	return &Theme{
-		Normal:      NoColor{},
-		Info:        NoColor{},
-		Success:     NoColor{},
-		Warning:     NoColor{},
-		Error:       NoColor{},
+		Normal:  NoColor{},
+		Info:    NoColor{},
+		Success: NoColor{},
+		Warning: NoColor{},
+		Error:   NoColor{},
+
+		Reference: NoColor{},
+		Heading:   NoColor{},
+		Command:   NoColor{},
+		Flag:      NoColor{},
+
 		Quant:       NoColor{},
 		Prompt:      NoColor{},
 		Placeholder: NoColor{},
@@ -96,6 +108,11 @@ func defaultColorTheme() *Theme {
 		theme.Warning = color.Style{color.FgYellow}
 		theme.Error = color.Style{color.FgRed}
 
+		theme.Reference = color.Style{color.OpFuzzy, color.FgWhite}
+		theme.Heading = color.Style{color.FgCyan, color.Bold}
+		theme.Command = color.Style{color.FgGreen}
+		theme.Flag = color.Style{color.FgYellow}
+
 		theme.Quant = color.Style{color.FgLightBlue}
 		theme.Prompt = color.Style{color.FgGreen, color.Bold}
 		theme.Placeholder = color.Style{color.FgDarkGray}
@@ -107,15 +124,27 @@ func defaultColorTheme() *Theme {
 	if color.Support256Color() {
 		slog.Debug("apply 256 color")
 		theme.Quant = color.S256(31)
-		//theme.AddFiles = color.S256(7)
-		//theme.ModelOutput = color.S256(15)
 		theme.Profile = color.S256(44)
 	}
 	if color.SupportTrueColor() {
 		slog.Debug("apply true color")
 		theme.Quant = color.NewRGBStyle(color.RGB(0, 135, 175))
-		//theme.AddFiles = color.NewRGBStyle(color.RGB(192, 192, 192))
 		theme.Profile = color.NewRGBStyle(color.RGB(0, 215, 215))
 	}
 	return theme
+}
+
+// NewStyledWriter wraps w so every chunk written to it is rendered through s.
+func NewStyledWriter(w io.Writer, s Style) io.Writer {
+	return &styledWriter{w: w, s: s}
+}
+
+type styledWriter struct {
+	w io.Writer
+	s Style
+}
+
+func (sw *styledWriter) Write(p []byte) (int, error) {
+	_, err := fmt.Fprint(sw.w, sw.s.Sprint(string(p)))
+	return len(p), err
 }

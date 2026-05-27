@@ -21,25 +21,21 @@ import (
 	"path/filepath"
 	"strings"
 
-	geniex_sdk "github.com/qcom-it-nexa-ai/geniex/bindings/go"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/readline"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/render"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/store"
 )
 
-var help = [][2]string{
+var baseHelp = [][2]string{
 	{"/?, /h, /help", "Show this help message"},
 	{"/exit", "Exit the REPL"},
 	{"/clear", "Clear the screen and conversation history"},
-	{"/load <filename>", "Load conversation history from a file"},
-	{"/save <filename>", "Save conversation history to a file"},
-	{"/mic", "Record audio for transcription"},
 }
 
+var micHelp = [2]string{"/mic", "Record audio for transcription"}
+
 type Repl struct {
-	Reset       func() error
-	SaveKVCache func(path string) error
-	LoadKVCache func(path string) error
+	Reset func() error
 
 	Record          func() (*string, error)
 	RecordImmediate bool
@@ -53,18 +49,8 @@ type Repl struct {
 func (r *Repl) GetPrompt() (string, error) {
 	if !r.init {
 		// fill default functions
-		notSupport := fmt.Errorf("NotSupport")
 		if r.Reset == nil {
 			r.Reset = func() error { return nil }
-		}
-		if r.SaveKVCache == nil {
-			r.SaveKVCache = func(path string) error { return notSupport }
-		}
-		if r.LoadKVCache == nil {
-			r.LoadKVCache = func(path string) error { return notSupport }
-		}
-		if r.Record == nil {
-			r.Record = func() (*string, error) { return nil, geniex_sdk.ErrCommonNotSupport }
 		}
 
 		// init readline
@@ -76,7 +62,7 @@ func (r *Repl) GetPrompt() (string, error) {
 		}
 		rl, err := readline.New(config)
 		if err != nil {
-			panic(err)
+			return "", fmt.Errorf("init readline: %w", err)
 		}
 		r.rl = rl
 
@@ -129,7 +115,11 @@ func (r *Repl) GetPrompt() (string, error) {
 		switch fields[0] {
 		case "/?", "/h", "/help":
 			fmt.Println("Commands:")
-			for _, h := range help {
+			cmds := baseHelp
+			if r.Record != nil {
+				cmds = append(cmds, micHelp)
+			}
+			for _, h := range cmds {
 				fmt.Printf("  %-25s %s\n", h[0], h[1])
 			}
 			fmt.Println()
@@ -144,44 +134,12 @@ func (r *Repl) GetPrompt() (string, error) {
 			fmt.Print("\033[H\033[2J")
 			continue
 
-		case "/load":
-			if len(fields) != 2 {
-				fmt.Println(render.GetTheme().Error.Sprintf("Usage: /load <filename>"))
-				fmt.Println()
-				continue
-			}
-			r.Reset()
-			err := r.LoadKVCache(fields[1])
-			if err != nil {
-				if errors.Is(err, geniex_sdk.ErrCommonNotSupport) {
-					fmt.Println(render.GetTheme().Warning.Sprintf("Load conversation history is not supported for this model yet"))
-					fmt.Println()
-				} else {
-					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					fmt.Println()
-				}
-			}
-			continue
-
-		case "/save":
-			if len(fields) != 2 {
-				fmt.Println(render.GetTheme().Error.Sprintf("Usage: /save <filename>"))
-				fmt.Println()
-				continue
-			}
-			err := r.SaveKVCache(fields[1])
-			if err != nil {
-				if errors.Is(err, geniex_sdk.ErrCommonNotSupport) {
-					fmt.Println(render.GetTheme().Warning.Sprintf("Save conversation history is not supported for this model yet"))
-					fmt.Println()
-				} else {
-					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					fmt.Println()
-				}
-			}
-			continue
-
 		case "/mic":
+			if r.Record == nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fields[0]))
+				fmt.Println()
+				continue
+			}
 			outputFile, err := r.Record()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))

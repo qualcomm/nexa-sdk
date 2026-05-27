@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"os/exec"
 	"runtime"
@@ -45,8 +44,12 @@ func RootCmd() *cobra.Command {
 	cobra.EnableCommandSorting = false
 
 	rootCmd := &cobra.Command{
-		Use: "geniex",
+		Use:           "geniex",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			cmd.SilenceErrors = true
+
 			// Register ModelHub
 			s := store.Get()
 			model_hub.RegisterHub(model_hub.NewHuggingFace())
@@ -57,6 +60,7 @@ func RootCmd() *cobra.Command {
 				notifyUpdate()
 				// skip network probe for quick commands
 				if !slices.Contains([]string{
+					"geniex",
 					"remove", "rm", "clean", "list", "ls", "model",
 					"config",
 					"version", "update",
@@ -66,13 +70,22 @@ func RootCmd() *cobra.Command {
 				}
 			}
 		},
+		Run: func(cmd *cobra.Command, args []string) {
+			if showVer, _ := cmd.Flags().GetBool("version"); showVer {
+				runVersion()
+				return
+			}
+			cmd.Help()
+		},
 	}
 	rootCmd.PersistentFlags().StringVarP(&dataDir, "data-dir", "", "", "Custom data directory (env: GENIEX_DATADIR)")
 	viper.BindPFlag("datadir", rootCmd.PersistentFlags().Lookup("data-dir"))
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "", false, "Enable verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&skipUpdate, "skip-update", "", false, "Skip checking for updates")
 	rootCmd.PersistentFlags().BoolVarP(&testMode, "test-mode", "", false, "Enable test mode")
 	rootCmd.PersistentFlags().MarkHidden("test-mode")
+
+	rootCmd.Flags().BoolP("version", "v", false, "Print version information")
 
 	rootCmd.AddGroup(
 		&cobra.Group{ID: "model", Title: "Model Commands"},
@@ -92,7 +105,7 @@ func RootCmd() *cobra.Command {
 	return rootCmd
 }
 
-func checkDependency() {
+func checkAudioDependency() {
 	if _, err := exec.LookPath("sox"); err != nil {
 		fmt.Println(render.GetTheme().Warning.Sprintf("SoX is not installed, some features may not work. Try:"))
 		switch runtime.GOOS {
@@ -113,9 +126,13 @@ func checkDependency() {
 func main() {
 	// log
 	common.ApplyLogLevel()
+	common.EnableUTF8Console()
 
-	if err := RootCmd().Execute(); err != nil {
-		slog.Error("geniex failed", "err", err)
+	cmd := RootCmd()
+	applyHelpStyle(cmd)
+	cmd.SetErr(render.NewStyledWriter(os.Stderr, render.GetTheme().Error))
+	if err := cmd.Execute(); err != nil {
+		common.PrintError(err)
 		os.Exit(1)
 	}
 }

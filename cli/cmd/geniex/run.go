@@ -16,13 +16,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
-	"net/http"
-	"os"
-	"strings"
 	"time"
-	"unicode"
 
 	"github.com/bytedance/sonic"
 	"github.com/openai/openai-go/v3"
@@ -37,14 +34,25 @@ import (
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/types"
 )
 
+// tagServerError tags transport-layer dial errors as ErrServerUnreachable
+// so PrintError can render the "is geniex serve running?" hint. HTTP-level
+// errors (4xx/5xx) flow through untouched.
+func tagServerError(err error) error {
+	var ne *net.OpError
+	if errors.As(err, &ne) {
+		return fmt.Errorf("%w: %v", common.ErrServerUnreachable, err)
+	}
+	return err
+}
+
 var client openai.Client
 
 func run() *cobra.Command {
 	runCmd := &cobra.Command{
 		GroupID: "inference",
-		Use:     "run <model-name>",
+		Use:     "run <model-name>[:<precision>]",
 		Short:   "Infer a model with server",
-		Long:    "Infer a model with server. The server must be running and the model should be downloaded and cached locally.",
+		Long:    "Infer a model with server. The server must be running and the model should be downloaded and cached locally. Append ':<precision>' to pick a specific precision.",
 	}
 
 	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
@@ -52,31 +60,9 @@ func run() *cobra.Command {
 		runCmd.Flags().AddFlagSet(flags)
 	}
 
-	runCmd.SetUsageFunc(func(c *cobra.Command) error {
-		w := c.OutOrStdout()
-		fmt.Fprint(w, "Usage:")
-		if c.Runnable() {
-			fmt.Fprintf(w, "\n  %s", c.UseLine())
-		}
-		if len(c.Aliases) > 0 {
-			fmt.Fprintf(w, "\n\nAliases:\n")
-			fmt.Fprintf(w, "  %s", c.NameAndAliases())
-		}
+	runCmd.SetUsageFunc(flagGroupedUsage)
 
-		for _, flags := range flagGroups {
-			fmt.Fprintf(w, "\n\n%s Flags:\n", flags.Name())
-			fmt.Fprint(w, strings.TrimRightFunc(flags.FlagUsages(), unicode.IsSpace))
-		}
-
-		if c.HasAvailableInheritedFlags() {
-			fmt.Fprintf(w, "\n\nGlobal Flags:\n")
-			fmt.Fprint(w, strings.TrimRightFunc(c.InheritedFlags().FlagUsages(), unicode.IsSpace))
-		}
-		fmt.Fprintln(w)
-		return nil
-	})
-
-	runCmd.Run = func(cmd *cobra.Command, args []string) {
+	runCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		name, quant := model_hub.NormalizeModelName(args[0])
 		if quant != "" {
 			name = name + ":" + quant
@@ -87,20 +73,11 @@ func run() *cobra.Command {
 			// option.WithRequestTimeout(time.Second*15),
 		)
 
+		ctx := cmd.Context()
 		// check
-		modelInfo, err := client.Models.Get(context.TODO(), name)
+		modelInfo, err := client.Models.Get(ctx, name)
 		if err != nil {
-			if _, ok := err.(net.Error); ok {
-				fmt.Println(render.GetTheme().Error.Sprintf("Is server running? Please check your network. \n\t%s", err))
-				os.Exit(1)
-			}
-			if e, ok := err.(*openai.Error); ok && e.StatusCode == http.StatusNotFound {
-				fmt.Println(render.GetTheme().Error.Sprintf("Model or quant not found: %s, Please download first", name))
-				os.Exit(1)
-			} else {
-				fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
-				os.Exit(1)
-			}
+			return tagServerError(err)
 		}
 
 		var manifest types.ModelManifest
@@ -108,23 +85,15 @@ func run() *cobra.Command {
 
 		switch manifest.ModelType {
 		case types.ModelTypeLLM, types.ModelTypeVLM:
-			err = runCompletions(manifest, quant)
+			return runCompletions(ctx, manifest, quant)
 		default:
-			panic("not support model type")
-		}
-
-		switch err {
-		case nil:
-			os.Exit(0)
-		default:
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-			os.Exit(1)
+			return fmt.Errorf("unsupported model type: %s", manifest.ModelType)
 		}
 	}
 	return runCmd
 }
 
-func runCompletions(manifest types.ModelManifest, quant string) error {
+func runCompletions(ctx context.Context, manifest types.ModelManifest, quant string) error {
 	name := manifest.Name
 	if quant != "" {
 		name = name + ":" + quant
@@ -140,7 +109,7 @@ func runCompletions(manifest types.ModelManifest, quant string) error {
 	if systemPrompt != "" {
 		warmUpRequest.Messages = append(warmUpRequest.Messages, openai.SystemMessage(systemPrompt))
 	}
-	_, err := client.Chat.Completions.New(context.TODO(),
+	_, err := client.Chat.Completions.New(ctx,
 		warmUpRequest,
 		option.WithJSONSet("ngl", ngl),
 		option.WithJSONSet("nctx", nctx),
@@ -148,7 +117,7 @@ func runCompletions(manifest types.ModelManifest, quant string) error {
 	spin.Stop()
 
 	if err != nil {
-		return err
+		return tagServerError(err)
 	}
 
 	// repl
@@ -194,7 +163,7 @@ func runCompletions(manifest types.ModelManifest, quant string) error {
 
 			start := time.Now()
 			acc := openai.ChatCompletionAccumulator{}
-			stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
+			stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 				Messages:            history,
 				Model:               name,
 				StreamOptions:       openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Opt(true)},
@@ -249,7 +218,7 @@ func runCompletions(manifest types.ModelManifest, quant string) error {
 			profileData.DecodingSpeed = float64(profileData.GeneratedTokens) / float64(end.Sub(firstToken).Seconds())
 
 			if stream.Err() != nil {
-				return "", profileData, stream.Err()
+				return "", profileData, tagServerError(stream.Err())
 			}
 
 			if len(acc.Choices) > 0 {
@@ -266,7 +235,7 @@ func runCompletions(manifest types.ModelManifest, quant string) error {
 		repl := common.Repl{
 			Reset: func() error {
 				history = nil
-				_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+				_, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 					Messages: nil,
 					Model:    name,
 				})

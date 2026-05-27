@@ -253,13 +253,22 @@ GENIEX_API void geniex_free(void* ptr);
 GENIEX_API const char* geniex_version(void);
 
 /**
- * @brief Get the bundled QAIRT runtime version.
+ * @brief Get the version string reported by a registered plugin.
  *
- * @return Null-terminated UTF-8 string.
+ * Each plugin owns its own version (e.g. the QAIRT runtime version for
+ * `qairt`, the llama.cpp build commit for `llama_cpp`). The SDK bridge
+ * forwards to the plugin's `Plugin::version()` override so that
+ * `libgeniex` itself does not need to link against any plugin-specific
+ * runtime.
+ *
+ * @param plugin_id[in]: Plugin identifier (must be non-NULL).
+ *
+ * @return Null-terminated UTF-8 string owned by the plugin. Returns NULL
+ *         when `plugin_id` is NULL or no matching plugin is registered.
  *
  * @thread_safety: Thread-safe.
  */
-GENIEX_API const char* geniex_qairt_version(void);
+GENIEX_API const char* geniex_get_plugin_version(geniex_PluginId plugin_id);
 
 /** Output structure containing the list of available plugins */
 typedef struct {
@@ -399,7 +408,7 @@ typedef struct {
     double decoding_speed;   /* Decoding speed (tokens/sec) */
     double real_time_factor; /* Real-Time Factor(RTF) (1.0 = real-time, >1.0 = faster, <1.0 = slower) */
 
-    const char* stop_reason; /* Stop reason: "eos", "length", "user", "stop_sequence" */
+    const char* stop_reason; /* Stop reason: "eos", "length", "user", "stop_sequence", "context_length" */
 } geniex_ProfileData;
 
 /* ========================================================================== */
@@ -705,6 +714,27 @@ typedef struct {
  */
 GENIEX_API int32_t geniex_vlm_apply_chat_template(
     geniex_VLM* handle, const geniex_VlmApplyChatTemplateInput* input, geniex_VlmApplyChatTemplateOutput* output);
+
+/* ====================  Capability Query  ================================== */
+
+/** Modalities the loaded VLM (mmproj) reports as supported. */
+typedef struct {
+    bool supports_vision; /** Model can consume image inputs */
+    bool supports_audio;  /** Model can consume audio inputs */
+} geniex_VlmCapabilities;
+
+/**
+ * @brief Query the VLM for which input modalities its mmproj supports.
+ *
+ * For plugins that do not expose modality probes (e.g. QAIRT), both flags
+ * default to false. For llama.cpp this reflects `mtmd_support_vision/audio`.
+ *
+ * @param handle[in]:  VLM handle
+ * @param output[out]: Filled-in capability flags
+ *
+ * @return geniex_ErrorCode: GENIEX_SUCCESS on success, negative on failure.
+ */
+GENIEX_API int32_t geniex_vlm_get_capabilities(geniex_VLM* handle, geniex_VlmCapabilities* output);
 
 /* ====================  Streaming Generation  ============================= */
 

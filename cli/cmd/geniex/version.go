@@ -24,17 +24,20 @@ import (
 
 var Version string
 
+func runVersion() {
+	geniex_sdk.Init()
+	defer geniex_sdk.DeInit()
+
+	fmt.Println("GenieX CLI Version:      " + Version)
+	fmt.Println("QAIRT Plugin Version:    " + geniex_sdk.GetPluginVersion("qairt"))
+	fmt.Println("LlamaCPP Plugin Hash:    " + geniex_sdk.GetPluginVersion("llama_cpp"))
+}
+
 func version() *cobra.Command {
-	versionCmd := &cobra.Command{
+	return &cobra.Command{
 		GroupID: "management",
 		Use:     "version",
 		Short:   "show geniex version",
+		Run:     func(cmd *cobra.Command, args []string) { runVersion() },
 	}
-
-	versionCmd.Run = func(cmd *cobra.Command, args []string) {
-		fmt.Println("QAIRT Version:      " + geniex_sdk.QairtVersion())
-		fmt.Println("GenieX CLI Version: " + Version)
-	}
-
-	return versionCmd
 }

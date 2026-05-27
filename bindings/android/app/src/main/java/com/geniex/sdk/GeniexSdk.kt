@@ -21,6 +21,8 @@ class GeniexSdk private constructor() {
 
     external fun registerPlugin(pluginLibPath: String): Int
 
+    external fun getPluginVersion(pluginId: String): String
+
     // Idempotent across Activity recreation. Plugin registration is
     // safe to re-attempt (it logs and moves on); model-manager init is
     // not — the FFI rejects re-init — so we guard it here.

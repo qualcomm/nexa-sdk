@@ -14,6 +14,7 @@
 
 """Bound C functions from libgeniex with argtypes/restype annotations."""
 
+import atexit
 import logging
 import os
 from ctypes import CFUNCTYPE, POINTER, byref, c_char_p, c_int32, c_void_p
@@ -39,6 +40,7 @@ from ._types import (
     geniex_ResolveDeviceOutput,
     geniex_VlmApplyChatTemplateInput,
     geniex_VlmApplyChatTemplateOutput,
+    geniex_VlmCapabilities,
     geniex_VlmCreateInput,
     geniex_VlmGenerateInput,
     geniex_VlmGenerateOutput,
@@ -123,6 +125,16 @@ class GeniexError(Exception):
         self.code = code
 
 
+# Subset of geniex_ErrorCode values that callers may want to check against.
+# Keep aligned with sdk/include/geniex.h; expand on demand.
+GENIEX_ERROR_COMMON_PLUGIN_INVALID = -100302
+GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH = -200004
+
+
+def _unknown_plugin_message(plugin_id: str, available: list[str]) -> str:
+    return f"Unknown plugin: {plugin_id}. Available plugins: {', '.join(sorted(available))}."
+
+
 def _check(code: int) -> None:
     if code < 0:
         lib = load_library()
@@ -152,8 +164,8 @@ def _bind_all() -> None:
     lib.geniex_version.argtypes = []
     lib.geniex_version.restype = c_char_p
 
-    lib.geniex_qairt_version.argtypes = []
-    lib.geniex_qairt_version.restype = c_char_p
+    lib.geniex_get_plugin_version.argtypes = [c_char_p]
+    lib.geniex_get_plugin_version.restype = c_char_p
 
     lib.geniex_get_plugin_list.argtypes = [POINTER(geniex_GetPluginListOutput)]
     lib.geniex_get_plugin_list.restype = c_int32
@@ -218,6 +230,9 @@ def _bind_all() -> None:
     ]
     lib.geniex_vlm_apply_chat_template.restype = c_int32
 
+    lib.geniex_vlm_get_capabilities.argtypes = [c_void_p, POINTER(geniex_VlmCapabilities)]
+    lib.geniex_vlm_get_capabilities.restype = c_int32
+
     # Model manager
     lib.geniex_model_init.argtypes = [c_char_p]
     lib.geniex_model_init.restype = c_int32
@@ -276,6 +291,7 @@ def init() -> None:
     lib = load_library()
     _check(lib.geniex_init())
     _initialized = True
+    atexit.register(deinit)
 
 
 def deinit() -> None:
@@ -293,6 +309,13 @@ def ensure_init() -> None:
         init()
 
 
+def _require_init(func_name: str) -> None:
+    # Plugin/device queries silently returned empty before init (#715).
+    # Surface the missing init step explicitly instead.
+    if not _initialized:
+        raise RuntimeError(f'geniex.{func_name}() requires the runtime to be initialized. Call geniex.init() first.')
+
+
 def _encode(s: str | None) -> bytes | None:
     return s.encode() if s else None
 
@@ -307,7 +330,13 @@ def _str_list_to_c(strings: list[str]):
 
 
 def get_plugin_list() -> list[str]:
-    """Return the plugin ids registered with libgeniex."""
+    """Return the plugin ids registered with libgeniex.
+
+    Raises :class:`RuntimeError` if :func:`init` has not been called — the
+    plugin registry is populated by ``geniex_init`` and would otherwise
+    silently return ``[]``.
+    """
+    _require_init('get_plugin_list')
     _ensure_bound()
     lib = load_library()
     out = geniex_GetPluginListOutput()
@@ -319,8 +348,15 @@ def get_plugin_list() -> list[str]:
 
 
 def get_device_list(plugin_id: str) -> list[tuple[str, str]]:
-    """Return ``[(device_id, device_name), ...]`` for ``plugin_id``."""
+    """Return ``[(device_id, device_name), ...]`` for ``plugin_id``.
+
+    Raises :class:`RuntimeError` if :func:`init` has not been called.
+    """
+    _require_init('get_device_list')
     _ensure_bound()
+    available = get_plugin_list()
+    if plugin_id not in available:
+        raise GeniexError(GENIEX_ERROR_COMMON_PLUGIN_INVALID, _unknown_plugin_message(plugin_id, available))
     lib = load_library()
     inp = geniex_GetDeviceListInput(plugin_id=plugin_id.encode())
     out = geniex_GetDeviceListOutput()
@@ -373,8 +409,14 @@ def version() -> str:
     return lib.geniex_version().decode()
 
 
-def qairt_version() -> str:
-    """Return the bundled QAIRT runtime version string."""
-    _ensure_bound()
+def get_plugin_version(plugin_id: str) -> str:
+    """Return the version string the named plugin reports for itself.
+
+    Plugin must be registered (i.e. :func:`init` has been called and the
+    plugin's shared library was discoverable). Returns the empty string
+    when the plugin is unknown.
+    """
+    ensure_init()
     lib = load_library()
-    return lib.geniex_qairt_version().decode()
+    raw = lib.geniex_get_plugin_version(plugin_id.encode())
+    return raw.decode() if raw else ''

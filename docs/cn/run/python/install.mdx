@@ -1,0 +1,77 @@
+---
+title: "Python 安装"
+description: "在 Windows ARM64 或 Linux ARM64 上安装 GenieX Python SDK。"
+---
+
+import Feedback from "/snippets/page-feedback.mdx";
+
+GenieX Python SDK 以 ARM64 wheel 形式发布，覆盖 Windows ARM64 与 Linux ARM64。
+
+## **前置条件**
+
+- 骁龙 X 系列芯片（X Elite 或 X2 Elite）。详见[支持的平台](/cn/get-started/platforms)。
+- **ARM64 版本的 Python 3.10+**
+
+## **通过 pip 安装**
+
+<Tabs>
+  <Tab title="Windows ARM64">
+    如未安装 Python，请下载 [Python 3.13.3 for ARM64](https://www.python.org/ftp/python/3.13.3/python-3.13.3-arm64.exe)。
+
+    创建虚拟环境并从 test PyPI 安装：
+
+    ```powershell
+    python -m venv geniex-env
+    .\geniex-env\Scripts\Activate.ps1
+    pip install -U -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple geniex
+    ```
+
+    这将从 [test PyPI](https://test.pypi.org/project/geniex/) 拉取 Python 包。
+  </Tab>
+
+  <Tab title="Linux ARM64">
+    高通嵌入式 Linux（Yocto）已预装 Python。验证：
+
+    ```bash
+    python3 --version
+    ```
+
+    直接 pip install：
+
+    ```bash
+    python3 -m pip install -U -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple geniex
+    ```
+
+    这将从 [test PyPI](https://test.pypi.org/project/geniex/) 拉取 Python 包，并自动获取 Linux ARM64 SDK 库。
+
+    <Note>
+    **从源码构建 Python（非 QDC 设备）**
+
+    如果你不在 QDC，而是使用自己的高通 IoT 芯片且未预装 Python，可下载源码自行构建：
+
+    ```bash
+    apt update && apt install -y build-essential libffi-dev libssl-dev zlib1g-dev
+    wget https://www.python.org/ftp/python/3.13.3/Python-3.13.3.tar.xz
+    tar -xf Python-3.13.3.tar.xz
+    cd Python-3.13.3
+    ./configure --enable-optimizations
+    make -j$(nproc)
+    make altinstall
+    python3.13 --version
+    ```
+    </Note>
+  </Tab>
+</Tabs>
+
+## **验证**
+
+```python
+import geniex
+print(geniex.version())
+```
+
+现在跳转到[快速入门](/cn/run/python/quickstart)。
+
+<br />
+
+<Feedback/>

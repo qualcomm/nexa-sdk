@@ -32,8 +32,9 @@ import (
 )
 
 var (
-	ErrNoAudio = errors.New("no audio file provided")
-	ErrNoImage = errors.New("no image file provided")
+	ErrNoAudio               = errors.New("no audio file provided")
+	ErrNoImage               = errors.New("no image file provided")
+	ErrContextLengthExceeded = errors.New("model context length exceeded; output is truncated")
 )
 
 type Processor struct {
@@ -68,14 +69,19 @@ func (p *Processor) Process() error {
 			if errors.Is(err, io.EOF) {
 				return nil
 			}
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
 			return err
 		}
 
 		var prompt string
 		var images, audios []string
 		if p.ParseFile {
-			prompt, images, audios = p.parseFiles(line)
+			var parseErr error
+			prompt, images, audios, parseErr = p.parseFiles(line)
+			if parseErr != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", parseErr))
+				fmt.Println()
+				continue
+			}
 		} else {
 			prompt = line
 		}
@@ -127,6 +133,9 @@ func (p *Processor) Process() error {
 		case errors.Is(err, ErrNoImage):
 			fmt.Println(render.GetTheme().Error.Sprintf("No image file provided, please provide an image file"))
 			fmt.Println()
+		case errors.Is(err, ErrContextLengthExceeded):
+			fmt.Println(render.GetTheme().Error.Sprintf("Model context length exceeded; output above is truncated"))
+			fmt.Println()
 		default:
 			return err
 		}
@@ -137,34 +146,34 @@ func (p *Processor) Process() error {
 
 var fileRegex = regexp.MustCompile(`(?:[a-zA-Z]:)?(?:\./|/|\\)[\S\\ ]+?\.(?i:jpg|jpeg|png|webp|mp3|wav)\b`)
 
-func (p *Processor) parseFiles(prompt string) (string, []string, []string) {
+var shellUnescaper = strings.NewReplacer(
+	`\ `, ` `,
+	`\(`, `(`,
+	`\)`, `)`,
+	`\[`, `[`,
+	`\]`, `]`,
+	`\{`, `{`,
+	`\}`, `}`,
+	`\$`, `$`,
+	`\&`, `&`,
+	`\;`, `;`,
+	`\'`, `'`,
+	`\\`, `\`,
+	`\*`, `*`,
+	`\?`, `?`,
+	`\~`, `~`,
+)
+
+func (p *Processor) parseFiles(prompt string) (string, []string, []string, error) {
 	files := fileRegex.FindAllString(prompt, -1)
 	images := make([]string, 0, len(files))
 	audios := make([]string, 0, len(files))
 
 	for _, file := range files {
-		realFile := strings.NewReplacer(
-			"\\ ", " ",
-			"\\(", "(",
-			"\\)", ")",
-			"\\[", "[",
-			"\\]", "]",
-			"\\{", "{",
-			"\\}", "}",
-			"\\$", "$",
-			"\\&", "&",
-			"\\;", ";",
-			"\\'", "'",
-			"\\\\", "\\",
-			"\\*", "*",
-			"\\?", "?",
-			"\\~", "~",
-		).Replace(file)
+		realFile := shellUnescaper.Replace(file)
 
-		_, err := os.Stat(realFile)
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("parse file error: [%s] %s", realFile, err))
-			continue
+		if _, err := os.Stat(realFile); err != nil {
+			return "", nil, nil, fmt.Errorf("file not found: %s", realFile)
 		}
 
 		switch path.Ext(realFile) {
@@ -176,11 +185,12 @@ func (p *Processor) parseFiles(prompt string) (string, []string, []string) {
 			slog.Debug("add image", "file", realFile)
 		}
 
-		prompt = strings.ReplaceAll(prompt, "'"+realFile+"'", "")
-		prompt = strings.ReplaceAll(prompt, "'"+file+"'", "")
+		for _, quoted := range []string{`"` + file + `"`, `'` + file + `'`, `"` + realFile + `"`, `'` + realFile + `'`} {
+			prompt = strings.ReplaceAll(prompt, quoted, "")
+		}
 		prompt = strings.ReplaceAll(prompt, file, "")
 	}
-	return strings.TrimSpace(prompt), images, audios
+	return strings.TrimSpace(prompt), images, audios, nil
 }
 
 // output parse

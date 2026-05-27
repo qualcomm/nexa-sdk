@@ -4,6 +4,7 @@ go_library(
     name = "geniex_lib",
     srcs = [
         "config.go",
+        "help.go",
         "infer.go",
         "main.go",
         "model.go",
@@ -47,6 +48,7 @@ go_test(
     srcs = [
         "model_test.go",
         "update_test.go",
+        "version_test.go",
     ],
     embed = [":geniex_lib"],
     gotags = [

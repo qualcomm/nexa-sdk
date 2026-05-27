@@ -18,8 +18,8 @@ from ._ffi._api import (
     deinit,
     get_device_list,
     get_plugin_list,
+    get_plugin_version,
     init,
-    qairt_version,
     set_log_level,
     version,
 )
@@ -42,7 +42,7 @@ __all__ = [
     'deinit',
     'set_log_level',
     'version',
-    'qairt_version',
+    'get_plugin_version',
     'get_plugin_list',
     'get_device_list',
     'resolve_device_map',

@@ -146,7 +146,19 @@ const char* version = build_config::kBridgeVersion;
 
 const char* geniex_version() { return version; }
 
-const char* geniex_qairt_version() { return build_config::kQairtVersion; }
+const char* geniex_get_plugin_version(geniex_PluginId plugin_id) {
+    if (!plugin_id) {
+        GENIEX_LOG_ERROR("plugin_id is nullptr");
+        return nullptr;
+    }
+    try {
+        auto plugin = Registry::instance().get<Plugin>(plugin_id);
+        return plugin ? plugin->version() : nullptr;
+    } catch (const std::exception& e) {
+        GENIEX_LOG_ERROR("failed to get plugin version for {}: {}", plugin_id, e.what());
+        return nullptr;
+    }
+}
 
 // Get Plugin List
 
@@ -210,6 +222,12 @@ int32_t geniex_get_device_list(const geniex_GetDeviceListInput* input, geniex_Ge
             return GENIEX_ERROR_COMMON_UNKNOWN;
         }
         return GENIEX_SUCCESS;
+    } catch (const PluginNotFoundException&) {
+        GENIEX_LOG_ERROR("plugin not found: {}", input->plugin_id);
+        return GENIEX_ERROR_COMMON_PLUGIN_INVALID;
+    } catch (const PluginLoadException&) {
+        GENIEX_LOG_ERROR("plugin load error: {}", input->plugin_id);
+        return GENIEX_ERROR_COMMON_PLUGIN_LOAD;
     } catch (const std::exception& e) {
         GENIEX_LOG_ERROR("failed to get device list: {}", e.what());
         return GENIEX_ERROR_COMMON_UNKNOWN;

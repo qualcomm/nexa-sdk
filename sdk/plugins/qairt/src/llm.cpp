@@ -13,7 +13,8 @@
 #define portable_strdup strdup
 #endif
 
-#include "llm_model_registry.h"  // provided by geniex-qairt/models/
+#include "dispatch.h"             // provided by geniex-qairt/models/
+#include "llm/llm_spec_loader.h"  // parseGenieSamplerConfig
 #include "logging.h"
 #include "pipeline/chat_template.h"
 #include "pipeline/llm_pipeline.h"
@@ -41,11 +42,10 @@ constexpr const char* kDefaultSystemPrompt = "You are a helpful AI assistant.";
 QairtLlm::~QairtLlm() = default;
 
 int32_t QairtLlm::create_impl(const geniex_LlmCreateInput* input) {
-    if (!input || !input->model_name || !input->model_path) {
+    if (!input || !input->model_path) {
         return GENIEX_ERROR_COMMON_INVALID_INPUT;
     }
 
-    model_name_      = input->model_name;
     enable_thinking_ = input->config.enable_thinking;
 
     // Reject llama.cpp-only parameters that have no meaning in the QAIRT plugin
@@ -58,19 +58,11 @@ int32_t QairtLlm::create_impl(const geniex_LlmCreateInput* input) {
         return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
     }
 
-    // Look up model in registry
-    auto& registry = llm_model_registry();
-    auto  it       = registry.find(model_name_);
-    if (it == registry.end()) {
-        GENIEX_LOG_ERROR("Unknown QAIRT model name: {}", model_name_);
-        return GENIEX_ERROR_COMMON_MODEL_INVALID;
-    }
-
-    const auto& entry = it->second;
-
     // Parse model_path to get model directory
     fs::path model_path(input->model_path);
     fs::path model_dir = model_path.parent_path();
+
+    bundle_sampler_ = parseGenieSamplerConfig(model_dir);
 
     QnnRuntimeConfig runtime_cfg = qairt::runtime::make_qnn_runtime_config(model_dir);
 
@@ -112,17 +104,16 @@ int32_t QairtLlm::create_impl(const geniex_LlmCreateInput* input) {
     model_cfg.forecast_prefix_path =
         qairt::runtime::find_optional_file(model_dir, "forecast-prefix/kv-cache.primary.qnn-htp");
 
-    // Create LLMPipeline via the per-model factory (handles makeModel + chat template internally).
-    // Returns std::nullopt on QNN init failure, missing tokenizer, etc.
-    auto pipe = entry.make_pipeline(runtime_cfg, model_cfg);
+    // Create LLMPipeline via the model_id-driven dispatcher
+    auto pipe = makeLLMPipeline(runtime_cfg, model_cfg);
     if (!pipe) {
-        GENIEX_LOG_ERROR("Failed to create QAIRT LLM pipeline for model: {}", model_name_);
+        GENIEX_LOG_ERROR("Failed to create QAIRT LLM pipeline from bundle: {}", model_dir.string());
         return GENIEX_ERROR_COMMON_MODEL_LOAD;
     }
     pipeline_      = std::make_unique<LLMPipeline>(std::move(*pipe));
     is_first_turn_ = true;
 
-    GENIEX_LOG_DEBUG("QAIRT LLM created successfully: model={}", model_name_);
+    GENIEX_LOG_DEBUG("QAIRT LLM created successfully from bundle: {}", model_dir.string());
     return GENIEX_SUCCESS;
 }
 
@@ -239,7 +230,7 @@ int32_t QairtLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     GenerationConfig gen_cfg{};
     if (input->config) {
         gen_cfg.max_tokens = input->config->max_tokens > 0 ? input->config->max_tokens : 512;
-        qairt::apply_sampler_config(input->config->sampler_config, gen_cfg);
+        qairt::apply_sampler_config(input->config->sampler_config, gen_cfg, bundle_sampler_);
     }
     gen_cfg.thinking_mode = enable_thinking_;
 
@@ -251,15 +242,8 @@ int32_t QairtLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
         on_token_fn = [cb, ud](const char* token) -> bool { return cb(token, ud); };
     }
 
-    // Generate
-    GenerateResult result;
-    try {
-        result = pipeline_->generate(input->prompt_utf8, gen_cfg, on_token_fn);
-    } catch (const ContextLengthExceededError& e) {
-        GENIEX_LOG_ERROR("QAIRT generate: context length exceeded: {}", e.what());
-        return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
-    }
-    is_first_turn_ = false;
+    GenerateResult result = pipeline_->generate(input->prompt_utf8, gen_cfg, on_token_fn);
+    is_first_turn_        = false;
 
     // Map result to output
     output->full_text = portable_strdup(result.full_text.c_str());
@@ -275,19 +259,23 @@ int32_t QairtLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     output->profile_data.prefill_speed =
         result.prompt_tokens > 0 && result.ttft_ms > 0.0 ? result.prompt_tokens / (result.ttft_ms / 1000.0) : 0.0;
 
-    // Stop reason (string must be static/persistent)
+    // Stop reason (string must be static/persistent).
     static const char* kStopEos    = "eos";
     static const char* kStopLength = "length";
     static const char* kStopUser   = "user";
     if (result.stop_reason == "eos")
         output->profile_data.stop_reason = kStopEos;
-    else if (result.stop_reason == "length")
+    else if (result.stop_reason == "length" || result.stop_reason == "context_length")
         output->profile_data.stop_reason = kStopLength;
     else if (result.stop_reason == "user")
         output->profile_data.stop_reason = kStopUser;
     else
         output->profile_data.stop_reason = kStopEos;
 
+    if (result.stop_reason == "context_length") {
+        GENIEX_LOG_WARN("QAIRT generate: context length exceeded (partial result populated)");
+        return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
+    }
     return GENIEX_SUCCESS;
 }
 

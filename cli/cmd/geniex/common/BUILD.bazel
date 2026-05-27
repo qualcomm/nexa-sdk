@@ -1,8 +1,11 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "common",
     srcs = [
+        "console_other.go",
+        "console_windows.go",
+        "error.go",
         "log.go",
         "process.go",
         "repl.go",
@@ -14,6 +17,7 @@ go_library(
     deps = [
         "//bindings/go:geniex_sdk_go",
         "//cli/internal/config",
+        "//cli/internal/model_hub",
         "//cli/internal/readline",
         "//cli/internal/render",
         "//cli/internal/store",
@@ -31,4 +35,10 @@ go_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+go_test(
+    name = "common_test",
+    srcs = ["process_test.go"],
+    embed = [":common"],
 )
