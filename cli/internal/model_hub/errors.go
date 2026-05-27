@@ -37,9 +37,6 @@ var (
 // Exported so callers that talk to aihub.Client directly (e.g. the
 // CLI's device picker) can surface the same hints.
 func TranslateAIHubError(err error) error {
-	if err == nil {
-		return nil
-	}
 	if errors.Is(err, aihub.ErrModelNotFound) {
 		return fmt.Errorf("%w: %v", ErrModelNotFound, err)
 	}

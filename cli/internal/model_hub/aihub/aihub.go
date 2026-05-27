@@ -181,8 +181,8 @@ func (c *Client) fetchJSON(ctx context.Context, url string) ([]byte, error) {
 }
 
 // HTTPError carries a non-2xx response from the AI Hub endpoint. The
-// model_hub package translates it into ErrHubUnreachable / ErrHubAuthRequired
-// / ErrModelNotFound based on Status.
+// model_hub package translates it into one of its hub sentinels based on
+// Status (see model_hub.TranslateAIHubError).
 type HTTPError struct {
 	URL    string
 	Status int
