@@ -168,8 +168,8 @@ def _resolve_model_sources(
     try:
         cached = _mm.get_paths(key)
         return cached.model_path, cached.mmproj_path, cached.tokenizer_path, cached
-    except Exception:  # noqa: BLE001 — any failure = cache miss, fall through
-        pass
+    except (GeniexError, FileNotFoundError, OSError):
+        pass  # cache miss — fall through to the hub fetch path
 
     printer = _progress.resolve(progress)
     try:
@@ -217,13 +217,22 @@ def _reject_gguf_on_qairt(model_path: str, plugin_id: str | None, device_map: st
         )
 
 
+# AutoModelFor*.from_pretrained() ships these defaults; the factory adopting
+# the llama.cpp-shaped values isn't a user override, so we coerce silently.
+_QAIRT_SILENT_NGL = 999
+_QAIRT_SILENT_NCTX = 0
+
+
 def _build_model_config(plugin_id: str | None, n_ctx: int, n_gpu_layers: int, **kwargs) -> geniex_ModelConfig:
     if plugin_id == PLUGIN_QAIRT:
-        if n_gpu_layers != 0:
-            _logger.debug('qairt plugin does not consume n_gpu_layers; forcing 0')
-            n_gpu_layers = 0
-        if n_ctx != 0:
-            _logger.debug('qairt plugin does not consume n_ctx; forcing 0')
+        # Mirror the alias-coercion warning in resolve_device_map so a caller
+        # who passes a real override (n_gpu_layers=64, n_ctx=4096) sees that
+        # QAIRT dropped it. The factory defaults pass through silently.
+        if n_gpu_layers not in (0, _QAIRT_SILENT_NGL):
+            _logger.warning('qairt plugin does not consume n_gpu_layers=%d; forcing 0', n_gpu_layers)
+        n_gpu_layers = 0
+        if n_ctx != _QAIRT_SILENT_NCTX:
+            _logger.warning('qairt plugin does not consume n_ctx=%d; forcing 0', n_ctx)
             n_ctx = 0
     cfg = geniex_ModelConfig(n_ctx=n_ctx, n_gpu_layers=n_gpu_layers)
     _int_fields = {'n_threads', 'n_threads_batch', 'n_batch', 'n_ubatch', 'n_seq_max', 'max_tokens'}
