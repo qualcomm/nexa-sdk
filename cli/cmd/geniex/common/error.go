@@ -90,7 +90,7 @@ Possible causes: network timeout, corporate proxy, or firewall.
 - Run 'geniex serve' in another terminal to start the server.
 - If the server is on a different host or port, update 'host' via 'geniex config set host <addr>'.`
 
-	hintPrecisionMissing = `⚠️ The requested precision is not available locally.
+	hintPrecisionNotFound = `⚠️ The requested precision is not available locally.
 
 👉 Try these:
 - Run 'geniex list' to see what's been downloaded for this model.
@@ -98,17 +98,20 @@ Possible causes: network timeout, corporate proxy, or firewall.
 - Drop the ':<precision>' suffix to be prompted from what's already downloaded.`
 )
 
-// ErrServerUnreachable: the geniex HTTP server (geniex run path) failed
-// to accept the connection. Producers in main package wrap with %w.
-var ErrServerUnreachable = errors.New("server unreachable")
-
-// ErrPrecisionNotFound: the user-specified precision is not present in the
-// model's local manifest (or is listed but not downloaded).
-var ErrPrecisionNotFound = errors.New("precision not found")
+// CLI-side sentinels. Hub sentinels live in model_hub; SDK sentinels in
+// bindings/go. Producers wrap with %w; PrintError matches via errors.Is.
+var (
+	// ErrServerUnreachable: dial failure against the geniex HTTP server
+	// (geniex run path).
+	ErrServerUnreachable = errors.New("server unreachable")
+	// ErrPrecisionNotFound: the user-specified precision is missing from
+	// the model's local manifest (or listed but not downloaded).
+	ErrPrecisionNotFound = errors.New("precision not found")
+)
 
 var errorHints = []struct {
-	is   error
-	hint string
+	sentinel error
+	hint     string
 }{
 	{geniex_sdk.ErrCommonParamNotSupported, hintParamNotSupported},
 	{geniex_sdk.ErrCommonNotSupport, hintNotSupport},
@@ -120,7 +123,7 @@ var errorHints = []struct {
 	{model_hub.ErrAuthRequired, hintHubAuthRequired},
 	{model_hub.ErrModelNotFound, hintModelNotFound},
 	{ErrServerUnreachable, hintServerUnreachable},
-	{ErrPrecisionNotFound, hintPrecisionMissing},
+	{ErrPrecisionNotFound, hintPrecisionNotFound},
 }
 
 // PrintError renders err for the user on stderr in the theme's error style
@@ -134,7 +137,7 @@ func PrintError(err error) {
 	slog.Error("cli error", "err", err)
 	theme := render.GetTheme()
 	for _, h := range errorHints {
-		if errors.Is(err, h.is) {
+		if errors.Is(err, h.sentinel) {
 			fmt.Fprintln(os.Stderr, theme.Error.Sprint(h.hint))
 			return
 		}

@@ -34,14 +34,10 @@ import (
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/types"
 )
 
-// tagServerError wraps transport-layer dial errors as ErrServerUnreachable
+// tagServerError tags transport-layer dial errors as ErrServerUnreachable
 // so PrintError can render the "is geniex serve running?" hint. HTTP-level
-// errors (4xx/5xx) flow through untouched — they already carry the server's
-// own message.
+// errors (4xx/5xx) flow through untouched.
 func tagServerError(err error) error {
-	if err == nil {
-		return nil
-	}
 	var ne *net.OpError
 	if errors.As(err, &ne) {
 		return fmt.Errorf("%w: %v", common.ErrServerUnreachable, err)
