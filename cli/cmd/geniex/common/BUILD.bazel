@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "console_other.go",
         "console_windows.go",
+        "error.go",
         "log.go",
         "process.go",
         "repl.go",

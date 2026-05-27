@@ -17,8 +17,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/http"
 	"time"
 
 	"github.com/bytedance/sonic"
@@ -65,15 +63,6 @@ func run() *cobra.Command {
 		// check
 		modelInfo, err := client.Models.Get(context.TODO(), name)
 		if err != nil {
-			if _, ok := err.(net.Error); ok {
-				fmt.Println(render.GetTheme().Error.Sprintf("Is server running? Please check your network. \n\t%s", err))
-				return err
-			}
-			if e, ok := err.(*openai.Error); ok && e.StatusCode == http.StatusNotFound {
-				fmt.Println(render.GetTheme().Error.Sprintf("Model or precision not found: %s, Please download first", name))
-				return err
-			}
-			fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
 			return err
 		}
 
@@ -82,18 +71,10 @@ func run() *cobra.Command {
 
 		switch manifest.ModelType {
 		case types.ModelTypeLLM, types.ModelTypeVLM:
-			err = runCompletions(manifest, quant)
+			return runCompletions(manifest, quant)
 		default:
-			err = fmt.Errorf("unsupported model type: %s", manifest.ModelType)
-			fmt.Println(render.GetTheme().Error.Sprint(err))
-			return err
+			return fmt.Errorf("unsupported model type: %s", manifest.ModelType)
 		}
-
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-			return err
-		}
-		return nil
 	}
 	return runCmd
 }
