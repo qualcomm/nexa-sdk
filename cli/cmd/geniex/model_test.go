@@ -15,9 +15,13 @@
 package main
 
 import (
+	"encoding/json"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/model_hub"
+	"github.com/qcom-it-nexa-ai/geniex/cli/internal/testutil"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/types"
 )
 
@@ -59,6 +63,73 @@ func TestQuantRegix_MatchAllQuantLevels(t *testing.T) {
 		if matched != level {
 			t.Errorf("quantRegix did not match: %s, %s", level, matched)
 		}
+	}
+}
+
+
+var sampleListModels = []types.ModelManifest{
+	{
+		Name:      "acme/llama",
+		ModelType: types.ModelTypeLLM,
+		PluginId:  "llama_cpp",
+		ModelFile: map[string]types.ModelFileInfo{
+			"Q4_0": {Name: "llama-q4_0.gguf", Downloaded: true, Size: 1024},
+			"Q8_0": {Name: "llama-q8_0.gguf", Downloaded: true, Size: 2048},
+			"FP16": {Name: "llama-fp16.gguf", Downloaded: false, Size: 4096},
+		},
+	},
+	{
+		Name:      "acme/yolo",
+		ModelType: "",
+		PluginId:  "qairt",
+		ModelFile: map[string]types.ModelFileInfo{
+			types.QuantNA: {Name: "yolo.zip", Downloaded: true, Size: 512},
+		},
+	},
+}
+
+func TestPrintListTable(t *testing.T) {
+	out, _, _ := testutil.CaptureOutput(t, func() error {
+		printListTable(sampleListModels, false)
+		return nil
+	})
+	for _, want := range []string{"NAME", "SIZE", "PRECISIONS", "acme/llama", "Q4_0,Q8_0", "acme/yolo"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("table output missing %q:\n%s", want, out)
+		}
+	}
+	// Non-verbose hides PLUGIN/TYPE columns and the QuantNA precision.
+	if strings.Contains(out, "PLUGIN") || strings.Contains(out, types.QuantNA) {
+		t.Errorf("non-verbose table leaked verbose-only fields:\n%s", out)
+	}
+}
+
+func TestPrintListJSON(t *testing.T) {
+	raw, _, err := testutil.CaptureOutput(t, func() error {
+		return printListJSON(sampleListModels, false)
+	})
+	if err != nil {
+		t.Fatalf("printListJSON: %v", err)
+	}
+	var got []listedModel
+	if err := json.Unmarshal([]byte(raw), &got); err != nil {
+		t.Fatalf("unmarshal: %v\n%s", err, raw)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len(got) = %d, want 2", len(got))
+	}
+	if got[0].Name != "acme/llama" || got[0].Plugin != "llama_cpp" || got[0].Type != "llm" {
+		t.Errorf("got[0] = %+v", got[0])
+	}
+	if got[0].Size != 3072 {
+		t.Errorf("got[0].Size = %d, want 3072 (only downloaded files)", got[0].Size)
+	}
+	if want := []string{"Q4_0", "Q8_0"}; !slices.Equal(got[0].Precisions, want) {
+		t.Errorf("got[0].Precisions = %v, want %v", got[0].Precisions, want)
+	}
+	// QuantNA hidden in non-verbose JSON, just like the table.
+	if len(got[1].Precisions) != 0 {
+		t.Errorf("got[1].Precisions = %v, want empty (QuantNA hidden)", got[1].Precisions)
 	}
 }
 

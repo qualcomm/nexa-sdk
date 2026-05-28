@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -140,63 +141,100 @@ func clean() *cobra.Command {
 	return cleanCmd
 }
 
-// list creates a command to display all cached models in a formatted table.
-// Shows model names and their storage sizes.
-// Usage: geniex list
+// list creates a command to display all cached models.
+// Supports table (default) and json output via --format.
+// Usage: geniex list [--format table|json]
 func list() *cobra.Command {
+	var format string
+
 	listCmd := &cobra.Command{
 		GroupID: "model",
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "List all cached models",
-		Long:    "Display all cached models in a formatted table, showing model names, types, and sizes.",
+		Long:    "Display all cached models. Use --format json for machine-readable output.",
 	}
 
+	listCmd.Flags().StringVar(&format, "format", "table", "output format: table|json")
+
 	listCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		s := store.Get()
-		models, err := s.List()
+		if format != "table" && format != "json" {
+			return fmt.Errorf("invalid --format %q (valid: table, json)", format)
+		}
+		models, err := store.Get().List()
 		if err != nil {
 			return err
 		}
-
-		// hides QuantNA in non-verbose so non-quantized models render empty.
-		joinQuants := func(m types.ModelManifest) string {
-			quants := make([]string, 0, len(m.ModelFile))
-			for q, f := range m.ModelFile {
-				if !f.Downloaded {
-					continue
-				}
-				if !verbose && q == types.QuantNA {
-					continue
-				}
-				quants = append(quants, q)
-			}
-			slices.Sort(quants)
-			return strings.Join(quants, ",")
+		if format == "json" {
+			return printListJSON(models, verbose)
 		}
-
-		tw := table.NewWriter()
-		tw.SetOutputMirror(os.Stdout)
-		tw.SetStyle(table.StyleLight)
-		if verbose {
-			tw.AppendHeader(table.Row{"NAME", "SIZE", "PLUGIN", "TYPE", "PRECISIONS"})
-		} else {
-			tw.AppendHeader(table.Row{"NAME", "SIZE", "PRECISIONS"})
-		}
-		for _, model := range models {
-			size := humanize.IBytes(uint64(model.GetSize()))
-			quants := joinQuants(model)
-			if verbose {
-				tw.AppendRow(table.Row{model.Name, size, model.PluginId, model.ModelType, quants})
-			} else {
-				tw.AppendRow(table.Row{model.Name, size, quants})
-			}
-		}
-		tw.Render()
+		printListTable(models, verbose)
 		return nil
 	}
 
 	return listCmd
+}
+
+// listedModel is the JSON shape for `geniex list --format json`.
+// Sizes are bytes; precisions is the same set the table column shows.
+type listedModel struct {
+	Name       string   `json:"name"`
+	Size       int64    `json:"size"`
+	Plugin     string   `json:"plugin"`
+	Type       string   `json:"type"`
+	Precisions []string `json:"precisions"`
+}
+
+func collectPrecisions(m types.ModelManifest, verbose bool) []string {
+	quants := make([]string, 0, len(m.ModelFile))
+	for q, f := range m.ModelFile {
+		if !f.Downloaded {
+			continue
+		}
+		if !verbose && q == types.QuantNA {
+			continue
+		}
+		quants = append(quants, q)
+	}
+	slices.Sort(quants)
+	return quants
+}
+
+func printListTable(models []types.ModelManifest, verbose bool) {
+	tw := table.NewWriter()
+	tw.SetOutputMirror(os.Stdout)
+	tw.SetStyle(table.StyleLight)
+	if verbose {
+		tw.AppendHeader(table.Row{"NAME", "SIZE", "PLUGIN", "TYPE", "PRECISIONS"})
+	} else {
+		tw.AppendHeader(table.Row{"NAME", "SIZE", "PRECISIONS"})
+	}
+	for _, model := range models {
+		size := humanize.IBytes(uint64(model.GetSize()))
+		quants := strings.Join(collectPrecisions(model, verbose), ",")
+		if verbose {
+			tw.AppendRow(table.Row{model.Name, size, model.PluginId, model.ModelType, quants})
+		} else {
+			tw.AppendRow(table.Row{model.Name, size, quants})
+		}
+	}
+	tw.Render()
+}
+
+func printListJSON(models []types.ModelManifest, verbose bool) error {
+	out := make([]listedModel, 0, len(models))
+	for _, m := range models {
+		out = append(out, listedModel{
+			Name:       m.Name,
+			Size:       m.GetSize(),
+			Plugin:     m.PluginId,
+			Type:       string(m.ModelType),
+			Precisions: collectPrecisions(m, verbose),
+		})
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(out)
 }
 
 // modelCmd builds the `geniex model` command tree:
