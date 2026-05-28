@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -151,22 +153,29 @@ func list() *cobra.Command {
 		GroupID: "model",
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "List all cached models",
-		Long:    "Display all cached models. Use --format json for machine-readable output.",
+		Short: "List all cached models",
+		Long: "Display all cached models.\n" +
+			"Use --format json or --format csv for machine-readable output; both have a " +
+			"stable schema and --verbose only affects the table view.",
 	}
 
-	listCmd.Flags().StringVar(&format, "format", "table", "output format: table|json")
+	listCmd.Flags().StringVar(&format, "format", "table", "output format: table|json|csv")
 
 	listCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if format != "table" && format != "json" {
-			return fmt.Errorf("invalid --format %q (valid: table, json)", format)
+		switch format {
+		case "table", "json", "csv":
+		default:
+			return fmt.Errorf("invalid --format %q (valid: table, json, csv)", format)
 		}
 		models, err := store.Get().List()
 		if err != nil {
 			return err
 		}
-		if format == "json" {
-			return printListJSON(models, verbose)
+		switch format {
+		case "json":
+			return printListJSON(models)
+		case "csv":
+			return printListCSV(models)
 		}
 		printListTable(models, verbose)
 		return nil
@@ -175,8 +184,10 @@ func list() *cobra.Command {
 	return listCmd
 }
 
-// listedModel is the JSON shape for `geniex list --format json`.
-// Sizes are bytes; precisions is the same set the table column shows.
+// listedModel is the stable schema for `geniex list --format json|csv`.
+// Sizes are bytes. Precisions includes every downloaded quant — including the
+// QuantNA placeholder for non-quantized models — so scripts get full inventory
+// regardless of --verbose.
 type listedModel struct {
 	Name       string   `json:"name"`
 	Size       int64    `json:"size"`
@@ -185,13 +196,16 @@ type listedModel struct {
 	Precisions []string `json:"precisions"`
 }
 
-func collectPrecisions(m types.ModelManifest, verbose bool) []string {
+// downloadedPrecisions returns every downloaded quant. The optional
+// hideQuantNA hides the placeholder used for non-quantized models — only the
+// human-facing table view sets it (in non-verbose mode).
+func downloadedPrecisions(m types.ModelManifest, hideQuantNA bool) []string {
 	quants := make([]string, 0, len(m.ModelFile))
 	for q, f := range m.ModelFile {
 		if !f.Downloaded {
 			continue
 		}
-		if !verbose && q == types.QuantNA {
+		if hideQuantNA && q == types.QuantNA {
 			continue
 		}
 		quants = append(quants, q)
@@ -211,7 +225,7 @@ func printListTable(models []types.ModelManifest, verbose bool) {
 	}
 	for _, model := range models {
 		size := humanize.IBytes(uint64(model.GetSize()))
-		quants := strings.Join(collectPrecisions(model, verbose), ",")
+		quants := strings.Join(downloadedPrecisions(model, !verbose), ",")
 		if verbose {
 			tw.AppendRow(table.Row{model.Name, size, model.PluginId, model.ModelType, quants})
 		} else {
@@ -221,7 +235,7 @@ func printListTable(models []types.ModelManifest, verbose bool) {
 	tw.Render()
 }
 
-func printListJSON(models []types.ModelManifest, verbose bool) error {
+func toListedModels(models []types.ModelManifest) []listedModel {
 	out := make([]listedModel, 0, len(models))
 	for _, m := range models {
 		out = append(out, listedModel{
@@ -229,12 +243,37 @@ func printListJSON(models []types.ModelManifest, verbose bool) error {
 			Size:       m.GetSize(),
 			Plugin:     m.PluginId,
 			Type:       string(m.ModelType),
-			Precisions: collectPrecisions(m, verbose),
+			Precisions: downloadedPrecisions(m, false),
 		})
 	}
+	return out
+}
+
+func printListJSON(models []types.ModelManifest) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
-	return enc.Encode(out)
+	return enc.Encode(toListedModels(models))
+}
+
+func printListCSV(models []types.ModelManifest) error {
+	w := csv.NewWriter(os.Stdout)
+	if err := w.Write([]string{"name", "size", "plugin", "type", "precisions"}); err != nil {
+		return err
+	}
+	for _, m := range toListedModels(models) {
+		row := []string{
+			m.Name,
+			strconv.FormatInt(m.Size, 10),
+			m.Plugin,
+			m.Type,
+			strings.Join(m.Precisions, ","),
+		}
+		if err := w.Write(row); err != nil {
+			return err
+		}
+	}
+	w.Flush()
+	return w.Error()
 }
 
 // modelCmd builds the `geniex model` command tree:

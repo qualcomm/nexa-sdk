@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"slices"
 	"strings"
@@ -106,7 +107,7 @@ func TestPrintListTable(t *testing.T) {
 
 func TestPrintListJSON(t *testing.T) {
 	raw, _, err := testutil.CaptureOutput(t, func() error {
-		return printListJSON(sampleListModels, false)
+		return printListJSON(sampleListModels)
 	})
 	if err != nil {
 		t.Fatalf("printListJSON: %v", err)
@@ -127,9 +128,35 @@ func TestPrintListJSON(t *testing.T) {
 	if want := []string{"Q4_0", "Q8_0"}; !slices.Equal(got[0].Precisions, want) {
 		t.Errorf("got[0].Precisions = %v, want %v", got[0].Precisions, want)
 	}
-	// QuantNA hidden in non-verbose JSON, just like the table.
-	if len(got[1].Precisions) != 0 {
-		t.Errorf("got[1].Precisions = %v, want empty (QuantNA hidden)", got[1].Precisions)
+	// JSON keeps the full inventory regardless of --verbose, so QuantNA is exposed.
+	if want := []string{types.QuantNA}; !slices.Equal(got[1].Precisions, want) {
+		t.Errorf("got[1].Precisions = %v, want %v", got[1].Precisions, want)
+	}
+}
+
+func TestPrintListCSV(t *testing.T) {
+	raw, _, err := testutil.CaptureOutput(t, func() error {
+		return printListCSV(sampleListModels)
+	})
+	if err != nil {
+		t.Fatalf("printListCSV: %v", err)
+	}
+	rows, err := csv.NewReader(strings.NewReader(raw)).ReadAll()
+	if err != nil {
+		t.Fatalf("csv parse: %v\n%s", err, raw)
+	}
+	want := [][]string{
+		{"name", "size", "plugin", "type", "precisions"},
+		{"acme/llama", "3072", "llama_cpp", "llm", "Q4_0,Q8_0"},
+		{"acme/yolo", "512", "qairt", "", types.QuantNA},
+	}
+	if len(rows) != len(want) {
+		t.Fatalf("rows = %d, want %d:\n%s", len(rows), len(want), raw)
+	}
+	for i := range want {
+		if !slices.Equal(rows[i], want[i]) {
+			t.Errorf("row %d = %v, want %v", i, rows[i], want[i])
+		}
 	}
 }
 
