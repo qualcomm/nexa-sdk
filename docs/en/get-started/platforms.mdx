@@ -26,7 +26,7 @@ GenieX ships with two runtimes so you get both **broad model coverage** and **pe
 - **`llama_cpp`** — any GGUF model on Hugging Face, running on Hexagon NPU, Adreno GPU, or CPU through Qualcomm's GGML Hexagon backend. The widest model selection.
 - **`qairt`** ([Qualcomm® AI Engine Direct](https://www.qualcomm.com/developer/software/qualcomm-ai-engine-direct-sdk)) — pre-compiled bundles from [Qualcomm AI Hub](https://aihub.qualcomm.com/models/), compiled and quantized per chipset and pinned to the Hexagon NPU. The fastest path when your model is on Qualcomm AI Hub.
 
-<Note>**Qualcomm AI Engine Direct** (also known as the *Qualcomm AI Engine Direct SDK*, *Qualcomm AI Runtime*, and historically *QAIRT*) is the official name. Throughout these docs we use the official name; the lowercase `qairt` code identifier (plugin id, `device_map`) is unchanged.</Note>
+<Note>**Qualcomm AI Engine Direct** (also known as the *Qualcomm AI Engine Direct SDK*, *Qualcomm AI Runtime*, and historically *QAIRT*) is the official name. Throughout these docs we use the official name.</Note>
 
 | | **llama.cpp** | **Qualcomm AI Engine Direct** |
 |---|---|---|
