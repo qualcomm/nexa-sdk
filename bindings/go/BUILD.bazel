@@ -8,17 +8,10 @@ alias(
 go_library(
     name = "geniex_sdk_go",
     srcs = [
-        "asr.go",
         "common.go",
-        "cv.go",
         "device.go",
-        "diarize.go",
-        "embedder.go",
-        "image_gen.go",
         "llm.go",
         "ml.go",
-        "reranker.go",
-        "tts.go",
         "vlm.go",
     ],
     cdeps = ["//sdk"],
