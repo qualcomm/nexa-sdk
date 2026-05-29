@@ -8,13 +8,13 @@ Android bindings provide a Kotlin API for GenieX-Bridge using a JNI bridge patte
 ┌─────────────────────────────────────────────────────────┐
 │ Layer 4: Public API (Kotlin)                          │
 │ ModelWrapper.kt - Coroutine-based high-level API      │
-│ (LlmWrapper, VlmWrapper, EmbedderWrapper, etc.)       │
+│ (LlmWrapper, VlmWrapper)                              │
 └────────────────┬────────────────────────────────────────┘
                  │ calls
 ┌────────────────▼────────────────────────────────────────┐
 │ Layer 3: JNI Interface (Kotlin)                        │
 │ Model.kt - Declares external native methods           │
-│ (Llm, Vlm, Embedder, Asr, Cv, Reranker)              │
+│ (Llm, Vlm)                                            │
 └────────────────┬────────────────────────────────────────┘
                  │ JNI boundary
 ┌────────────────▼────────────────────────────────────────┐
@@ -32,7 +32,7 @@ Android bindings provide a Kotlin API for GenieX-Bridge using a JNI bridge patte
 
 ## Component Structure
 
-Each AI capability (LLM, VLM, ASR, CV, Embedder, Reranker) follows this pattern:
+Each AI capability (LLM, VLM) follows this pattern:
 
 ### **LLM (Large Language Model) Example:**
 
@@ -72,17 +72,13 @@ Each AI capability (LLM, VLM, ASR, CV, Embedder, Reranker) follows this pattern:
 - **Path:** `../../../build-android/out/libgeniex_bridge.so`
 - **API Header:** `../../../include/ml.h`
 - **Purpose:** C API providing ml*llm*\* functions
-- **Built from:** `../../../src/*.cpp` (asr.cpp, llm.cpp, vlm.cpp, etc.)
+- **Built from:** `../../../src/*.cpp` (llm.cpp, vlm.cpp, etc.)
 
 ### **Other Components** (Same 4-layer pattern):
 
-| Component              | Wrapper            | JNI Interface | JNI Bridge              | Core API       |
-| ---------------------- | ------------------ | ------------- | ----------------------- | -------------- |
-| **Vision-Language**    | VlmWrapper.kt      | Vlm.kt        | vlm_bridge_jni.cpp      | ml*vlm*\*      |
-| **Embeddings**         | EmbedderWrapper.kt | Embedder.kt   | embedder_bridge_jni.cpp | ml*embedder*\* |
-| **Reranking**          | RerankerWrapper.kt | Reranker.kt   | reranker_bridge_jni.cpp | ml*reranker*\* |
-| **Speech Recognition** | AsrWrapper.kt      | Asr.kt        | asr_bridge_jni.cpp      | ml*asr*\*      |
-| **Computer Vision**    | CvWrapper.kt       | Cv.kt         | cv_bridge_jni.cpp       | ml*cv*\*       |
+| Component           | Wrapper       | JNI Interface | JNI Bridge         | Core API  |
+| ------------------- | ------------- | ------------- | ------------------ | --------- |
+| **Vision-Language** | VlmWrapper.kt | Vlm.kt        | vlm_bridge_jni.cpp | ml*vlm*\* |
 
 ## Build System
 
@@ -119,10 +115,6 @@ bindings/android/
 │   │   ├── cpp/                      # Layer 2: JNI Bridge (C++)
 │   │   │   ├── llm_bridge_jni.cpp
 │   │   │   ├── vlm_bridge_jni.cpp
-│   │   │   ├── embedder_bridge_jni.cpp
-│   │   │   ├── reranker_bridge_jni.cpp
-│   │   │   ├── asr_bridge_jni.cpp
-│   │   │   ├── cv_bridge_jni.cpp
 │   │   │   ├── geniex_sdk.cpp          # SDK initialization & plugin registration
 │   │   │   ├── jniutils.cpp/.h       # JNI type conversion utilities
 │   │   │   ├── jni_cb.cpp/.h         # Callback handling for streaming
@@ -131,15 +123,9 @@ bindings/android/
 │   │   └── java/com/geniex/sdk/
 │   │       ├── jni/                  # Layer 3: JNI Interface (Kotlin)
 │   │       │   ├── Llm.kt
-│   │       │   ├── Vlm.kt
-│   │       │   ├── Embedder.kt
-│   │       │   ├── Reranker.kt
-│   │       │   ├── Asr.kt
-│   │       │   └── Cv.kt
+│   │       │   └── Vlm.kt
 │   │       ├── LlmWrapper.kt         # Layer 4: Public API
 │   │       ├── VlmWrapper.kt
-│   │       ├── EmbedderWrapper.kt
-│   │       ├── RerankerWrapper.kt
 │   │       ├── GeniexSdk.kt            # SDK entry point
 │   │       └── bean/                 # Data classes
 │   └── build.gradle.kts              # Build configuration
