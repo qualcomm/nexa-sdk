@@ -52,7 +52,7 @@ import com.geniex.demo.utils.ExecShell
 import com.geniex.demo.utils.ImgUtil
 import com.geniex.demo.utils.inflate
 import com.geniex.sdk.LlmWrapper
-import com.geniex.sdk.GeniexSdk
+import com.geniex.sdk.GenieXSdk
 import com.geniex.sdk.ModelManagerWrapper
 import com.geniex.sdk.VlmWrapper
 import com.geniex.sdk.bean.ChatMessage
@@ -227,7 +227,7 @@ class MainActivity : FragmentActivity() {
     private fun initData() {
         parseModelList()
         //
-        initGeniexSdk()
+        initGenieXSdk()
         //
         val sysPrompt = """\
 You are Nays Campaign Manager, an AI assistant responsible for managing customer campaigns and investigating campaign-related issues.
@@ -260,16 +260,16 @@ Note: You must use the campaign_investigation function whenever a customer asks 
     }
 
     /**
-     * Step 1. initGeniexSdk environment
+     * Step 1. initGenieXSdk environment
      */
-    private fun initGeniexSdk() {
-        // Initialize GeniexSdk with context
-        GeniexSdk.getInstance().init(this, object : GeniexSdk.InitCallback {
+    private fun initGenieXSdk() {
+        // Initialize GenieXSdk with context
+        GenieXSdk.getInstance().init(this, object : GenieXSdk.InitCallback {
             override fun onSuccess() {
             }
 
             override fun onFailure(reason: String) {
-                Log.e(TAG, "GeniexSdk init failed: $reason")
+                Log.e(TAG, "GenieXSdk init failed: $reason")
             }
         })
     }
