@@ -27,9 +27,9 @@ import (
 	"unsafe"
 )
 
-// mlFree releases memory the SDK allocated (geniex_free), as opposed to
+// free releases memory the SDK allocated (geniex_free), as opposed to
 // freeC* helpers which release memory Go allocated via C.malloc / C.CString.
-func mlFree(ptr unsafe.Pointer) {
+func free(ptr unsafe.Pointer) {
 	C.geniex_free(ptr)
 }
 
@@ -106,9 +106,9 @@ func mlFreeCCharArray(ptr **C.char, count C.int32_t) {
 	}
 	arr := unsafe.Slice(ptr, int(count))
 	for _, p := range arr {
-		mlFree(unsafe.Pointer(p))
+		free(unsafe.Pointer(p))
 	}
-	mlFree(unsafe.Pointer(ptr))
+	free(unsafe.Pointer(ptr))
 }
 
 // OnTokenCallback is dispatched per generated token; returning false stops

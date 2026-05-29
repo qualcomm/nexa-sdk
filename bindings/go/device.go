@@ -92,10 +92,10 @@ func freeResolveDeviceOutput(c *C.geniex_ResolveDeviceOutput) {
 		return
 	}
 	if c.device_id != nil {
-		mlFree(unsafe.Pointer(c.device_id))
+		free(unsafe.Pointer(c.device_id))
 	}
 	if c.warning != nil {
-		mlFree(unsafe.Pointer(c.warning))
+		free(unsafe.Pointer(c.warning))
 	}
 }
 
