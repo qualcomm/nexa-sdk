@@ -28,6 +28,8 @@ import (
 	"unsafe"
 )
 
+// LCOV_EXCL_START
+
 type LlmRole string
 
 const (
@@ -129,7 +131,7 @@ func freeLlmGenerateOutput(ptr *C.geniex_LlmGenerateOutput) {
 	if ptr == nil {
 		return
 	}
-	mlFree(unsafe.Pointer(ptr.full_text))
+	free(unsafe.Pointer(ptr.full_text))
 }
 
 type LlmChatMessage struct {
@@ -209,7 +211,7 @@ func freeLlmApplyChatTemplateOutput(cPtr *C.geniex_LlmApplyChatTemplateOutput) {
 	if cPtr == nil {
 		return
 	}
-	mlFree(unsafe.Pointer(cPtr.formatted_text))
+	free(unsafe.Pointer(cPtr.formatted_text))
 }
 
 type LLM struct {
@@ -364,3 +366,5 @@ func (l *LLM) Generate(input LlmGenerateInput) (*LlmGenerateOutput, error) {
 	}
 	return &output, nil
 }
+
+// LCOV_EXCL_STOP

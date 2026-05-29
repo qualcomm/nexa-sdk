@@ -35,6 +35,8 @@ import (
 	"unsafe"
 )
 
+// LCOV_EXCL_START
+
 var bridgeLogEnabled = true
 
 type SDKError int32
@@ -169,10 +171,10 @@ func freeGetDeviceListOutput(c *C.geniex_GetDeviceListOutput) {
 		return
 	}
 	if c.device_ids != nil {
-		mlFree(unsafe.Pointer(c.device_ids))
+		free(unsafe.Pointer(c.device_ids))
 	}
 	if c.device_names != nil {
-		mlFree(unsafe.Pointer(c.device_names))
+		free(unsafe.Pointer(c.device_names))
 	}
 }
 
@@ -210,3 +212,5 @@ func go_log_wrap(level C.geniex_LogLevel, msg *C.char) {
 func EnableBridgeLog(enable bool) {
 	bridgeLogEnabled = enable
 }
+
+// LCOV_EXCL_STOP

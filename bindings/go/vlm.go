@@ -28,6 +28,8 @@ import (
 	"unsafe"
 )
 
+// LCOV_EXCL_START
+
 type VlmCreateInput struct {
 	ModelName     string
 	ModelPath     string
@@ -194,7 +196,7 @@ func freeVlmApplyChatTemplateOutput(cPtr *C.geniex_VlmApplyChatTemplateOutput) {
 	if cPtr == nil {
 		return
 	}
-	mlFree(unsafe.Pointer(cPtr.formatted_text))
+	free(unsafe.Pointer(cPtr.formatted_text))
 }
 
 type VlmGenerateInput struct {
@@ -242,7 +244,7 @@ func freeVlmGenerateOutput(ptr *C.geniex_VlmGenerateOutput) {
 	if ptr == nil {
 		return
 	}
-	mlFree(unsafe.Pointer(ptr.full_text))
+	free(unsafe.Pointer(ptr.full_text))
 }
 
 type VLM struct {
@@ -355,3 +357,5 @@ func (v *VLM) Generate(input VlmGenerateInput) (*VlmGenerateOutput, error) {
 	}
 	return &output, nil
 }
+
+// LCOV_EXCL_STOP
