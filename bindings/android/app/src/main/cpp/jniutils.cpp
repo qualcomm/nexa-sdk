@@ -546,7 +546,6 @@ geniex_VlmCreateInput extract_vlm_create_input(JNIEnv* env, jobject inputObj) {
     return out;
 }
 
-
 std::vector<geniex_LlmChatMessage> extract_llm_chat_messages(
     JNIEnv* env, jobjectArray jmessages, std::vector<std::string>& str_buf) {
     std::vector<geniex_LlmChatMessage> msgs;

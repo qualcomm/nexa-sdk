@@ -394,4 +394,3 @@ struct fmt::formatter<geniex_VlmGenerateOutput> {
             ctx.out(), "VlmGenerateOutput(full_text: {}, profile_data: {})", lp(p.full_text), p.profile_data);
     }
 };
-
