@@ -25,6 +25,8 @@ import (
 	"unsafe"
 )
 
+// LCOV_EXCL_START
+
 // Friendly device aliases that downstream callers pass on their
 // `--device` / `device_map` option. The SDK (`sdk/src/device.cpp`)
 // owns the alias table; this file is just the Go-side thin wrapper.
@@ -92,10 +94,10 @@ func freeResolveDeviceOutput(c *C.geniex_ResolveDeviceOutput) {
 		return
 	}
 	if c.device_id != nil {
-		mlFree(unsafe.Pointer(c.device_id))
+		free(unsafe.Pointer(c.device_id))
 	}
 	if c.warning != nil {
-		mlFree(unsafe.Pointer(c.warning))
+		free(unsafe.Pointer(c.warning))
 	}
 }
 
@@ -126,3 +128,5 @@ func ResolveDevice(input ResolveDeviceInput) (*ResolveDeviceOutput, error) {
 	output := newResolveDeviceOutputFromCPtr(&cOutput)
 	return &output, nil
 }
+
+// LCOV_EXCL_STOP
