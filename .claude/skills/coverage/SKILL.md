@@ -5,55 +5,35 @@ description: Generate an HTML coverage report for all Go tests via bazel + genht
 
 # Coverage
 
-Supports Linux and Windows. The bazel step is identical on both.
-
-> **Linux caveat**: confirm `genhtml --version` reports lcov 2.x. lcov
-> 1.x (still default on older Debian/Ubuntu) lacks `--filter region` and
-> `--hierarchical`, so `// LCOV_EXCL_*` markers are ignored and the
-> index is a flat absolute-path list. Upgrade (Ubuntu 24.04+, Debian
-> trixie+, Fedora 39+, current nixpkgs all ship 2.x), or accept the
-> degraded view.
->
-> **Windows caveat**: msys2 only ships lcov 1.16, with the same gaps as
-> Linux 1.x — render on Linux for the clean filtered view. When you
-> invoke this skill on Windows, surface this caveat to the user before
-> generating the report.
+> **Before rendering, warn the user if `genhtml` is lcov 1.x** (always
+> the case on Windows msys2; also on older Linux distros). The output
+> is degraded: `LCOV_EXCL_*` markers ignored (cgo helpers in
+> `bindings/go/*` show 0%), flat index, all entries as absolute paths.
+> Recommend rendering on Linux with lcov 2.x for the clean view.
 
 ## 1. Run coverage
-
-From the repo root:
 
 ```
 bazelisk coverage --combined_report=lcov //...
 ```
 
-Bazel auto-derives `--instrumentation_filter` from the target pattern,
-and `//cli/release/...` targets are gated by `target_compatible_with`,
-so the wrong-host installer toolchains are skipped automatically.
-
-The combined LCOV file path is printed at the end of the run, under
-`<bazel-cache>/execroot/_main/bazel-out/_coverage/_coverage_report.dat`.
+Combined LCOV is at
+`<bazel-cache>/execroot/_main/bazel-out/_coverage/_coverage_report.dat`
+(printed at the end of the run). `//cli/release/...` installer targets
+are gated by `target_compatible_with`, so wrong-host toolchains skip
+automatically.
 
 ## 2. Render HTML
 
-`genhtml` is a Perl script that ships with `lcov`.
+`genhtml` ships with `lcov`. Check the version with `genhtml --version`
+to pick the right command path below.
 
-- Linux: `apt install lcov` / `dnf install lcov` / etc. — must be 2.x for
-  `--filter region` to honor `// LCOV_EXCL_*` markers in source.
+- Linux: `apt install lcov` / `dnf install lcov` / etc. 2.x available
+  on Ubuntu 24.04+, Debian trixie+, Fedora 39+, current nixpkgs.
 - Windows (msys2): `pacman -S --noconfirm mingw-w64-clang-aarch64-lcov`
-  (or the matching `mingw-w64-*-lcov` for your target). msys2 only
-  ships lcov 1.16, which **does not** support `--filter region`, so
-  `LCOV_EXCL_*` markers in `bindings/go/*` and friends are ignored —
-  cgo helper coverage will show as 0% in the report. For the cleaner
-  filtered view, render on Linux.
+  (or matching `mingw-w64-*-lcov`). Only ships 1.16.
 
-Output goes to the OS temp dir so it stays out of the repo.
-
-### Linux
-
-Check `genhtml --version` first.
-
-#### lcov 2.x
+### Linux, lcov 2.x (preferred)
 
 ```
 rm -rf /tmp/coverage-html && mkdir -p /tmp/coverage-html
@@ -63,55 +43,55 @@ genhtml --filter region --rc c_file_extensions=c,h,i,C,H,I,icc,cpp,cc,cxx,hh,hpp
   <lcov-path> -o /tmp/coverage-html
 ```
 
-- `--filter region` honors `// LCOV_EXCL_START` / `// LCOV_EXCL_STOP` /
-  `// LCOV_EXCL_LINE` markers. lcov gates this on the file extension,
-  so register `.go` via `--rc c_file_extensions=...,go` — drop either
-  flag and the markers stop working.
-- Reproducible-build environments (`nix shell`, Nixpkgs/Guix sandboxes,
-  `dpkg-buildpackage`, etc.) set `SOURCE_DATE_EPOCH` to a fixed epoch
-  (often 1980-01-01), which lcov uses as the report "Test Date". Unset
-  it. No-op in normal shells.
-- `--prefix` is the repo root that LCOV's relative `SF:` paths resolve
-  against. Without it, genhtml strips the longest *common* prefix, which
-  on this repo is `cli/` — so files outside `cli/` (like `bindings/go/*`)
-  fall back to absolute paths and land under `home/<user>/...` in the
-  output tree. Setting `--prefix "$(pwd)"` keeps everything aligned.
-- `--hierarchical` renders the report as a directory tree (one index
-  per level, drill down). Without it, genhtml emits a single flat list
-  of every leaf directory, which gets unwieldy at this repo's depth.
-  Drop the flag if you want everything on one page.
+- `--filter region` + `--rc c_file_extensions=...,go` together honor
+  `// LCOV_EXCL_START/STOP/LINE` markers. Drop either and the markers
+  stop working.
+- Unset `SOURCE_DATE_EPOCH` (set by nix / dpkg-buildpackage / etc. to
+  a fixed epoch, used by lcov as "Test Date"). No-op in normal shells.
+- `--prefix "$(pwd)"` anchors relative `SF:` paths to the repo root.
+  Without it, lcov 2.x strips the longest common prefix (`cli/`),
+  pushing `bindings/go/*` to absolute paths.
+- `--hierarchical` renders a directory tree. Drop for a single flat
+  index.
 
-#### lcov 1.x (degraded)
+### Linux lcov 1.x / Windows msys2 (degraded)
 
-The 2.x-only flags (`--filter`, `--rc`, `--hierarchical`) error out, so
-drop them. `// LCOV_EXCL_*` markers are ignored and the index is flat —
-same caveat as Windows.
+`--filter`, `--rc`, `--hierarchical` are 2.x-only — drop them.
+`LCOV_EXCL_*` markers are ignored, index is flat. Use **`--no-prefix`**
+(not `--prefix`): the auto prefix detection picks `cli/` as the common
+root and renders `bindings/go/*` as absolute paths while everything
+else is relative — a half-stripped, inconsistent index. On Windows the
+mixed `\` / `/` separators break it further. `--no-prefix` disables
+stripping entirely so every entry renders as a full absolute path —
+ugly but uniform.
+
+Linux:
 
 ```
 rm -rf /tmp/coverage-html && mkdir -p /tmp/coverage-html
 unset SOURCE_DATE_EPOCH
-genhtml --prefix "$(pwd)" <lcov-path> -o /tmp/coverage-html
+genhtml --no-prefix <lcov-path> -o /tmp/coverage-html
 ```
 
-### Windows (msys2 bash)
-
-Open the msys2 shell (not PowerShell / cmd — `genhtml` is a Perl script
-and the path translation happens inside msys2):
+Windows (msys2 bash, **not** PowerShell / cmd — genhtml is a Perl
+script and path translation happens inside msys2):
 
 ```
 cd /c/Users/<you>/path/to/geniex
-/clangarm64/bin/genhtml <lcov-path> -o "$TEMP/coverage-html"
+rm -rf /tmp/coverage-html && mkdir -p /tmp/coverage-html
+/clangarm64/bin/genhtml --no-prefix <lcov-path> -o /tmp/coverage-html
 ```
 
-lcov 1.16 doesn't have `--hierarchical`, and `--prefix` is broken on
-mixed Windows path separators, so directory entries render as full
-absolute paths. For the cleaner view, render on Linux.
+Use `/tmp` (msys2 maps it to `C:\msys64\tmp\`), **not** `$TEMP` —
+`$TEMP` / `$TMP` are unset in msys2 bash, so `-o "$TEMP/coverage-html"`
+silently writes to `/coverage-html`. PowerShell's `$env:TEMP` is a
+different directory entirely.
 
 ## 3. Open the report
 
 - Linux: `xdg-open /tmp/coverage-html/index.html`
-- Windows: `Invoke-Item "$env:TEMP\coverage-html\index.html"` (PowerShell)
-  or `start "" "%TEMP%\coverage-html\index.html"` (cmd)
+- Windows (msys2 bash): `start /tmp/coverage-html/index.html`
+  (or open `C:\msys64\tmp\coverage-html\index.html` from Explorer)
 
 ## Notes
 
