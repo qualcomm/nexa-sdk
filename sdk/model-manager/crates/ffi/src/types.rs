@@ -17,6 +17,7 @@ pub const GENIEX_ERROR_COMMON_NOT_INITIALIZED: i32 = -100007;
 pub const GENIEX_ERROR_COMMON_ALREADY_INITIALIZED: i32 = -100008;
 pub const GENIEX_ERROR_COMMON_MANIFEST_PARSE: i32 = -100014;
 pub const GENIEX_ERROR_COMMON_CHIPSET_UNAVAILABLE: i32 = -100015;
+pub const GENIEX_ERROR_COMMON_MODEL_INVALID: i32 = -100203;
 
 /// C-compatible per-file progress entry. Must mirror `geniex_FileProgress`
 /// in geniex_model.h.
@@ -40,12 +41,16 @@ pub fn err_to_code(e: &Error) -> i32 {
         Error::HttpStatus { .. } | Error::HttpTimeout(_) | Error::Http(_) => {
             GENIEX_ERROR_COMMON_NETWORK
         }
-        Error::ManifestParse { .. } => GENIEX_ERROR_COMMON_MANIFEST_PARSE,
+        // A local geniex.json that fails to deserialize is a manifest-parse
+        // failure, same category as a malformed remote index.
+        Error::ManifestParse { .. } | Error::Json(_) => GENIEX_ERROR_COMMON_MANIFEST_PARSE,
         Error::ChipsetUnavailable { .. } => GENIEX_ERROR_COMMON_CHIPSET_UNAVAILABLE,
         Error::Cancelled => GENIEX_ERROR_COMMON_CANCELLED,
-        Error::Io(_) | Error::Json(_) | Error::Hub(_) | Error::ManifestInferenceFailed(_) => {
-            GENIEX_ERROR_COMMON_UNKNOWN
-        }
+        // Inference failed because the source has no files we recognize as a
+        // model — surface it as an invalid-model error, not a generic unknown.
+        Error::ManifestInferenceFailed(_) => GENIEX_ERROR_COMMON_MODEL_INVALID,
+        // Io / Hub are genuinely freeform; keep them as unknown.
+        Error::Io(_) | Error::Hub(_) => GENIEX_ERROR_COMMON_UNKNOWN,
     }
 }
 

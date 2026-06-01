@@ -146,6 +146,90 @@ jobject build_model_paths(JNIEnv* env, const geniex_ModelPaths& paths) {
     return obj;
 }
 
+// Build a com.geniex.sdk.bean.ModelDetail from a geniex_ModelDetail.
+jobject build_model_detail(JNIEnv* env, const geniex_ModelDetail& d) {
+    jclass cls = env->FindClass("com/geniex/sdk/bean/ModelDetail");
+    if (!cls) return nullptr;
+    jclass    modelTypeCls = env->FindClass("com/geniex/sdk/bean/ModelType");
+    jmethodID fromValueMid = env->GetStaticMethodID(modelTypeCls, "fromValue", "(I)Lcom/geniex/sdk/bean/ModelType;");
+    jmethodID ctor         = env->GetMethodID(cls,
+        "<init>",
+        "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
+                "Lcom/geniex/sdk/bean/ModelType;J[Ljava/lang/String;)V");
+    if (!ctor) {
+        env->DeleteLocalRef(cls);
+        env->DeleteLocalRef(modelTypeCls);
+        return nullptr;
+    }
+    auto    maybe      = [&](const char* s) -> jstring { return env->NewStringUTF(s ? s : ""); };
+    jstring jName      = maybe(d.name);
+    jstring jModelName = maybe(d.model_name);
+    jstring jPluginId  = maybe(d.plugin_id);
+    jobject jModelType = env->CallStaticObjectMethod(modelTypeCls, fromValueMid, static_cast<jint>(d.model_type));
+
+    jclass       stringCls   = env->FindClass("java/lang/String");
+    jobjectArray jPrecisions = env->NewObjectArray(d.precision_count, stringCls, nullptr);
+    for (int32_t i = 0; i < d.precision_count; ++i) {
+        jstring p = env->NewStringUTF(d.precisions[i] ? d.precisions[i] : "");
+        env->SetObjectArrayElement(jPrecisions, i, p);
+        env->DeleteLocalRef(p);
+    }
+
+    jobject obj = env->NewObject(
+        cls, ctor, jName, jModelName, jPluginId, jModelType, static_cast<jlong>(d.total_size), jPrecisions);
+
+    env->DeleteLocalRef(jName);
+    env->DeleteLocalRef(jModelName);
+    env->DeleteLocalRef(jPluginId);
+    if (jModelType) env->DeleteLocalRef(jModelType);
+    env->DeleteLocalRef(jPrecisions);
+    env->DeleteLocalRef(stringCls);
+    env->DeleteLocalRef(modelTypeCls);
+    env->DeleteLocalRef(cls);
+    return obj;
+}
+
+// Build a com.geniex.sdk.bean.ModelQuery from a geniex_ModelQueryOutput.
+jobject build_model_query(JNIEnv* env, const geniex_ModelQueryOutput& out) {
+    jclass       candCls     = env->FindClass("com/geniex/sdk/bean/QuantCandidate");
+    jmethodID    candCtor    = env->GetMethodID(candCls, "<init>", "(Ljava/lang/String;JZ)V");
+    jobjectArray jCandidates = env->NewObjectArray(out.candidate_count, candCls, nullptr);
+    for (int32_t i = 0; i < out.candidate_count; ++i) {
+        jstring jQuant = env->NewStringUTF(out.candidates[i].quant ? out.candidates[i].quant : "");
+        jobject item   = env->NewObject(candCls,
+            candCtor,
+            jQuant,
+            static_cast<jlong>(out.candidates[i].size),
+            static_cast<jboolean>(out.candidates[i].is_default));
+        env->SetObjectArrayElement(jCandidates, i, item);
+        env->DeleteLocalRef(item);
+        env->DeleteLocalRef(jQuant);
+    }
+
+    jclass    cls          = env->FindClass("com/geniex/sdk/bean/ModelQuery");
+    jclass    modelTypeCls = env->FindClass("com/geniex/sdk/bean/ModelType");
+    jmethodID fromValueMid = env->GetStaticMethodID(modelTypeCls, "fromValue", "(I)Lcom/geniex/sdk/bean/ModelType;");
+    jmethodID ctor         = env->GetMethodID(cls,
+        "<init>",
+        "(Ljava/lang/String;Ljava/lang/String;Lcom/geniex/sdk/bean/ModelType;"
+                "[Lcom/geniex/sdk/bean/QuantCandidate;)V");
+
+    jstring jModelName = env->NewStringUTF(out.model_name ? out.model_name : "");
+    jstring jPluginId  = env->NewStringUTF(out.plugin_id ? out.plugin_id : "");
+    jobject jModelType = env->CallStaticObjectMethod(modelTypeCls, fromValueMid, static_cast<jint>(out.model_type));
+
+    jobject obj = env->NewObject(cls, ctor, jModelName, jPluginId, jModelType, jCandidates);
+
+    env->DeleteLocalRef(jModelName);
+    env->DeleteLocalRef(jPluginId);
+    if (jModelType) env->DeleteLocalRef(jModelType);
+    env->DeleteLocalRef(jCandidates);
+    env->DeleteLocalRef(candCls);
+    env->DeleteLocalRef(modelTypeCls);
+    env->DeleteLocalRef(cls);
+    return obj;
+}
+
 }  // namespace
 
 extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_ModelManager_init(
@@ -300,6 +384,80 @@ extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_ModelManager_getType(
     int32_t          rc = geniex_model_get_type(name.c_str(), &t);
     if (rc != GENIEX_SUCCESS) return rc;
     return static_cast<jint>(t);
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_ModelManager_setType(
+    JNIEnv* env, jobject /*thiz*/, jstring jModelName, jint jModelType) {
+    std::string name = jstring2str(env, jModelName);
+    if (name.empty()) return -1;
+    return geniex_model_set_type(name.c_str(), static_cast<geniex_ModelType>(jModelType));
+}
+
+extern "C" JNIEXPORT jobjectArray JNICALL Java_com_geniex_sdk_jni_ModelManager_listDetailed(
+    JNIEnv* env, jobject /*thiz*/) {
+    jclass detailCls = env->FindClass("com/geniex/sdk/bean/ModelDetail");
+
+    geniex_ModelListDetailedOutput out{};
+    int32_t                        rc = geniex_model_list_detailed(&out);
+    if (rc != GENIEX_SUCCESS) {
+        LOGe("[ModelManager JNI] listDetailed() failed rc=%d", rc);
+        jobjectArray empty = env->NewObjectArray(0, detailCls, nullptr);
+        env->DeleteLocalRef(detailCls);
+        return empty;
+    }
+
+    jobjectArray arr = env->NewObjectArray(out.count, detailCls, nullptr);
+    for (int32_t i = 0; i < out.count; ++i) {
+        jobject item = build_model_detail(env, out.models[i]);
+        env->SetObjectArrayElement(arr, i, item);
+        if (item) env->DeleteLocalRef(item);
+    }
+    env->DeleteLocalRef(detailCls);
+    geniex_model_list_detailed_free(&out);
+    return arr;
+}
+
+extern "C" JNIEXPORT jobject JNICALL Java_com_geniex_sdk_jni_ModelManager_query(
+    JNIEnv* env, jobject /*thiz*/, jobject inputObj) {
+    if (!inputObj) {
+        throw_runtime_exception(env, "ModelPullInput is null");
+        return nullptr;
+    }
+
+    jclass cls = env->GetObjectClass(inputObj);
+
+    std::string modelName   = read_opt_string(env, cls, inputObj, "model_name");
+    std::string localPath   = read_opt_string(env, cls, inputObj, "local_path");
+    std::string hfToken     = read_opt_string(env, cls, inputObj, "hf_token");
+    std::string chipset     = read_opt_string(env, cls, inputObj, "chipset");
+    std::string displayName = read_opt_string(env, cls, inputObj, "display_name");
+    int         hubValue    = read_hub_source_value(env, cls, inputObj);
+    env->DeleteLocalRef(cls);
+
+    if (modelName.empty()) {
+        throw_runtime_exception(env, "ModelPullInput.model_name is empty");
+        return nullptr;
+    }
+
+    geniex_ModelQueryInput in{};
+    in.struct_size  = sizeof(geniex_ModelQueryInput);
+    in.model_name   = modelName.c_str();
+    in.hub          = static_cast<geniex_HubSource>(hubValue);
+    in.local_path   = localPath.empty() ? nullptr : localPath.c_str();
+    in.hf_token     = hfToken.empty() ? nullptr : hfToken.c_str();
+    in.chipset      = chipset.empty() ? nullptr : chipset.c_str();
+    in.display_name = displayName.empty() ? nullptr : displayName.c_str();
+
+    geniex_ModelQueryOutput out{};
+    int32_t                 rc = geniex_model_query(&in, &out);
+    if (rc != GENIEX_SUCCESS) {
+        LOGe("[ModelManager JNI] query(%s) failed rc=%d", modelName.c_str(), rc);
+        return nullptr;
+    }
+
+    jobject obj = build_model_query(env, out);
+    geniex_model_query_free(&out);
+    return obj;
 }
 
 extern "C" JNIEXPORT jstring JNICALL Java_com_geniex_sdk_jni_ModelManager_resolveAlias(

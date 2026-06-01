@@ -113,8 +113,8 @@ mod tests {
 
     #[test]
     fn pick_default_quant_uses_priority() {
-        assert_eq!(pick_default_quant(&["Q4_0", "Q4_K_M", "Q8_0"]), "Q8_0");
-        assert_eq!(pick_default_quant(&["Q4_0", "Q4_K_M"]), "Q4_K_M");
+        assert_eq!(pick_default_quant(&["Q4_0", "Q4_K_M", "Q8_0"]), "Q4_0");
+        assert_eq!(pick_default_quant(&["Q4_K_M", "Q8_0"]), "Q4_K_M");
     }
 
     #[test]
@@ -160,10 +160,10 @@ mod tests {
     fn resolve_paths_no_quant_picks_priority() {
         let m = manifest_with(&[("Q4_0", true), ("Q4_K_M", true), ("Q8_0", true)]);
         let (q, paths) = resolve_model_paths(&m, &PathBuf::from("/cache"), None).unwrap();
-        assert_eq!(q, "Q8_0");
+        assert_eq!(q, "Q4_0");
         assert_eq!(
             paths.model_path,
-            PathBuf::from("/cache").join("model-Q8_0.gguf")
+            PathBuf::from("/cache").join("model-Q4_0.gguf")
         );
     }
 
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn resolve_paths_no_quant_skips_undownloaded_priority_member() {
-        let m = manifest_with(&[("Q8_0", false), ("Q4_K_M", true), ("Q4_0", true)]);
+        let m = manifest_with(&[("Q4_0", false), ("Q4_K_M", true), ("Q8_0", true)]);
         let (q, _) = resolve_model_paths(&m, &PathBuf::from("/cache"), None).unwrap();
         assert_eq!(q, "Q4_K_M");
     }

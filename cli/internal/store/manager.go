@@ -19,14 +19,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/gofrs/flock"
 
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/config"
-	"github.com/qcom-it-nexa-ai/geniex/cli/internal/model_hub"
-	"github.com/qcom-it-nexa-ai/geniex/cli/internal/types"
 )
 
 type Store struct {
@@ -73,8 +70,6 @@ func (s *Store) init() {
 			os.Exit(1)
 		}
 	}
-
-	s.cleanCorruptedDirectories()
 }
 
 func (s *Store) Close() error {
@@ -88,45 +83,4 @@ func (s *Store) Close() error {
 	})
 
 	return nil
-}
-
-func (s *Store) cleanCorruptedDirectories() {
-	models, err := s.scanModelDir()
-	if err != nil {
-		slog.Error("Failed to scan model directory", "err", err)
-		return
-	}
-
-	for _, models := range models {
-		slog.Info("Checking model directory", "name", models)
-		if err := s.LockModel(models); err != nil {
-			slog.Warn("Skipping cleanup of directory", "name", models, "err", err)
-			continue
-		}
-		if s.isCorruptedModelDirectory(models) {
-			slog.Info("Cleaning corrupted model directory", "name", models)
-			if err := os.RemoveAll(s.ModelfilePath(models, "")); err != nil {
-				slog.Error("Failed to remove corrupted directory", "name", models, "err", err)
-			}
-		}
-		s.UnlockModel(models)
-	}
-}
-
-func (s *Store) isCorruptedModelDirectory(name string) bool {
-	manifestPath := s.ModelfilePath(name, types.ManifestFileName)
-	if _, err := os.Stat(manifestPath); err == nil {
-		return false
-	}
-	dir := s.ModelfilePath(name, "")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return true
-	}
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), model_hub.ProgressSuffix) {
-			return false
-		}
-	}
-	return true
 }

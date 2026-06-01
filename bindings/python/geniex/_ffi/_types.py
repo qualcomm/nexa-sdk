@@ -347,6 +347,25 @@ class geniex_ModelListOutput(Structure):
     ]
 
 
+class geniex_ModelDetail(Structure):
+    _fields_ = [
+        ('name', c_char_p),
+        ('model_name', c_char_p),
+        ('plugin_id', c_char_p),
+        ('model_type', c_int32),
+        ('total_size', c_int64),
+        ('precisions', POINTER(c_char_p)),
+        ('precision_count', c_int32),
+    ]
+
+
+class geniex_ModelListDetailedOutput(Structure):
+    _fields_ = [
+        ('models', POINTER(geniex_ModelDetail)),
+        ('count', c_int32),
+    ]
+
+
 class geniex_FileProgress(Structure):
     _fields_ = [
         ('file_name', c_char_p),
@@ -376,4 +395,35 @@ class geniex_ModelPullInput(Structure):
         ('display_name', c_char_p),
         ('on_progress', geniex_download_progress_cb),
         ('user_data', c_void_p),
+    ]
+
+
+class geniex_ModelQueryInput(Structure):
+    _fields_ = [
+        # ABI version gate; see geniex_ModelPullInput.struct_size.
+        ('struct_size', c_uint32),
+        ('model_name', c_char_p),
+        ('hub', c_int32),
+        ('local_path', c_char_p),
+        ('hf_token', c_char_p),
+        ('chipset', c_char_p),
+        ('display_name', c_char_p),
+    ]
+
+
+class geniex_QuantCandidate(Structure):
+    _fields_ = [
+        ('quant', c_char_p),
+        ('size', c_int64),
+        ('is_default', c_bool),
+    ]
+
+
+class geniex_ModelQueryOutput(Structure):
+    _fields_ = [
+        ('model_name', c_char_p),
+        ('plugin_id', c_char_p),
+        ('model_type', c_int32),
+        ('candidates', POINTER(geniex_QuantCandidate)),
+        ('candidate_count', c_int32),
     ]

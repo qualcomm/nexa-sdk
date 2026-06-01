@@ -12,7 +12,7 @@ pub enum GenieXModelType {
     Vlm = 1,
 }
 
-fn to_ffi_type(t: ModelType) -> GenieXModelType {
+pub(crate) fn to_ffi_type(t: ModelType) -> GenieXModelType {
     match t {
         ModelType::Llm => GenieXModelType::Llm,
         ModelType::Vlm => GenieXModelType::Vlm,
@@ -241,4 +241,147 @@ pub extern "C" fn geniex_model_get_type(
             Err(e) => report(&e),
         }
     })
+}
+
+/* ---- geniex_model_set_type ---- */
+
+#[no_mangle]
+pub extern "C" fn geniex_model_set_type(
+    model_name: *const c_char,
+    model_type: GenieXModelType,
+) -> i32 {
+    ffi_guard(|| {
+        let name = match unsafe { cstr_to_str(model_name) } {
+            Some(s) => s,
+            None => return GENIEX_ERROR_COMMON_INVALID_INPUT,
+        };
+        let store = match get_store() {
+            Ok(s) => s,
+            Err(c) => return c,
+        };
+        let t = match model_type {
+            GenieXModelType::Llm => ModelType::Llm,
+            GenieXModelType::Vlm => ModelType::Vlm,
+        };
+        match store.set_model_type(name, t) {
+            Ok(()) => GENIEX_SUCCESS,
+            Err(e) => report(&e),
+        }
+    })
+}
+
+/* ---- geniex_model_list_detailed ---- */
+
+#[repr(C)]
+pub struct GenieXModelDetail {
+    pub name: *mut c_char,
+    pub model_name: *mut c_char,
+    pub plugin_id: *mut c_char,
+    pub model_type: GenieXModelType,
+    pub total_size: i64,
+    /// Heap array of downloaded quant names; `precision_count` long.
+    pub precisions: *mut *mut c_char,
+    pub precision_count: i32,
+}
+
+#[repr(C)]
+pub struct GenieXModelListDetailedOutput {
+    pub models: *mut GenieXModelDetail,
+    pub count: i32,
+}
+
+#[no_mangle]
+pub extern "C" fn geniex_model_list_detailed(output: *mut GenieXModelListDetailedOutput) -> i32 {
+    ffi_guard(|| {
+        if output.is_null() {
+            return GENIEX_ERROR_COMMON_INVALID_INPUT;
+        }
+        let store = match get_store() {
+            Ok(s) => s,
+            Err(c) => return c,
+        };
+        match store.list() {
+            Ok(manifests) => {
+                let mut details: Vec<GenieXModelDetail> = manifests
+                    .iter()
+                    .map(|m| {
+                        let mut precs: Vec<*mut c_char> = m
+                            .model_file
+                            .iter()
+                            .filter(|(_, fi)| fi.downloaded)
+                            .map(|(q, _)| str_to_cptr(q))
+                            .collect();
+                        precs.shrink_to_fit();
+                        let precision_count = precs.len() as i32;
+                        let precisions = if precs.is_empty() {
+                            std::ptr::null_mut()
+                        } else {
+                            precs.as_mut_ptr()
+                        };
+                        std::mem::forget(precs);
+                        GenieXModelDetail {
+                            name: str_to_cptr(&m.name),
+                            model_name: str_to_cptr(&m.model_name),
+                            plugin_id: str_to_cptr(&m.plugin_id),
+                            model_type: to_ffi_type(m.model_type.clone()),
+                            total_size: m.total_size(),
+                            precisions,
+                            precision_count,
+                        }
+                    })
+                    .collect();
+                details.shrink_to_fit();
+                let count = details.len() as i32;
+                let models = if details.is_empty() {
+                    std::ptr::null_mut()
+                } else {
+                    details.as_mut_ptr()
+                };
+                std::mem::forget(details);
+                unsafe {
+                    (*output).models = models;
+                    (*output).count = count;
+                }
+                GENIEX_SUCCESS
+            }
+            Err(e) => report(&e),
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn geniex_model_list_detailed_free(
+    output: *mut GenieXModelListDetailedOutput,
+) {
+    if output.is_null() {
+        return;
+    }
+    let o = &mut *output;
+    if !o.models.is_null() {
+        let slice = std::slice::from_raw_parts_mut(o.models, o.count as usize);
+        for d in slice.iter_mut() {
+            free_cptr(d.name);
+            free_cptr(d.model_name);
+            free_cptr(d.plugin_id);
+            if !d.precisions.is_null() {
+                let precs =
+                    std::slice::from_raw_parts_mut(d.precisions, d.precision_count as usize);
+                for p in precs.iter_mut() {
+                    free_cptr(*p);
+                }
+                drop(Vec::from_raw_parts(
+                    d.precisions,
+                    d.precision_count as usize,
+                    d.precision_count as usize,
+                ));
+            }
+        }
+        drop(Vec::from_raw_parts(
+            o.models,
+            o.count as usize,
+            o.count as usize,
+        ));
+    }
+    o.models = std::ptr::null_mut();
+    o.count = 0;
 }

@@ -162,7 +162,7 @@ pub fn pull_blocking(
     handle.block_on(pull(store, req))
 }
 
-fn build_source(
+pub(crate) fn build_source(
     req: &PullRequest,
     store: &Store,
     transport: Arc<dyn HttpTransport>,

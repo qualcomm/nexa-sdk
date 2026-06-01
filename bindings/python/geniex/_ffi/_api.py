@@ -33,9 +33,12 @@ from ._types import (
     geniex_LlmCreateInput,
     geniex_LlmGenerateInput,
     geniex_LlmGenerateOutput,
+    geniex_ModelListDetailedOutput,
     geniex_ModelListOutput,
     geniex_ModelPaths,
     geniex_ModelPullInput,
+    geniex_ModelQueryInput,
+    geniex_ModelQueryOutput,
     geniex_ResolveDeviceInput,
     geniex_ResolveDeviceOutput,
     geniex_VlmApplyChatTemplateInput,
@@ -263,6 +266,24 @@ def _bind_all() -> None:
 
     lib.geniex_model_get_type.argtypes = [c_char_p, POINTER(c_int32)]
     lib.geniex_model_get_type.restype = c_int32
+
+    lib.geniex_model_set_type.argtypes = [c_char_p, c_int32]
+    lib.geniex_model_set_type.restype = c_int32
+
+    lib.geniex_model_list_detailed.argtypes = [POINTER(geniex_ModelListDetailedOutput)]
+    lib.geniex_model_list_detailed.restype = c_int32
+
+    lib.geniex_model_list_detailed_free.argtypes = [POINTER(geniex_ModelListDetailedOutput)]
+    lib.geniex_model_list_detailed_free.restype = None
+
+    lib.geniex_model_query.argtypes = [
+        POINTER(geniex_ModelQueryInput),
+        POINTER(geniex_ModelQueryOutput),
+    ]
+    lib.geniex_model_query.restype = c_int32
+
+    lib.geniex_model_query_free.argtypes = [POINTER(geniex_ModelQueryOutput)]
+    lib.geniex_model_query_free.restype = None
 
     lib.geniex_model_resolve_alias.argtypes = [c_char_p, POINTER(c_char_p)]
     lib.geniex_model_resolve_alias.restype = c_int32

@@ -1,7 +1,9 @@
 package com.geniex.sdk.jni
 
+import com.geniex.sdk.bean.ModelDetail
 import com.geniex.sdk.bean.ModelPaths
 import com.geniex.sdk.bean.ModelPullInput
+import com.geniex.sdk.bean.ModelQuery
 import com.geniex.sdk.callback.DownloadProgressCallback
 
 /**
@@ -29,6 +31,15 @@ internal class ModelManager {
 
     external fun list(): Array<String>
 
+    /** Cached models with full metadata (size, plugin, type, precisions). */
+    external fun listDetailed(): Array<ModelDetail>
+
+    /**
+     * Resolve a model's remote candidate quantizations without downloading.
+     * @return `null` if the model cannot be planned.
+     */
+    external fun query(input: ModelPullInput): ModelQuery?
+
     /** @return `null` if the model is not cached or paths cannot be resolved. */
     external fun getPaths(modelName: String): ModelPaths?
 
@@ -41,6 +52,13 @@ internal class ModelManager {
      *   negative FFI error code.
      */
     external fun getType(modelName: String): Int
+
+    /**
+     * Override the stored model type.
+     * @param modelType `geniex_ModelType` ordinal (0 = LLM, 1 = VLM).
+     * @return 0 on success, the FFI error code otherwise.
+     */
+    external fun setType(modelName: String, modelType: Int): Int
 
     external fun resolveAlias(alias: String): String?
 }

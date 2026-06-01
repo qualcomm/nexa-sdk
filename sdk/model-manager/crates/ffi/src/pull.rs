@@ -67,6 +67,66 @@ pub struct GenieXModelPullInput {
 /// A caller that passes a size not in this list is rejected up front.
 const ACCEPTED_PULL_INPUT_SIZES: &[u32] = &[std::mem::size_of::<GenieXModelPullInput>() as u32];
 
+/// Route a hub selector + already-extracted parameters to a [`PullIntent`].
+/// Shared by `geniex_model_pull` and `geniex_model_query` so their hub
+/// resolution can't drift. `model_name` must already be canonicalised.
+/// Returns a negative error code when a required input is missing.
+pub(crate) fn build_pull_intent(
+    hub: &GenieXHubSource,
+    model_name: &str,
+    hf_token: Option<String>,
+    chipset: String,
+    explicit_display_name: Option<String>,
+    local_path: Option<PathBuf>,
+) -> Result<PullIntent, i32> {
+    let intent = match hub {
+        GenieXHubSource::Auto => {
+            // "qualcomm/*" and "qai-hub-models/*" names, plus bare names
+            // (which canonicalize_model_name rewrote to "qualcomm/<name>"),
+            // route to AI Hub without the caller setting hub=AIHUB. The
+            // derived display_name is the repo after the slash; callers may
+            // still override via explicit_display_name.
+            if let Some(repo) = aihub_display_name_from_repo(model_name) {
+                PullIntent::AiHub {
+                    display_name: explicit_display_name.unwrap_or_else(|| repo.to_string()),
+                    chipset,
+                }
+            } else {
+                PullIntent::HuggingFace {
+                    repo: model_name.to_string(),
+                    token: hf_token,
+                }
+            }
+        }
+        GenieXHubSource::HuggingFace => PullIntent::HuggingFace {
+            repo: model_name.to_string(),
+            token: hf_token,
+        },
+        GenieXHubSource::LocalFs => {
+            let path = local_path.ok_or(GENIEX_ERROR_COMMON_INVALID_INPUT)?;
+            PullIntent::LocalFs { source_dir: path }
+        }
+        GenieXHubSource::AiHub => {
+            // chipset NULL or empty → SDK auto-detects (currently
+            // Windows-on-Snapdragon only). display_name: explicit value
+            // wins; otherwise derive from any AI Hub org repo.
+            let display_name = explicit_display_name
+                .or_else(|| aihub_display_name_from_repo(model_name).map(str::to_string))
+                .ok_or(GENIEX_ERROR_COMMON_INVALID_INPUT)?;
+            PullIntent::AiHub {
+                display_name,
+                chipset,
+            }
+        }
+        // ModelScope / Volces remain placeholders — fall back to HuggingFace.
+        _ => PullIntent::HuggingFace {
+            repo: model_name.to_string(),
+            token: hf_token,
+        },
+    };
+    Ok(intent)
+}
+
 #[no_mangle]
 pub extern "C" fn geniex_model_pull(input: *const GenieXModelPullInput) -> i32 {
     ffi_guard(|| {
@@ -113,60 +173,17 @@ pub extern "C" fn geniex_model_pull(input: *const GenieXModelPullInput) -> i32 {
             .map(str::to_string)
             .filter(|s| !s.is_empty());
 
-        let intent = match inp.hub {
-            GenieXHubSource::Auto => {
-                // "qualcomm/*" and "qai-hub-models/*" names, plus bare
-                // names (which canonicalize_model_name above rewrote to
-                // "qualcomm/<name>"), route to AI Hub without the caller
-                // setting hub=AIHUB. The derived display_name is the repo
-                // after the slash; callers may still override via
-                // inp.display_name.
-                if let Some(repo) = aihub_display_name_from_repo(&model_name) {
-                    PullIntent::AiHub {
-                        display_name: explicit_display_name.unwrap_or_else(|| repo.to_string()),
-                        chipset,
-                    }
-                } else {
-                    PullIntent::HuggingFace {
-                        repo: model_name.clone(),
-                        token: hf_token,
-                    }
-                }
-            }
-            GenieXHubSource::HuggingFace => PullIntent::HuggingFace {
-                repo: model_name.clone(),
-                token: hf_token,
-            },
-            GenieXHubSource::LocalFs => {
-                let path = match unsafe { cstr_to_str(inp.local_path) } {
-                    Some(s) => PathBuf::from(s),
-                    None => return GENIEX_ERROR_COMMON_INVALID_INPUT,
-                };
-                PullIntent::LocalFs { source_dir: path }
-            }
-            GenieXHubSource::AiHub => {
-                // chipset NULL or empty → SDK auto-detects (currently
-                // Windows-on-Snapdragon only). Non-empty: caller override.
-                // display_name mirrors the Auto branch: explicit value
-                // wins; otherwise derive from any AI Hub org repo
-                // ("qualcomm/*" or "qai-hub-models/*"). Only reject when
-                // neither source yields a name.
-                let display_name = explicit_display_name
-                    .or_else(|| aihub_display_name_from_repo(&model_name).map(str::to_string));
-                let display_name = match display_name {
-                    Some(s) => s,
-                    None => return GENIEX_ERROR_COMMON_INVALID_INPUT,
-                };
-                PullIntent::AiHub {
-                    display_name,
-                    chipset,
-                }
-            }
-            // ModelScope / Volces remain placeholders — fall back to HuggingFace.
-            _ => PullIntent::HuggingFace {
-                repo: model_name.clone(),
-                token: hf_token,
-            },
+        let local_path = unsafe { cstr_to_str(inp.local_path) }.map(PathBuf::from);
+        let intent = match build_pull_intent(
+            &inp.hub,
+            &model_name,
+            hf_token,
+            chipset,
+            explicit_display_name,
+            local_path,
+        ) {
+            Ok(i) => i,
+            Err(c) => return c,
         };
 
         // Build a Rust closure that re-marshals Rust FileProgress → C array

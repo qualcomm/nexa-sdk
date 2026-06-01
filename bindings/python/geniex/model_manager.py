@@ -30,23 +30,32 @@ from ._ffi._types import (
     GENIEX_MODEL_TYPE_LLM,
     GENIEX_MODEL_TYPE_VLM,
     geniex_download_progress_cb,
+    geniex_ModelListDetailedOutput,
     geniex_ModelListOutput,
     geniex_ModelPaths,
     geniex_ModelPullInput,
+    geniex_ModelQueryInput,
+    geniex_ModelQueryOutput,
 )
 
 __all__ = [
     'ModelPaths',
+    'ModelDetail',
+    'QuantCandidate',
+    'ModelQuery',
     'FileProgress',
     'ProgressCallback',
     'init',
     'deinit',
     'pull',
     'list_models',
+    'list_detailed',
+    'query',
     'remove',
     'clean',
     'get_paths',
     'get_type',
+    'set_type',
     'resolve_alias',
     'ensure_cached',
 ]
@@ -74,7 +83,46 @@ class ModelPaths:
     device_id: str | None = None
 
 
+@dataclass(frozen=True)
+class ModelDetail:
+    """Full metadata for one cached model."""
+
+    name: str
+    model_name: str
+    plugin_id: str
+    model_type: str  # "llm" or "vlm"
+    total_size: int
+    precisions: list[str]
+
+
+@dataclass(frozen=True)
+class QuantCandidate:
+    """One quantization advertised by a hub for a model."""
+
+    quant: str
+    size: int
+    is_default: bool
+
+
+@dataclass(frozen=True)
+class ModelQuery:
+    """Result of a plan-only :func:`query`."""
+
+    model_name: str
+    plugin_id: str
+    model_type: str  # "llm" or "vlm"
+    candidates: list[QuantCandidate]
+
+
 ProgressCallback = Callable[[list[FileProgress]], bool]
+
+
+def _type_str(value: int) -> str:
+    if value == GENIEX_MODEL_TYPE_LLM:
+        return 'llm'
+    if value == GENIEX_MODEL_TYPE_VLM:
+        return 'vlm'
+    raise ValueError(f'Unknown model type: {value}')
 
 
 _HUB_MAP = {
@@ -230,6 +278,75 @@ def list_models() -> list[str]:
         lib.geniex_model_list_free(byref(out))
 
 
+def list_detailed() -> list[ModelDetail]:
+    """Return cached models with full metadata (size, plugin, type, precisions)."""
+    _ensure_init()
+    lib = load_library()
+    out = geniex_ModelListDetailedOutput()
+    _check(lib.geniex_model_list_detailed(byref(out)))
+    try:
+        models = []
+        for i in range(out.count):
+            d = out.models[i]
+            models.append(
+                ModelDetail(
+                    name=d.name.decode() if d.name else '',
+                    model_name=d.model_name.decode() if d.model_name else '',
+                    plugin_id=d.plugin_id.decode() if d.plugin_id else '',
+                    model_type=_type_str(d.model_type),
+                    total_size=d.total_size,
+                    precisions=[d.precisions[j].decode() for j in range(d.precision_count)],
+                )
+            )
+        return models
+    finally:
+        lib.geniex_model_list_detailed_free(byref(out))
+
+
+def query(
+    model_name: str,
+    *,
+    hub: str | int = 'auto',
+    local_path: str | None = None,
+    hf_token: str | None = None,
+    chipset: str | None = None,
+    display_name: str | None = None,
+) -> ModelQuery:
+    """Resolve a model's remote candidate quantizations without downloading."""
+    _ensure_init()
+    lib = load_library()
+
+    name, _ = _maybe_resolve_alias(model_name, None)
+    inp = geniex_ModelQueryInput(
+        struct_size=sizeof(geniex_ModelQueryInput),
+        model_name=name.encode(),
+        hub=_resolve_hub(hub),
+        local_path=local_path.encode() if local_path else None,
+        hf_token=hf_token.encode() if hf_token else None,
+        chipset=chipset.encode() if chipset else None,
+        display_name=display_name.encode() if display_name else None,
+    )
+    out = geniex_ModelQueryOutput()
+    _check(lib.geniex_model_query(byref(inp), byref(out)))
+    try:
+        candidates = [
+            QuantCandidate(
+                quant=out.candidates[i].quant.decode() if out.candidates[i].quant else '',
+                size=out.candidates[i].size,
+                is_default=bool(out.candidates[i].is_default),
+            )
+            for i in range(out.candidate_count)
+        ]
+        return ModelQuery(
+            model_name=out.model_name.decode() if out.model_name else '',
+            plugin_id=out.plugin_id.decode() if out.plugin_id else '',
+            model_type=_type_str(out.model_type),
+            candidates=candidates,
+        )
+    finally:
+        lib.geniex_model_query_free(byref(out))
+
+
 def remove(model_name: str) -> None:
     """Delete ``model_name`` from the local cache."""
     _ensure_init()
@@ -274,11 +391,21 @@ def get_type(model_name: str) -> str:
     lib = load_library()
     t = c_int32(0)
     _check(lib.geniex_model_get_type(model_name.encode(), byref(t)))
-    if t.value == GENIEX_MODEL_TYPE_LLM:
-        return 'llm'
-    if t.value == GENIEX_MODEL_TYPE_VLM:
-        return 'vlm'
-    raise ValueError(f'Unknown model type: {t.value}')
+    return _type_str(t.value)
+
+
+def set_type(model_name: str, model_type: str) -> None:
+    """Override the stored model type (``"llm"`` or ``"vlm"``) of a cached model."""
+    _ensure_init()
+    lib = load_library()
+    key = model_type.lower()
+    if key == 'llm':
+        value = GENIEX_MODEL_TYPE_LLM
+    elif key == 'vlm':
+        value = GENIEX_MODEL_TYPE_VLM
+    else:
+        raise ValueError(f"Unknown model type: {model_type!r} (expected 'llm' or 'vlm')")
+    _check(lib.geniex_model_set_type(model_name.encode(), value))
 
 
 def resolve_alias(alias: str) -> str:

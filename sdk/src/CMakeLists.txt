@@ -35,6 +35,11 @@ if(GENIEX_MODEL_MANAGER)
             geniex_model_get_paths
             geniex_model_paths_free
             geniex_model_get_type
+            geniex_model_set_type
+            geniex_model_list_detailed
+            geniex_model_list_detailed_free
+            geniex_model_query
+            geniex_model_query_free
             geniex_model_resolve_alias)
         target_link_libraries(geniex PRIVATE "${RUST_MODEL_LIB}")
         foreach(_sym ${GENIEX_MODEL_FFI_SYMBOLS})
