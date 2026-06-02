@@ -2,6 +2,7 @@
 venv/
 .vscode
 .ccache
+.agents/
 .cache/
 
 # Claude Code: track shared config, ignore per-user overrides.
