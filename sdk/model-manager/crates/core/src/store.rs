@@ -210,7 +210,8 @@ impl Store {
     }
 
     pub fn get_model_type(&self, name: &str) -> Result<ModelType> {
-        Ok(self.get_manifest(name)?.model_type)
+        let name = canonicalize_model_name(name);
+        Ok(self.get_manifest(&name)?.model_type)
     }
 
     pub fn set_model_type(&self, name: &str, model_type: ModelType) -> Result<()> {

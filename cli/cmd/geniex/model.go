@@ -34,7 +34,6 @@ import (
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/model_hub/aihub"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/render"
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/store"
-	"github.com/qcom-it-nexa-ai/geniex/cli/internal/types"
 )
 
 var (
@@ -42,21 +41,6 @@ var (
 	localPath string
 	modelType string
 )
-
-// quantNA is the precision placeholder for non-quantized (e.g. QAIRT) models.
-const quantNA = "N/A"
-
-// splitNameQuant splits "name[:quant]" into (name, quant), upper-casing the
-// quant. Bare names and HuggingFace URL prefixes are normalized by the SDK
-// (canonicalize_model_name); this only handles the ':' split + quant case so
-// callers can pass name and quant to the FFI separately.
-func splitNameQuant(arg string) (string, string) {
-	name, quant, found := strings.Cut(arg, ":")
-	if !found || quant == "" {
-		return name, ""
-	}
-	return name, strings.ToUpper(quant)
-}
 
 // resolveHub maps the --model-hub flag to a HubSource, defaulting to Auto.
 func resolveHub() (geniex_sdk.HubSource, error) {
@@ -98,7 +82,7 @@ func pull() *cobra.Command {
 	pullCmd.Flags().StringVarP(&modelType, "model-type", "", "", "specify model type to use: [llm|vlm]")
 
 	pullCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		name, quant := splitNameQuant(args[0])
+		name, quant := geniex_sdk.SplitNameQuant(args[0])
 		return pullModel(cmd.Context(), name, quant)
 	}
 
@@ -139,7 +123,7 @@ func remove() *cobra.Command {
 
 		var errs []error
 		for _, arg := range args {
-			name, quant := splitNameQuant(arg)
+			name, quant := geniex_sdk.SplitNameQuant(arg)
 			key := name
 			if quant != "" {
 				key = name + ":" + quant
@@ -233,7 +217,7 @@ type listedModel struct {
 func downloadedPrecisions(m geniex_sdk.ModelDetail, hideQuantNA bool) []string {
 	quants := make([]string, 0, len(m.Precisions))
 	for _, q := range m.Precisions {
-		if hideQuantNA && q == quantNA {
+		if hideQuantNA && q == geniex_sdk.QuantNA {
 			continue
 		}
 		quants = append(quants, q)
@@ -316,67 +300,54 @@ func modelCmd() *cobra.Command {
 	return cmd
 }
 
+// modelTypeNames are the accepted --model-type / set-type values.
+var modelTypeNames = []string{
+	geniex_sdk.ModelTypeLLM.String(),
+	geniex_sdk.ModelTypeVLM.String(),
+}
+
 // setTypeCmd builds the `geniex model set-type` subcommand.
 func setTypeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "set-type <model-name> [llm|vlm]",
-		Short: "Override the model type for a cached model",
-		Long:  "Update the model type stored in a cached model's manifest.\n\nOmit the type argument to choose interactively.",
-		Args:  cobra.RangeArgs(1, 2),
-		ValidArgs: func() []string {
-			s := make([]string, len(types.AllModelTypes))
-			for i, t := range types.AllModelTypes {
-				s[i] = string(t)
-			}
-			return s
-		}(),
+		Use:       "set-type <model-name> [llm|vlm]",
+		Short:     "Override the model type for a cached model",
+		Long:      "Update the model type stored in a cached model's manifest.\n\nOmit the type argument to choose interactively.",
+		Args:      cobra.RangeArgs(1, 2),
+		ValidArgs: modelTypeNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name, _ := splitNameQuant(args[0])
+			name, _ := geniex_sdk.SplitNameQuant(args[0])
 
 			// Verify the model is present before prompting for a type.
 			if _, err := geniex_sdk.ModelGetType(name); err != nil {
 				return fmt.Errorf("model %q not found: %w", name, err)
 			}
 
-			var mt types.ModelType
+			var mt geniex_sdk.ModelType
 			if len(args) == 2 {
-				mt = types.ModelType(strings.ToLower(args[1]))
-				if !slices.Contains(types.AllModelTypes, mt) {
-					return fmt.Errorf("unknown model type %q (valid: %s)", args[1], joinModelTypes())
+				parsed, ok := geniex_sdk.ParseModelType(args[1])
+				if !ok {
+					return fmt.Errorf("unknown model type %q (valid: %s)", args[1], strings.Join(modelTypeNames, ", "))
 				}
+				mt = parsed
 			} else {
-				if err := huh.NewSelect[types.ModelType]().
+				var choice string
+				if err := huh.NewSelect[string]().
 					Title("Choose Model Type").
-					Options(huh.NewOptions(types.AllModelTypes...)...).
-					Value(&mt).
+					Options(huh.NewOptions(modelTypeNames...)...).
+					Value(&choice).
 					Run(); err != nil {
 					return err
 				}
+				mt, _ = geniex_sdk.ParseModelType(choice)
 			}
 
-			if err := geniex_sdk.ModelSetType(name, sdkModelType(mt)); err != nil {
+			if err := geniex_sdk.ModelSetType(name, mt); err != nil {
 				return fmt.Errorf("failed to update model type: %w", err)
 			}
 			fmt.Println(render.GetTheme().Success.Sprintf("✔  %s → %s", name, mt))
 			return nil
 		},
 	}
-}
-
-func joinModelTypes() string {
-	s := make([]string, len(types.AllModelTypes))
-	for i, t := range types.AllModelTypes {
-		s[i] = string(t)
-	}
-	return strings.Join(s, ", ")
-}
-
-// sdkModelType converts the CLI's string model type to the SDK enum.
-func sdkModelType(t types.ModelType) geniex_sdk.ModelType {
-	if t == types.ModelTypeVLM {
-		return geniex_sdk.ModelTypeVLM
-	}
-	return geniex_sdk.ModelTypeLLM
 }
 
 func pullModel(ctx context.Context, name string, quant string) error {
@@ -408,11 +379,11 @@ func pullModel(ctx context.Context, name string, quant string) error {
 	}
 
 	// Validate --model-type early so we fail before downloading anything.
-	var forcedType *types.ModelType
+	var forcedType *geniex_sdk.ModelType
 	if modelType != "" {
-		mt := types.ModelType(strings.ToLower(modelType))
-		if !slices.Contains(types.AllModelTypes, mt) {
-			return fmt.Errorf("unknown model type %q (valid: %s)", modelType, joinModelTypes())
+		mt, ok := geniex_sdk.ParseModelType(modelType)
+		if !ok {
+			return fmt.Errorf("unknown model type %q (valid: %s)", modelType, strings.Join(modelTypeNames, ", "))
 		}
 		forcedType = &mt
 	}
@@ -464,7 +435,7 @@ func pullModel(ctx context.Context, name string, quant string) error {
 
 	// Honor --model-type by overriding the auto-detected type post-pull.
 	if forcedType != nil {
-		if err := geniex_sdk.ModelSetType(name, sdkModelType(*forcedType)); err != nil {
+		if err := geniex_sdk.ModelSetType(name, *forcedType); err != nil {
 			return fmt.Errorf("failed to set model type: %w", err)
 		}
 	}

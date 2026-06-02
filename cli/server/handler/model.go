@@ -25,18 +25,6 @@ import (
 	geniex_sdk "github.com/qcom-it-nexa-ai/geniex/bindings/go"
 )
 
-const quantNA = "N/A"
-
-// splitNameQuant splits "name[:quant]" into (name, quant), upper-casing the
-// quant. The SDK normalizes bare names; this only handles the ':' split.
-func splitNameQuant(arg string) (string, string) {
-	name, quant, found := strings.Cut(arg, ":")
-	if !found || quant == "" {
-		return name, ""
-	}
-	return name, strings.ToUpper(quant)
-}
-
 func ListModels(c *gin.Context) {
 	models, err := geniex_sdk.ModelListDetailed()
 	if err != nil {
@@ -48,7 +36,7 @@ func ListModels(c *gin.Context) {
 	for _, m := range models {
 		for _, q := range m.Precisions {
 			id := m.Name
-			if q != quantNA {
+			if q != geniex_sdk.QuantNA {
 				id += ":" + q
 			}
 			res = append(res, openai.Model{
@@ -65,7 +53,7 @@ func ListModels(c *gin.Context) {
 }
 
 func RetrieveModel(c *gin.Context) {
-	name, quant := splitNameQuant(strings.TrimPrefix(c.Param("model"), "/"))
+	name, quant := geniex_sdk.SplitNameQuant(strings.TrimPrefix(c.Param("model"), "/"))
 
 	models, err := geniex_sdk.ModelListDetailed()
 	if err != nil {
@@ -94,7 +82,7 @@ func RetrieveModel(c *gin.Context) {
 	}
 
 	id := name
-	if quant != quantNA {
+	if quant != geniex_sdk.QuantNA {
 		id += ":" + quant
 	}
 	c.JSON(http.StatusOK, openai.Model{
