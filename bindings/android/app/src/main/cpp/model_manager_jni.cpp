@@ -43,6 +43,25 @@ int read_hub_source_value(JNIEnv* env, jclass cls, jobject obj) {
     return v;
 }
 
+// Pull the optional ModelType value out of a Kotlin instance (the `value`
+// field of the enum). Returns GENIEX_MODEL_TYPE_AUTO (-1) when the field is
+// null or missing.
+int read_model_type_value(JNIEnv* env, jclass cls, jobject obj) {
+    jfieldID typeFid = env->GetFieldID(cls, "model_type", "Lcom/geniex/sdk/bean/ModelType;");
+    if (!typeFid) {
+        env->ExceptionClear();
+        return GENIEX_MODEL_TYPE_AUTO;
+    }
+    jobject typeObj = env->GetObjectField(obj, typeFid);
+    if (!typeObj) return GENIEX_MODEL_TYPE_AUTO;
+    jclass    typeCls     = env->GetObjectClass(typeObj);
+    jmethodID getValueMid = env->GetMethodID(typeCls, "getValue", "()I");
+    int       v           = getValueMid ? env->CallIntMethod(typeObj, getValueMid) : GENIEX_MODEL_TYPE_AUTO;
+    env->DeleteLocalRef(typeCls);
+    env->DeleteLocalRef(typeObj);
+    return v;
+}
+
 // Context passed through `geniex_download_progress_cb.user_data`.
 struct ProgressCtx {
     JavaVM*           vm;
@@ -242,6 +261,13 @@ extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_ModelManager_deinit(JN
     return geniex_model_deinit();
 }
 
+extern "C" JNIEXPORT jstring JNICALL Java_com_geniex_sdk_jni_ModelManager_lastErrorMessage(
+    JNIEnv* env, jobject /*thiz*/) {
+    const char* msg = geniex_model_last_error_message();
+    if (!msg) return nullptr;
+    return env->NewStringUTF(msg);
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_ModelManager_pull(
     JNIEnv* env, jobject /*thiz*/, jobject inputObj, jobject callback) {
     if (!inputObj) {
@@ -258,6 +284,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_ModelManager_pull(
     std::string chipset     = read_opt_string(env, cls, inputObj, "chipset");
     std::string displayName = read_opt_string(env, cls, inputObj, "display_name");
     int         hubValue    = read_hub_source_value(env, cls, inputObj);
+    int         modelType   = read_model_type_value(env, cls, inputObj);
     env->DeleteLocalRef(cls);
 
     if (modelName.empty()) {
@@ -299,6 +326,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_ModelManager_pull(
     in.hf_token     = hfToken.empty() ? nullptr : hfToken.c_str();
     in.chipset      = chipset.empty() ? nullptr : chipset.c_str();
     in.display_name = displayName.empty() ? nullptr : displayName.c_str();
+    in.model_type   = modelType;
     if (callback) {
         in.on_progress = progress_trampoline;
         in.user_data   = &ctx;
@@ -323,25 +351,25 @@ extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_ModelManager_pull(
 }
 
 extern "C" JNIEXPORT jobjectArray JNICALL Java_com_geniex_sdk_jni_ModelManager_list(JNIEnv* env, jobject /*thiz*/) {
-    geniex_ModelListOutput out{};
-    int32_t                rc = geniex_model_list(&out);
+    jclass stringCls = env->FindClass("java/lang/String");
+
+    geniex_ModelListDetailedOutput out{};
+    int32_t                        rc = geniex_model_list_detailed(&out);
     if (rc != GENIEX_SUCCESS) {
         LOGe("[ModelManager JNI] list() failed rc=%d", rc);
-        jclass       stringCls = env->FindClass("java/lang/String");
-        jobjectArray empty     = env->NewObjectArray(0, stringCls, nullptr);
+        jobjectArray empty = env->NewObjectArray(0, stringCls, nullptr);
         env->DeleteLocalRef(stringCls);
         return empty;
     }
 
-    jclass       stringCls = env->FindClass("java/lang/String");
-    jobjectArray arr       = env->NewObjectArray(out.count, stringCls, nullptr);
+    jobjectArray arr = env->NewObjectArray(out.count, stringCls, nullptr);
     for (int32_t i = 0; i < out.count; ++i) {
-        jstring s = env->NewStringUTF(out.names[i] ? out.names[i] : "");
+        jstring s = env->NewStringUTF(out.models[i].name ? out.models[i].name : "");
         env->SetObjectArrayElement(arr, i, s);
         env->DeleteLocalRef(s);
     }
     env->DeleteLocalRef(stringCls);
-    geniex_model_list_free(&out);
+    geniex_model_list_detailed_free(&out);
     return arr;
 }
 

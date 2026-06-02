@@ -26,9 +26,8 @@ if(WIN32)
     set(GENIEX_MODEL_FFI_SYMBOLS
         geniex_model_init
         geniex_model_deinit
+        geniex_model_last_error_message
         geniex_model_pull
-        geniex_model_list
-        geniex_model_list_free
         geniex_model_remove
         geniex_model_clean
         geniex_model_get_paths

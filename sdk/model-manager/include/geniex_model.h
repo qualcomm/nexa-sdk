@@ -56,6 +56,21 @@ GENIEX_API int32_t geniex_model_init(geniex_Path data_dir);
  */
 GENIEX_API int32_t geniex_model_deinit(void);
 
+/**
+ * @brief Human-readable message for the most recent failure on the calling
+ *        thread.
+ *
+ * Every geniex_model_* function that returns a negative error code also
+ * records a detailed message (e.g. "quantization 'Q2_K' not found for model
+ * 'org/repo'") that the int code alone can't convey. The message is
+ * thread-local and overwritten by the next failing call on that thread.
+ *
+ * @return A NUL-terminated, library-owned string (do NOT free) valid until the
+ *         next geniex_model_* call on this thread, or NULL if no error has been
+ *         recorded yet.
+ */
+GENIEX_API const char* geniex_model_last_error_message(void);
+
 /* ============================================================
  *  Model type
  * ============================================================ */
@@ -101,21 +116,6 @@ GENIEX_API void geniex_model_paths_free(geniex_ModelPaths* paths);
 /* ============================================================
  *  Local cache management
  * ============================================================ */
-
-typedef struct {
-    char**  names; /**< Heap-allocated array of "org/repo" strings. */
-    int32_t count;
-} geniex_ModelListOutput;
-
-/**
- * @brief List all locally cached models.
- * @param output  Populated on success. Call geniex_model_list_free() when done.
- * @return GENIEX_SUCCESS, or a negative geniex_ErrorCode.
- */
-GENIEX_API int32_t geniex_model_list(geniex_ModelListOutput* output);
-
-/** Free the names array and zero the struct. */
-GENIEX_API void geniex_model_list_free(geniex_ModelListOutput* output);
 
 /**
  * @brief Detailed metadata for one cached model.
@@ -274,7 +274,17 @@ typedef struct {
     const char*                 display_name;
     geniex_download_progress_cb on_progress; /**< NULL to suppress progress reporting           */
     void*                       user_data;   /**< Forwarded to on_progress                      */
+    /**
+     * Optional model-type override written into the manifest as the pull
+     * publishes it, so a caller that already knows the type doesn't need a
+     * separate geniex_model_set_type() round-trip. Use -1 to auto-detect
+     * (the default); 0 = LLM, 1 = VLM (matching geniex_ModelType).
+     */
+    int32_t model_type;
 } geniex_ModelPullInput;
+
+/** Pass as geniex_ModelPullInput.model_type to keep auto-detection. */
+#define GENIEX_MODEL_TYPE_AUTO (-1)
 
 /**
  * @brief Download a model (blocking).

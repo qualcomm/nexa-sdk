@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_void};
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -5,6 +6,29 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use model_manager_core::error::Error;
 
 use crate::logging;
+
+thread_local! {
+    /// Detailed message for the most recent failure on this thread, kept as a
+    /// live CString so `geniex_model_last_error_message` can hand out a stable
+    /// pointer valid until the next failing call.
+    static LAST_ERROR: RefCell<Option<CString>> = const { RefCell::new(None) };
+}
+
+fn set_last_error(msg: &str) {
+    let c = CString::new(msg).unwrap_or_default();
+    LAST_ERROR.with(|slot| *slot.borrow_mut() = Some(c));
+}
+
+/// Return the calling thread's last recorded error message, or NULL.
+/// Library-owned; valid until the next failing geniex_model_* call.
+#[no_mangle]
+pub extern "C" fn geniex_model_last_error_message() -> *const c_char {
+    LAST_ERROR.with(|slot| {
+        slot.borrow()
+            .as_ref()
+            .map_or(std::ptr::null(), |c| c.as_ptr())
+    })
+}
 
 /// Error codes mirroring geniex_ErrorCode from geniex.h.
 pub const GENIEX_SUCCESS: i32 = 0;
@@ -54,9 +78,12 @@ pub fn err_to_code(e: &Error) -> i32 {
     }
 }
 
-/// Log `e` via the geniex log callback and return the corresponding code.
+/// Log `e` via the geniex log callback, stash its message as this thread's
+/// last error, and return the corresponding code.
 pub fn report(e: &Error) -> i32 {
-    logging::error(&format!("{e}"));
+    let msg = format!("{e}");
+    logging::error(&msg);
+    set_last_error(&msg);
     err_to_code(e)
 }
 

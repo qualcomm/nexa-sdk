@@ -378,14 +378,14 @@ func pullModel(ctx context.Context, name string, quant string) error {
 		DisplayName: "",
 	}
 
-	// Validate --model-type early so we fail before downloading anything.
-	var forcedType *geniex_sdk.ModelType
+	// Validate --model-type early so we fail before downloading anything, and
+	// let the pull write it into the manifest in one shot (no set-type round-trip).
 	if modelType != "" {
 		mt, ok := geniex_sdk.ParseModelType(modelType)
 		if !ok {
 			return fmt.Errorf("unknown model type %q (valid: %s)", modelType, strings.Join(modelTypeNames, ", "))
 		}
-		forcedType = &mt
+		in.ModelType = &mt
 	}
 
 	// No precision requested: query the remote candidates and let the user
@@ -431,13 +431,6 @@ func pullModel(ctx context.Context, name string, quant string) error {
 	}
 	if bar != nil {
 		bar.Exit()
-	}
-
-	// Honor --model-type by overriding the auto-detected type post-pull.
-	if forcedType != nil {
-		if err := geniex_sdk.ModelSetType(name, *forcedType); err != nil {
-			return fmt.Errorf("failed to set model type: %w", err)
-		}
 	}
 
 	if t, err := geniex_sdk.ModelGetType(name); err == nil {

@@ -22,6 +22,13 @@ internal class ModelManager {
     external fun deinit(): Int
 
     /**
+     * Human-readable message for the most recent failing `geniex_model_*`
+     * call on the calling thread, or `null` if none recorded yet. Valid
+     * until the next FFI call on this thread.
+     */
+    external fun lastErrorMessage(): String?
+
+    /**
      * Blocking. Invokes [callback] periodically (~100 ms) from a tokio
      * worker thread that the bridge attaches to the JVM. Returning
      * `false` from the callback cancels; the FFI returns

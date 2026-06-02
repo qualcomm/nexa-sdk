@@ -31,7 +31,6 @@ from ._ffi._types import (
     GENIEX_MODEL_TYPE_VLM,
     geniex_download_progress_cb,
     geniex_ModelListDetailedOutput,
-    geniex_ModelListOutput,
     geniex_ModelPaths,
     geniex_ModelPullInput,
     geniex_ModelQueryInput,
@@ -50,6 +49,7 @@ __all__ = [
     'pull',
     'list_models',
     'list_detailed',
+    'last_error_message',
     'query',
     'remove',
     'clean',
@@ -115,6 +115,8 @@ class ModelQuery:
 
 
 ProgressCallback = Callable[[list[FileProgress]], bool]
+
+GENIEX_MODEL_TYPE_AUTO = -1
 
 
 def _type_str(value: int) -> str:
@@ -211,6 +213,7 @@ def pull(
     hf_token: str | None = None,
     chipset: str | None = None,
     display_name: str | None = None,
+    model_type: str | None = None,
     on_progress: ProgressCallback | None = None,
 ) -> None:
     """Download a model into the local cache (blocking, resumable).
@@ -226,6 +229,7 @@ def pull(
             starts with ``qualcomm/``, ``qai-hub-models/``, or ``aihub/`` — the
             SDK derives it from the repo. Required only when the stored name
             cannot be mapped (rare).
+        model_type: ``"llm" | "vlm" | None``. ``None`` auto-detects.
         on_progress: Callback ``(files) -> bool``; return ``False`` to cancel.
     """
     _ensure_init()
@@ -233,6 +237,15 @@ def pull(
 
     model_name, quant = _maybe_resolve_alias(model_name, quant)
     hub_val = _resolve_hub(hub)
+
+    if model_type is None:
+        model_type_val = GENIEX_MODEL_TYPE_AUTO
+    elif model_type.lower() == 'llm':
+        model_type_val = GENIEX_MODEL_TYPE_LLM
+    elif model_type.lower() == 'vlm':
+        model_type_val = GENIEX_MODEL_TYPE_VLM
+    else:
+        raise ValueError(f"Unknown model type: {model_type!r} (expected 'llm', 'vlm', or None)")
 
     def _trampoline(files_ptr, count, _user_data):
         try:
@@ -262,20 +275,26 @@ def pull(
         display_name=display_name.encode() if display_name else None,
         on_progress=cb,
         user_data=None,
+        model_type=model_type_val,
     )
     _check(lib.geniex_model_pull(byref(inp)))
 
 
 def list_models() -> list[str]:
     """Return cached model names (``org/repo``)."""
-    _ensure_init()
+    return [d.name for d in list_detailed()]
+
+
+def last_error_message() -> str | None:
+    """Return the detailed message for the last failing model-manager call.
+
+    Thread-local and library-owned; valid only until the next failing call on
+    this thread. Returns ``None`` if no error has been recorded.
+    """
+    _ensure_bound()
     lib = load_library()
-    out = geniex_ModelListOutput()
-    _check(lib.geniex_model_list(byref(out)))
-    try:
-        return [out.names[i].decode() for i in range(out.count)]
-    finally:
-        lib.geniex_model_list_free(byref(out))
+    msg = lib.geniex_model_last_error_message()
+    return msg.decode() if msg is not None else None
 
 
 def list_detailed() -> list[ModelDetail]:

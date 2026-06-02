@@ -109,67 +109,6 @@ pub unsafe extern "C" fn geniex_model_paths_free(paths: *mut GenieXModelPaths) {
     *paths = GenieXModelPaths::null();
 }
 
-/* ---- geniex_model_list ---- */
-
-#[repr(C)]
-pub struct GenieXModelListOutput {
-    pub names: *mut *mut c_char,
-    pub count: i32,
-}
-
-#[no_mangle]
-pub extern "C" fn geniex_model_list(output: *mut GenieXModelListOutput) -> i32 {
-    ffi_guard(|| {
-        if output.is_null() {
-            return GENIEX_ERROR_COMMON_INVALID_INPUT;
-        }
-        let store = match get_store() {
-            Ok(s) => s,
-            Err(c) => return c,
-        };
-        match store.list() {
-            Ok(manifests) => {
-                let mut ptrs: Vec<*mut c_char> =
-                    manifests.iter().map(|m| str_to_cptr(&m.name)).collect();
-                ptrs.shrink_to_fit();
-                let count = ptrs.len() as i32;
-                let names_ptr = if ptrs.is_empty() {
-                    std::ptr::null_mut()
-                } else {
-                    ptrs.as_mut_ptr()
-                };
-                std::mem::forget(ptrs);
-                unsafe {
-                    (*output).names = names_ptr;
-                    (*output).count = count;
-                }
-                GENIEX_SUCCESS
-            }
-            Err(e) => report(&e),
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn geniex_model_list_free(output: *mut GenieXModelListOutput) {
-    if output.is_null() {
-        return;
-    }
-    let o = &mut *output;
-    if !o.names.is_null() {
-        let slice = std::slice::from_raw_parts_mut(o.names, o.count as usize);
-        for ptr in slice.iter_mut() {
-            free_cptr(*ptr);
-        }
-        drop(Vec::from_raw_parts(
-            o.names,
-            o.count as usize,
-            o.count as usize,
-        ));
-    }
-    o.names = std::ptr::null_mut();
-    o.count = 0;
-}
 
 /* ---- geniex_model_remove / clean ---- */
 

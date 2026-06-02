@@ -59,6 +59,10 @@ pub struct GenieXModelPullInput {
     pub display_name: *const c_char,
     pub on_progress: GenieXDownloadProgressCb,
     pub user_data: *mut c_void,
+    /// Optional model-type override (-1 = auto-detect, 0 = LLM, 1 = VLM).
+    /// Written into the manifest as the pull publishes, so callers that know
+    /// the type avoid a separate geniex_model_set_type round-trip.
+    pub model_type: i32,
 }
 
 /// Struct sizes the Rust FFI knows how to read. The only entry today
@@ -237,8 +241,16 @@ pub extern "C" fn geniex_model_pull(input: *const GenieXModelPullInput) -> i32 {
         // Thread `quant` into the manifest hint so `pull` only fetches
         // the requested quantization instead of every GGUF in the repo.
         let quant = unsafe { cstr_to_str(inp.quant) }.map(str::to_string);
+        // -1 (GENIEX_MODEL_TYPE_AUTO) leaves detection to the inferer; 0/1 force
+        // the type so the manifest is written correctly in one shot.
+        let model_type = match inp.model_type {
+            0 => Some(model_manager_core::manifest::ModelType::Llm),
+            1 => Some(model_manager_core::manifest::ModelType::Vlm),
+            _ => None,
+        };
         let hint = ManifestHint {
             quant,
+            model_type,
             ..ManifestHint::default()
         };
 

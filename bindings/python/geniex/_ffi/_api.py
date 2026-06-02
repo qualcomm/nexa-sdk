@@ -34,7 +34,6 @@ from ._types import (
     geniex_LlmGenerateInput,
     geniex_LlmGenerateOutput,
     geniex_ModelListDetailedOutput,
-    geniex_ModelListOutput,
     geniex_ModelPaths,
     geniex_ModelPullInput,
     geniex_ModelQueryInput,
@@ -246,11 +245,8 @@ def _bind_all() -> None:
     lib.geniex_model_pull.argtypes = [POINTER(geniex_ModelPullInput)]
     lib.geniex_model_pull.restype = c_int32
 
-    lib.geniex_model_list.argtypes = [POINTER(geniex_ModelListOutput)]
-    lib.geniex_model_list.restype = c_int32
-
-    lib.geniex_model_list_free.argtypes = [POINTER(geniex_ModelListOutput)]
-    lib.geniex_model_list_free.restype = None
+    lib.geniex_model_last_error_message.argtypes = []
+    lib.geniex_model_last_error_message.restype = c_char_p
 
     lib.geniex_model_remove.argtypes = [c_char_p]
     lib.geniex_model_remove.restype = c_int32

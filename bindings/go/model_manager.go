@@ -24,6 +24,7 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"runtime/cgo"
 	"strings"
 	"unsafe"
@@ -113,7 +114,7 @@ func ModelInit(dataDir string) error {
 	defer cFreeIfSet(unsafe.Pointer(cDir))
 	res := C.geniex_model_init(cDir)
 	if res != C.GENIEX_SUCCESS && res != C.GENIEX_ERROR_COMMON_ALREADY_INITIALIZED {
-		return SDKError(res)
+		return modelError(res)
 	}
 	return nil
 }
@@ -121,7 +122,7 @@ func ModelInit(dataDir string) error {
 // ModelDeinit releases model-manager resources (a no-op in the SDK today).
 func ModelDeinit() error {
 	if res := C.geniex_model_deinit(); res != C.GENIEX_SUCCESS {
-		return SDKError(res)
+		return modelError(res)
 	}
 	return nil
 }
@@ -137,6 +138,8 @@ type ModelPullInput struct {
 	Chipset     string
 	DisplayName string
 	OnProgress  ModelProgressCallback
+	// ModelType selects the model type to pull; nil means auto-detect.
+	ModelType *ModelType
 }
 
 //export go_model_progress
@@ -186,6 +189,10 @@ func ModelPull(input ModelPullInput) error {
 		hf_token:     cHfToken,
 		chipset:      cChipset,
 		display_name: cDisplayName,
+		model_type:   C.int32_t(C.GENIEX_MODEL_TYPE_AUTO),
+	}
+	if input.ModelType != nil {
+		in.model_type = C.int32_t(*input.ModelType)
 	}
 
 	if input.OnProgress != nil {
@@ -196,19 +203,22 @@ func ModelPull(input ModelPullInput) error {
 	}
 
 	if res := C.geniex_model_pull(&in); res != C.GENIEX_SUCCESS {
-		return SDKError(res)
+		return modelError(res)
 	}
 	return nil
 }
 
 // ModelList returns the names ("org/repo") of all cached models.
 func ModelList() ([]string, error) {
-	var out C.geniex_ModelListOutput
-	if res := C.geniex_model_list(&out); res != C.GENIEX_SUCCESS {
-		return nil, SDKError(res)
+	ds, err := ModelListDetailed()
+	if err != nil {
+		return nil, err
 	}
-	defer C.geniex_model_list_free(&out)
-	return cCharArrayToSlice(out.names, out.count), nil
+	names := make([]string, len(ds))
+	for i, d := range ds {
+		names[i] = d.Name
+	}
+	return names, nil
 }
 
 // ModelDetail mirrors geniex_ModelDetail.
@@ -225,7 +235,7 @@ type ModelDetail struct {
 func ModelListDetailed() ([]ModelDetail, error) {
 	var out C.geniex_ModelListDetailedOutput
 	if res := C.geniex_model_list_detailed(&out); res != C.GENIEX_SUCCESS {
-		return nil, SDKError(res)
+		return nil, modelError(res)
 	}
 	defer C.geniex_model_list_detailed_free(&out)
 
@@ -252,7 +262,7 @@ func ModelRemove(name string) error {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	if res := C.geniex_model_remove(cName); res != C.GENIEX_SUCCESS {
-		return SDKError(res)
+		return modelError(res)
 	}
 	return nil
 }
@@ -261,7 +271,7 @@ func ModelRemove(name string) error {
 func ModelClean() (int, error) {
 	var count C.int32_t
 	if res := C.geniex_model_clean(&count); res != C.GENIEX_SUCCESS {
-		return 0, SDKError(res)
+		return 0, modelError(res)
 	}
 	return int(count), nil
 }
@@ -272,7 +282,7 @@ func ModelGetType(name string) (ModelType, error) {
 	defer C.free(unsafe.Pointer(cName))
 	var t C.geniex_ModelType
 	if res := C.geniex_model_get_type(cName, &t); res != C.GENIEX_SUCCESS {
-		return 0, SDKError(res)
+		return 0, modelError(res)
 	}
 	return ModelType(t), nil
 }
@@ -282,7 +292,7 @@ func ModelSetType(name string, t ModelType) error {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	if res := C.geniex_model_set_type(cName, C.geniex_ModelType(t)); res != C.GENIEX_SUCCESS {
-		return SDKError(res)
+		return modelError(res)
 	}
 	return nil
 }
@@ -304,7 +314,7 @@ func ModelGetPaths(name string) (*ModelPaths, error) {
 	defer C.free(unsafe.Pointer(cName))
 	var out C.geniex_ModelPaths
 	if res := C.geniex_model_get_paths(cName, &out); res != C.GENIEX_SUCCESS {
-		return nil, SDKError(res)
+		return nil, modelError(res)
 	}
 	defer C.geniex_model_paths_free(&out)
 	return &ModelPaths{
@@ -361,7 +371,7 @@ func ModelQuery(input ModelPullInput) (*ModelQueryResult, error) {
 
 	var out C.geniex_ModelQueryOutput
 	if res := C.geniex_model_query(&in, &out); res != C.GENIEX_SUCCESS {
-		return nil, SDKError(res)
+		return nil, modelError(res)
 	}
 	defer C.geniex_model_query_free(&out)
 
@@ -390,13 +400,30 @@ func ModelResolveAlias(alias string) (string, error) {
 	defer C.free(unsafe.Pointer(cAlias))
 	var out *C.char
 	if res := C.geniex_model_resolve_alias(cAlias, &out); res != C.GENIEX_SUCCESS {
-		return "", SDKError(res)
+		return "", modelError(res)
 	}
 	if out == nil {
 		return "", nil
 	}
 	defer free(unsafe.Pointer(out))
 	return C.GoString(out), nil
+}
+
+// ModelLastErrorMessage returns the library-owned (do not free) message for the
+// last failing geniex_model_* call on this thread, or "" if none.
+func ModelLastErrorMessage() string {
+	return C.GoString(C.geniex_model_last_error_message())
+}
+
+// modelError wraps an FFI error code with the SDK's detailed last-error message
+// (e.g. "quantization 'Q2_K' not found for model 'org/repo'") when available,
+// while keeping the underlying SDKError matchable via errors.Is / errors.As.
+func modelError(res C.int32_t) error {
+	err := SDKError(res)
+	if msg := ModelLastErrorMessage(); msg != "" {
+		return fmt.Errorf("%s: %w", msg, err)
+	}
+	return err
 }
 
 // IsModelNotFound reports whether err is the SDK's "model not cached" code.

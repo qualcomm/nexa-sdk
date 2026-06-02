@@ -340,13 +340,6 @@ class geniex_ModelPaths(Structure):
     ]
 
 
-class geniex_ModelListOutput(Structure):
-    _fields_ = [
-        ('names', POINTER(c_char_p)),
-        ('count', c_int32),
-    ]
-
-
 class geniex_ModelDetail(Structure):
     _fields_ = [
         ('name', c_char_p),
@@ -395,6 +388,7 @@ class geniex_ModelPullInput(Structure):
         ('display_name', c_char_p),
         ('on_progress', geniex_download_progress_cb),
         ('user_data', c_void_p),
+        ('model_type', c_int32),
     ]
 
 
