@@ -103,7 +103,7 @@ func ChatCompletions(c *gin.Context) {
 	}
 
 	slog.Info("ChatCompletions", "param", param)
-	name, _ := splitNameQuant(param.Model)
+	name, _ := geniex_sdk.SplitNameQuant(param.Model)
 	modelType, err := geniex_sdk.ModelGetType(name)
 	if err != nil {
 		slog.Error("Failed to get model type", "model", param.Model, "error", err)

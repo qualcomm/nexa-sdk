@@ -126,7 +126,7 @@ func infer() *cobra.Command {
 	inferCmd.SetUsageFunc(flagGroupedUsage)
 
 	inferCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		name, quant := splitNameQuant(args[0])
+		name, quant := geniex_sdk.SplitNameQuant(args[0])
 
 		paths, err := ensureModelAvailable(cmd.Context(), name, quant)
 		if err != nil {

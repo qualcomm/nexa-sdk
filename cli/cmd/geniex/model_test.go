@@ -38,7 +38,7 @@ var sampleListModels = []geniex_sdk.ModelDetail{
 		ModelType:  geniex_sdk.ModelTypeLLM,
 		PluginID:   "qairt",
 		TotalSize:  512,
-		Precisions: []string{quantNA},
+		Precisions: []string{geniex_sdk.QuantNA},
 	},
 }
 
@@ -53,7 +53,7 @@ func TestPrintListTable(t *testing.T) {
 		}
 	}
 	// Non-verbose hides PLUGIN/TYPE columns and the QuantNA precision.
-	if strings.Contains(out, "PLUGIN") || strings.Contains(out, quantNA) {
+	if strings.Contains(out, "PLUGIN") || strings.Contains(out, geniex_sdk.QuantNA) {
 		t.Errorf("non-verbose table leaked verbose-only fields:\n%s", out)
 	}
 }
@@ -82,7 +82,7 @@ func TestPrintListJSON(t *testing.T) {
 		t.Errorf("got[0].Precisions = %v, want %v", got[0].Precisions, want)
 	}
 	// JSON keeps the full inventory regardless of --verbose, so QuantNA is exposed.
-	if want := []string{quantNA}; !slices.Equal(got[1].Precisions, want) {
+	if want := []string{geniex_sdk.QuantNA}; !slices.Equal(got[1].Precisions, want) {
 		t.Errorf("got[1].Precisions = %v, want %v", got[1].Precisions, want)
 	}
 }
@@ -101,7 +101,7 @@ func TestPrintListCSV(t *testing.T) {
 	want := [][]string{
 		{"name", "size", "plugin", "type", "precisions"},
 		{"acme/llama", "3072", "llama_cpp", "llm", "Q4_0,Q8_0"},
-		{"acme/yolo", "512", "qairt", "llm", quantNA},
+		{"acme/yolo", "512", "qairt", "llm", geniex_sdk.QuantNA},
 	}
 	if len(rows) != len(want) {
 		t.Fatalf("rows = %d, want %d:\n%s", len(rows), len(want), raw)

@@ -25,10 +25,15 @@ import "C"
 import (
 	"errors"
 	"runtime/cgo"
+	"strings"
 	"unsafe"
 )
 
 // LCOV_EXCL_START
+
+// QuantNA is the precision placeholder the SDK records for non-quantized
+// (e.g. QAIRT) models.
+const QuantNA = "N/A"
 
 // ModelType mirrors geniex_ModelType.
 type ModelType int32
@@ -47,6 +52,34 @@ func (t ModelType) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// ParseModelType maps "llm"/"vlm" (case-insensitive) to a ModelType. The
+// second return is false for any other value.
+func ParseModelType(s string) (ModelType, bool) {
+	switch strings.ToLower(s) {
+	case "llm":
+		return ModelTypeLLM, true
+	case "vlm":
+		return ModelTypeVLM, true
+	default:
+		return 0, false
+	}
+}
+
+// SplitNameQuant splits "name[:quant]" into (name, quant), upper-casing the
+// quant. A pasted HuggingFace URL prefix is stripped first so its scheme colon
+// isn't mistaken for the quant separator. Bare names are canonicalized by the
+// SDK; this only handles the URL strip + ':' split so callers can pass name
+// and quant to the FFI separately.
+func SplitNameQuant(arg string) (string, string) {
+	arg = strings.TrimPrefix(arg, "https://huggingface.co/")
+	arg = strings.TrimPrefix(arg, "http://huggingface.co/")
+	name, quant, found := strings.Cut(arg, ":")
+	if !found || quant == "" {
+		return name, ""
+	}
+	return name, strings.ToUpper(quant)
 }
 
 // HubSource mirrors geniex_HubSource.

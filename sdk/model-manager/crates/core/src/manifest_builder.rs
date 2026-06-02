@@ -127,21 +127,28 @@ pub fn infer_manifest_from_names(
         ggufs.retain(|k, _| k == wanted);
     }
 
-    // Pick one file per quant (prefer the largest — the actual weights).
+    // Pick one entrypoint file per quant. Sharded GGUFs (`*-NNNNN-of-MMMMM.gguf`)
+    // are split across several files that share one quant; the first shard is
+    // the manifest entrypoint, its recorded size is the sum of every shard, and
+    // the remaining shards go to `extra_files` so the executor fetches them all.
     let mut model_file: HashMap<String, ModelFileInfo> = HashMap::new();
-    for (quant, files) in ggufs {
-        let chosen = files
+    let mut shard_extras: Vec<&String> = Vec::new();
+    for (quant, mut files) in ggufs {
+        files.sort();
+        let total: i64 = files
             .iter()
-            .max_by_key(|n| sizes.get(n.as_str()).copied().unwrap_or(0))
-            .unwrap();
+            .map(|n| sizes.get(n.as_str()).copied().unwrap_or(0))
+            .sum();
+        let entry = files[0];
         model_file.insert(
             quant,
             ModelFileInfo {
-                name: (*chosen).clone(),
+                name: entry.clone(),
                 downloaded: true,
-                size: sizes.get(chosen.as_str()).copied().unwrap_or(0),
+                size: total,
             },
         );
+        shard_extras.extend_from_slice(&files[1..]);
     }
 
     // MMProj: 0 -> try single onnx/geniex; 1 -> use; >1 -> largest.
@@ -205,8 +212,16 @@ pub fn infer_manifest_from_names(
         }
     };
 
-    // ExtraFiles: all .npy + .geniex not used as mmproj.
+    // ExtraFiles: trailing GGUF shards (the entrypoint shard lives in
+    // model_file) + all .npy + .geniex not used as mmproj.
     let mut extra_files: Vec<ModelFileInfo> = Vec::new();
+    for n in &shard_extras {
+        extra_files.push(ModelFileInfo {
+            name: (*n).clone(),
+            downloaded: true,
+            size: sizes.get(n.as_str()).copied().unwrap_or(0),
+        });
+    }
     for n in &npy_files {
         extra_files.push(ModelFileInfo {
             name: (*n).clone(),
@@ -471,6 +486,25 @@ mod tests {
         let m = infer_manifest_from_names("Org/Repo-GGUF", &names, &sizes, hint).unwrap();
         assert_eq!(m.model_file.len(), 1);
         assert_eq!(m.model_file.get("Q4_0").unwrap().name, "model-Q4_0.gguf");
+    }
+
+    #[test]
+    fn sharded_gguf_keeps_every_shard() {
+        // A 3-shard Q4_0 model: entrypoint goes to model_file with the summed
+        // size; the other two shards must land in extra_files so they download.
+        let (names, sizes) = sizes_of(&[
+            ("model-Q4_0-00001-of-00003.gguf", 100),
+            ("model-Q4_0-00002-of-00003.gguf", 200),
+            ("model-Q4_0-00003-of-00003.gguf", 300),
+        ]);
+        let m =
+            infer_manifest_from_names("Org/Repo-GGUF", &names, &sizes, Default::default()).unwrap();
+        let entry = m.model_file.get("Q4_0").unwrap();
+        assert_eq!(entry.name, "model-Q4_0-00001-of-00003.gguf");
+        assert_eq!(entry.size, 600, "model_file size must sum all shards");
+        let extra: Vec<&str> = m.extra_files.iter().map(|f| f.name.as_str()).collect();
+        assert!(extra.contains(&"model-Q4_0-00002-of-00003.gguf"));
+        assert!(extra.contains(&"model-Q4_0-00003-of-00003.gguf"));
     }
 
     #[test]

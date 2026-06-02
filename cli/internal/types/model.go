@@ -14,18 +14,8 @@
 
 package types
 
-type ModelType string
-
-const (
-	ModelTypeLLM ModelType = "llm"
-	ModelTypeVLM ModelType = "vlm"
-)
-
-var AllModelTypes = []ModelType{
-	ModelTypeLLM,
-	ModelTypeVLM,
-}
-
+// ModelParam holds the llama_cpp-only knobs (context size, GPU layers) the
+// keep-alive cache keys model instances on.
 type ModelParam struct {
 	NCtx       int32
 	NGpuLayers int32

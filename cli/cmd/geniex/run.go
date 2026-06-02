@@ -60,7 +60,7 @@ func run() *cobra.Command {
 	runCmd.SetUsageFunc(flagGroupedUsage)
 
 	runCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		name, quant := splitNameQuant(args[0])
+		name, quant := geniex_sdk.SplitNameQuant(args[0])
 		fullName := name
 		if quant != "" {
 			fullName = name + ":" + quant
