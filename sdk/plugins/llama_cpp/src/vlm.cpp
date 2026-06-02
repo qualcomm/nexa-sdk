@@ -36,7 +36,8 @@ int32_t LlamaVlm::create_impl(const geniex_VlmCreateInput* input) {
     // dance. Any llama.cpp class that might load onto HTP must participate.
     htp::reacquire_before_load();
 
-    const geniex_ModelConfig config = build_model_config(input->config, /*n_ctx_default=*/16384);
+    const Device             device = classify_device(input->device_id, input->config.n_gpu_layers);
+    const geniex_ModelConfig config = build_model_config(input->config, /*n_ctx_default=*/16384, device);
 
     llama_model_params mpar      = build_model_params(config);
     auto               selection = resolve_devices(input->device_id);
@@ -59,7 +60,7 @@ int32_t LlamaVlm::create_impl(const geniex_VlmCreateInput* input) {
         return GENIEX_ERROR_COMMON_MODEL_LOAD;
     }
 
-    llama_context_params cpar = build_context_params(config);
+    llama_context_params cpar = build_context_params(config, device);
 
     this->ctx = llama_init_from_model(this->model, cpar);
     if (!this->ctx) {
@@ -68,9 +69,9 @@ int32_t LlamaVlm::create_impl(const geniex_VlmCreateInput* input) {
         return GENIEX_ERROR_COMMON_MODEL_LOAD;
     }
 
-    const bool offloading = config.n_gpu_layers > 0;
-    int32_t    tp_ret =
-        create_and_attach_threadpools(this->pools_, this->ctx, cpar.n_threads, cpar.n_threads_batch, offloading);
+    ggml_threadpool_params tpp_main  = build_threadpool_params(cpar.n_threads, device);
+    ggml_threadpool_params tpp_batch = build_threadpool_params(cpar.n_threads_batch, device);
+    int32_t                tp_ret    = create_and_attach_threadpools(this->pools_, this->ctx, tpp_main, tpp_batch);
     if (tp_ret != GENIEX_SUCCESS) {
         return tp_ret;
     }
