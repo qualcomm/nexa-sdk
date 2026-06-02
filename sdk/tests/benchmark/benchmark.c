@@ -1030,6 +1030,12 @@ static int run_matrix(options_t* base) {
         cell.tokenizer_path = (nf >= 5 && fields[4][0] != '\0') ? fields[4] : NULL;
         cell.mmproj_path    = (nf >= 6 && fields[5][0] != '\0') ? fields[5] : NULL;
         cell.output_md      = NULL;
+        /* The matrix file carries no media columns, so don't let a global
+         * --vlm / --image leak VLM mode into every cell; mmproj_path above is
+         * the only per-cell VLM trigger. */
+        cell.force_vlm   = false;
+        cell.image_count = 0;
+        cell.audio_count = 0;
 
         if (base->output_json_dir) {
             snprintf(json_path, sizeof(json_path), "%s/%s.json", base->output_json_dir, cell.cell_id);
