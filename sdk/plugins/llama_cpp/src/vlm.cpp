@@ -151,7 +151,10 @@ int32_t LlamaVlm::apply_chat_template(
         tmpl_inputs.tools = common_chat_tools_parse_oaicompat(nlohmann::ordered_json::parse(std::string(input->tools)));
     }
 
-    tmpl_inputs.enable_thinking = input->enable_thinking;
+    if (input->enable_thinking) {
+        GENIEX_LOG_WARN("thinking mode not supported for llama.cpp VLM; ignoring enable_thinking=true");
+    }
+    tmpl_inputs.enable_thinking = false;
     GENIEX_LOG_DEBUG("applying chat template with add_generation_prompt=true, use_jinja={}", tmpl_inputs.use_jinja);
 
     // Apply chat template
