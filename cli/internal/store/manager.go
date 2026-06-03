@@ -21,14 +21,14 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/gofrs/flock"
-
 	"github.com/qcom-it-nexa-ai/geniex/cli/internal/config"
 )
 
+// Store resolves the geniex data directory for the CLI. Model storage itself
+// is owned by the SDK model-manager; this only exposes the data-dir root (for
+// the config file, update cache, and REPL history) via DataPath().
 type Store struct {
-	home       string
-	modelLocks sync.Map // Model locks mapping map[string]*flock.Flock
+	home string
 }
 
 var (
@@ -36,7 +36,7 @@ var (
 	once     sync.Once
 )
 
-// Get returns the singleton instance of Store
+// Get returns the singleton instance of Store.
 func Get() *Store {
 	once.Do(func() {
 		instance = &Store{}
@@ -45,42 +45,28 @@ func Get() *Store {
 	return instance
 }
 
-// init sets up the store's directory structure
+// init resolves the data directory. The SDK model-manager creates the models
+// subdirectory itself, so the store only needs the root to exist.
 func (s *Store) init() {
 	if config.Get().DataDir != "" {
 		s.home = config.Get().DataDir
 	} else {
-		// Get user's cache directory (OS-specific)
 		homeDir, e := os.UserHomeDir()
 		if e != nil {
 			fmt.Fprintf(os.Stderr, "geniex: failed to resolve user home directory: %s\n", e)
 			os.Exit(1)
 		}
-
-		// Set geniex cache directory
 		s.home = filepath.Join(homeDir, ".cache", "geniex")
 	}
 	slog.Info("Using data directory", "path", s.home)
 
-	// Create models directory structure
-	for _, d := range []string{"models"} {
-		path := filepath.Join(s.home, d)
-		if e := os.MkdirAll(path, 0o770); e != nil {
-			fmt.Fprintf(os.Stderr, "geniex: failed to create data directory %s: %s\n", path, e)
-			os.Exit(1)
-		}
+	if e := os.MkdirAll(s.home, 0o770); e != nil {
+		fmt.Fprintf(os.Stderr, "geniex: failed to create data directory %s: %s\n", s.home, e)
+		os.Exit(1)
 	}
 }
 
-func (s *Store) Close() error {
-	s.modelLocks.Range(func(key, value any) bool {
-		fl := value.(*flock.Flock)
-		if fl != nil {
-			fl.Unlock()
-		}
-		s.modelLocks.Delete(key)
-		return true
-	})
-
-	return nil
+// DataPath returns the geniex data directory root.
+func (s *Store) DataPath() string {
+	return s.home
 }

@@ -138,7 +138,7 @@ jobject build_model_paths(JNIEnv* env, const geniex_ModelPaths& paths) {
     jmethodID ctor = env->GetMethodID(cls,
         "<init>",
         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
-        "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+        "Ljava/lang/String;Ljava/lang/String;)V");
     if (!ctor) {
         env->DeleteLocalRef(cls);
         return nullptr;
@@ -150,17 +150,15 @@ jobject build_model_paths(JNIEnv* env, const geniex_ModelPaths& paths) {
     jstring jPluginId  = maybe(paths.plugin_id);
     jstring jMmproj    = maybe(paths.mmproj_path);
     jstring jTokenizer = maybe(paths.tokenizer_path);
-    jstring jDevice    = maybe(paths.device_id);
     // Constructor order matches ModelPaths.kt:
-    //   model_path, model_dir, model_name, plugin_id, mmproj_path?, tokenizer_path?, device_id?
-    jobject obj = env->NewObject(cls, ctor, jModelPath, jModelDir, jModelName, jPluginId, jMmproj, jTokenizer, jDevice);
+    //   model_path, model_dir, model_name, plugin_id, mmproj_path?, tokenizer_path?
+    jobject obj = env->NewObject(cls, ctor, jModelPath, jModelDir, jModelName, jPluginId, jMmproj, jTokenizer);
     if (jModelPath) env->DeleteLocalRef(jModelPath);
     if (jModelDir) env->DeleteLocalRef(jModelDir);
     if (jModelName) env->DeleteLocalRef(jModelName);
     if (jPluginId) env->DeleteLocalRef(jPluginId);
     if (jMmproj) env->DeleteLocalRef(jMmproj);
     if (jTokenizer) env->DeleteLocalRef(jTokenizer);
-    if (jDevice) env->DeleteLocalRef(jDevice);
     env->DeleteLocalRef(cls);
     return obj;
 }

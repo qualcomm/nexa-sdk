@@ -20,10 +20,6 @@ use crate::manifest::{ModelFileInfo, ModelManifest, ModelType};
 pub struct ManifestHint {
     /// Force this `ModelType`; otherwise inferred via [`infer_model_type`].
     pub model_type: Option<ModelType>,
-    /// Force this plugin id; otherwise defaults to "llama_cpp".
-    pub plugin_id: Option<String>,
-    /// Force this model_name; otherwise derived from `name`.
-    pub model_name: Option<String>,
     /// Restrict the inferred manifest to a single quantization. When set,
     /// GGUFs whose extracted quant tag doesn't match are excluded from
     /// `model_file`, so `pull` only fetches the requested quant. An
@@ -243,14 +239,14 @@ pub fn infer_manifest_from_names(
 
     // Derive model_name: last path component of `name`, with -GGUF suffix
     // stripped. e.g. "Qwen/Qwen3-4B-GGUF" -> "Qwen3-4B".
-    let model_name = hint.model_name.unwrap_or_else(|| {
+    let model_name = {
         let repo = name.rsplit('/').next().unwrap_or(name);
         repo.trim_end_matches("-GGUF")
             .trim_end_matches("-gguf")
             .to_string()
-    });
+    };
 
-    let plugin_id = hint.plugin_id.unwrap_or_else(|| "llama_cpp".to_string());
+    let plugin_id = "llama_cpp".to_string();
 
     Ok(ModelManifest {
         name: name.to_string(),

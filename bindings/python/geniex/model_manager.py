@@ -80,7 +80,6 @@ class ModelPaths:
     plugin_id: str
     mmproj_path: str | None = None
     tokenizer_path: str | None = None
-    device_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -398,7 +397,6 @@ def get_paths(model_name: str) -> ModelPaths:
             plugin_id=out.plugin_id.decode() if out.plugin_id else '',
             mmproj_path=out.mmproj_path.decode() if out.mmproj_path else None,
             tokenizer_path=out.tokenizer_path.decode() if out.tokenizer_path else None,
-            device_id=out.device_id.decode() if out.device_id else None,
         )
     finally:
         lib.geniex_model_paths_free(byref(out))

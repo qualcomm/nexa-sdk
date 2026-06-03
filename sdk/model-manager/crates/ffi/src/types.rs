@@ -19,6 +19,10 @@ fn set_last_error(msg: &str) {
     LAST_ERROR.with(|slot| *slot.borrow_mut() = Some(c));
 }
 
+fn clear_last_error() {
+    LAST_ERROR.with(|slot| *slot.borrow_mut() = None);
+}
+
 /// Return the calling thread's last recorded error message, or NULL.
 /// Library-owned; valid until the next failing geniex_model_* call.
 #[no_mangle]
@@ -93,6 +97,10 @@ pub fn ffi_guard<F>(f: F) -> i32
 where
     F: FnOnce() -> i32,
 {
+    // Clear any message left by a prior call on this thread so
+    // geniex_model_last_error_message only ever reflects THIS call's outcome
+    // (set again by report() / the panic arm below on failure).
+    clear_last_error();
     match catch_unwind(AssertUnwindSafe(f)) {
         Ok(code) => code,
         Err(payload) => {
@@ -104,6 +112,7 @@ where
                 "panic in FFI boundary".to_string()
             };
             logging::error(&format!("panic caught at FFI boundary: {msg}"));
+            set_last_error(&msg);
             GENIEX_ERROR_COMMON_UNKNOWN
         }
     }

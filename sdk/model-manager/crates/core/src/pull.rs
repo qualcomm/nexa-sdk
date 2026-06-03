@@ -144,6 +144,16 @@ pub async fn pull_with_source(
                         .filter(|f| !known.contains(f.name.as_str()))
                         .collect();
                     plan.manifest.extra_files.append(&mut merged_extras);
+
+                    // Preserve already-downloaded shared files the new quant's
+                    // plan didn't surface, so re-pulling a different quant of a
+                    // VLM doesn't orphan its mmproj / tokenizer.
+                    if plan.manifest.mmproj_file.name.is_empty() {
+                        plan.manifest.mmproj_file = existing.mmproj_file;
+                    }
+                    if plan.manifest.tokenizer_file.name.is_empty() {
+                        plan.manifest.tokenizer_file = existing.tokenizer_file;
+                    }
                 }
             }
 

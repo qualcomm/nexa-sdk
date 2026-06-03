@@ -208,19 +208,6 @@ func ModelPull(input ModelPullInput) error {
 	return nil
 }
 
-// ModelList returns the names ("org/repo") of all cached models.
-func ModelList() ([]string, error) {
-	ds, err := ModelListDetailed()
-	if err != nil {
-		return nil, err
-	}
-	names := make([]string, len(ds))
-	for i, d := range ds {
-		names[i] = d.Name
-	}
-	return names, nil
-}
-
 // ModelDetail mirrors geniex_ModelDetail.
 type ModelDetail struct {
 	Name       string
@@ -305,7 +292,6 @@ type ModelPaths struct {
 	ModelDir      string
 	ModelName     string
 	PluginID      string
-	DeviceID      string
 }
 
 // ModelGetPaths resolves "org/repo[:quant]" (or alias) to absolute on-disk paths.
@@ -324,7 +310,6 @@ func ModelGetPaths(name string) (*ModelPaths, error) {
 		ModelDir:      C.GoString(out.model_dir),
 		ModelName:     C.GoString(out.model_name),
 		PluginID:      C.GoString(out.plugin_id),
-		DeviceID:      C.GoString(out.device_id),
 	}, nil
 }
 
@@ -392,21 +377,6 @@ func ModelQuery(input ModelPullInput) (*ModelQueryResult, error) {
 		}
 	}
 	return result, nil
-}
-
-// ModelResolveAlias expands a short alias (e.g. "qwen3") to "org/repo".
-func ModelResolveAlias(alias string) (string, error) {
-	cAlias := C.CString(alias)
-	defer C.free(unsafe.Pointer(cAlias))
-	var out *C.char
-	if res := C.geniex_model_resolve_alias(cAlias, &out); res != C.GENIEX_SUCCESS {
-		return "", modelError(res)
-	}
-	if out == nil {
-		return "", nil
-	}
-	defer free(unsafe.Pointer(out))
-	return C.GoString(out), nil
 }
 
 // ModelLastErrorMessage returns the library-owned (do not free) message for the

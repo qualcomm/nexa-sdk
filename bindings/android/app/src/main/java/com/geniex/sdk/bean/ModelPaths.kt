@@ -8,5 +8,4 @@ data class ModelPaths(
     val plugin_id: String,
     val mmproj_path: String? = null,
     val tokenizer_path: String? = null,
-    val device_id: String? = null,
 )

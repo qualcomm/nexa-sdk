@@ -97,7 +97,6 @@ typedef struct {
     char* model_dir;      /**< Model directory (always set).              */
     char* model_name;     /**< Architecture name, e.g. "qwen3-4b".       */
     char* plugin_id;      /**< Plugin ID, e.g. "llama_cpp".               */
-    char* device_id;      /**< Device ID. NULL means default device.      */
 } geniex_ModelPaths;
 
 /**

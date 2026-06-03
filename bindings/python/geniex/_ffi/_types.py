@@ -336,7 +336,6 @@ class geniex_ModelPaths(Structure):
         ('model_dir', c_char_p),
         ('model_name', c_char_p),
         ('plugin_id', c_char_p),
-        ('device_id', c_char_p),
     ]
 
 

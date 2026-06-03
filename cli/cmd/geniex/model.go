@@ -366,7 +366,7 @@ func pullModel(ctx context.Context, name string, quant string) error {
 		if err := chipsetEnsure(ctx, s); err != nil {
 			return err
 		}
-		chipset = chipsetGet(s)()
+		chipset = chipsetGet(s)
 	}
 
 	in := geniex_sdk.ModelPullInput{

@@ -29,7 +29,6 @@ pub struct GenieXModelPaths {
     pub model_dir: *mut c_char,
     pub model_name: *mut c_char,
     pub plugin_id: *mut c_char,
-    pub device_id: *mut c_char,
 }
 
 impl GenieXModelPaths {
@@ -41,7 +40,6 @@ impl GenieXModelPaths {
             model_dir: std::ptr::null_mut(),
             model_name: std::ptr::null_mut(),
             plugin_id: std::ptr::null_mut(),
-            device_id: std::ptr::null_mut(),
         }
     }
 }
@@ -80,11 +78,6 @@ pub extern "C" fn geniex_model_get_paths(
                         .as_ref()
                         .map(|p| str_to_cptr(&p.to_string_lossy()))
                         .unwrap_or(std::ptr::null_mut());
-                    (*out_paths).device_id = paths
-                        .device_id
-                        .as_deref()
-                        .map(str_to_cptr)
-                        .unwrap_or(std::ptr::null_mut());
                 }
                 GENIEX_SUCCESS
             }
@@ -105,10 +98,8 @@ pub unsafe extern "C" fn geniex_model_paths_free(paths: *mut GenieXModelPaths) {
     free_cptr(p.model_dir);
     free_cptr(p.model_name);
     free_cptr(p.plugin_id);
-    free_cptr(p.device_id);
     *paths = GenieXModelPaths::null();
 }
-
 
 /* ---- geniex_model_remove / clean ---- */
 
