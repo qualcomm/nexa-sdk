@@ -40,6 +40,7 @@ render.experimental.xml
 # no longer needed.
 /_shared/
 /_shared.README.md
+/local-aar-init.gradle
 
 # Local model lists (developer overrides)
 /src/main/assets/model_list_backup.json
