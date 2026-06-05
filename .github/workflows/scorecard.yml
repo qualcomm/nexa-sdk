@@ -3,6 +3,12 @@ name: Scorecard
 on:
   push:
     tags: ["v*"]
+  # TEMP: validate Windows scorecard end-to-end on this PR. Remove before merge.
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/scorecard.yml"
+      - "sdk/tests/benchmark/qdc/**"
   workflow_dispatch:
     inputs:
       device:
@@ -49,15 +55,19 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+      - id: sdk
+        run: |
+          d="${{ github.event.inputs.device || 'SC8380XP' }}"
+          case "$d" in SC*|CRD*|X*) echo "name=sdk-windows-arm64";; *) echo "name=sdk-linux-arm64";; esac >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v8
         with:
-          name: sdk-linux-arm64
+          name: ${{ steps.sdk.outputs.name }}
           path: pkg-geniex
       - uses: ./.github/actions/install-qdc-sdk
       - run: |
           python sdk/tests/benchmark/qdc/run_qdc_jobs.py \
             --pkg-dir pkg-geniex \
-            --device "${{ github.event.inputs.device || 'QCS9075M' }}" \
+            --device "${{ github.event.inputs.device || 'SC8380XP' }}" \
             --model-name "${{ matrix.model.name }}" \
             --cells-out "${{ matrix.model.name }}.json"
       - uses: actions/upload-artifact@v7
@@ -84,5 +94,5 @@ jobs:
           path: cells
       - run: |
           python sdk/tests/benchmark/qdc/run_qdc_jobs.py \
-            --device "${{ github.event.inputs.device || 'QCS9075M' }}" \
+            --device "${{ github.event.inputs.device || 'SC8380XP' }}" \
             --render-dir cells

@@ -39,12 +39,12 @@
     "name": "Qwen3-4B-qairt",
     "plugin": "qairt",
     "devices": ["npu"],
-    "bundle_url": "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models/models/qwen3_4b/releases/v0.52.0/qwen3_4b-genie-w4a16-qualcomm_qcs9075.zip"
+    "aihub_id": "qwen3_4b"
   },
   {
     "name": "Qwen3-4B-Instruct-2507-qairt",
     "plugin": "qairt",
     "devices": ["npu"],
-    "bundle_url": "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models/models/qwen3_4b_instruct_2507/releases/v0.52.0/qwen3_4b_instruct_2507-genie-w4a16-qualcomm_qcs9075.zip"
+    "aihub_id": "qwen3_4b_instruct_2507"
   }
 ]
