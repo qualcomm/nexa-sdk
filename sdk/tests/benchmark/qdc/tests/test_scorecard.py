@@ -99,6 +99,7 @@ def test_scorecard():
     lib = f"{BUNDLE_PATH}/lib"
     env = (
         f"LD_LIBRARY_PATH={lib}:{lib}/llama_cpp:{lib}/qairt "
+        f"ADSP_LIBRARY_PATH={lib} "
         f"GENIEX_PLUGIN_PATH={lib}"
     )
     res = run_adb_command(

@@ -72,10 +72,12 @@ def push_bundle_if_needed() -> None:
     if check.returncode != 0:
         subprocess.run(["adb", "push", HOST_BUNDLE, BUNDLE_PATH], check=True)
         run_adb_command(f"find {BUNDLE_PATH}/bin -type f -exec chmod 755 {{}} +")
-        # The qairt plugin assumes a flat layout on Android (it loads
-        # GENIEX_PLUGIN_PATH/libQnnHtp.so directly), but the CLI package keeps
-        # the QNN libs nested under lib/qairt/htp-files; copy them up to lib/.
+        # Android expects a flat layout: the qairt plugin loads
+        # GENIEX_PLUGIN_PATH/libQnnHtp.so directly, and the Hexagon FastRPC layer
+        # resolves the llama_cpp ggml-htp skels via ADSP_LIBRARY_PATH=lib. The CLI
+        # package nests both under subdirs, so copy them up to lib/.
         run_adb_command(f"cp {BUNDLE_PATH}/lib/qairt/htp-files/*.so {BUNDLE_PATH}/lib/")
+        run_adb_command(f"cp {BUNDLE_PATH}/lib/llama_cpp/*.so {BUNDLE_PATH}/lib/")
 
 
 def write_qdc_log(filename: str, content: str) -> None:
