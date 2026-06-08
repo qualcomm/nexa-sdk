@@ -129,7 +129,9 @@ static void usage(const char* argv0) {
         "Required (matrix mode):\n"
         "  --matrix-file PATH  one cell per line, tab-separated:\n"
         "                      cell_id<TAB>plugin<TAB>device<TAB>model_path"
-        "[<TAB>tokenizer_path][<TAB>mmproj_path]\n"
+        "[<TAB>tokenizer_path][<TAB>mmproj_path][<TAB>image_paths][<TAB>vlm]\n"
+        "                      image_paths is comma-separated; vlm non-empty forces\n"
+        "                      VLM mode (QAIRT bundles without an mmproj)\n"
         "                      lines starting with '#' are ignored\n"
         "\n"
         "Optional:\n"
@@ -1032,12 +1034,13 @@ static int run_matrix(options_t* base) {
         if (line[0] == '\0' || line[0] == '#') continue;
 
         /* Tab-separated: cell_id <TAB> plugin <TAB> device <TAB> model_path
-         *                [<TAB> tokenizer_path] [<TAB> mmproj_path] */
-        char* fields[6] = {NULL};
+         *                [<TAB> tokenizer_path] [<TAB> mmproj_path]
+         *                [<TAB> image_paths (comma-separated)] [<TAB> vlm] */
+        char* fields[8] = {NULL};
         int   nf        = 0;
         char* p         = line;
         fields[nf++]    = p;
-        while (*p && nf < 6) {
+        while (*p && nf < 8) {
             if (*p == '\t') {
                 *p           = '\0';
                 fields[nf++] = p + 1;
@@ -1059,12 +1062,21 @@ static int run_matrix(options_t* base) {
         cell.tokenizer_path = (nf >= 5 && fields[4][0] != '\0') ? fields[4] : NULL;
         cell.mmproj_path    = (nf >= 6 && fields[5][0] != '\0') ? fields[5] : NULL;
         cell.output_md      = NULL;
-        /* The matrix file carries no media columns, so don't let a global
-         * --vlm / --image leak VLM mode into every cell; mmproj_path above is
-         * the only per-cell VLM trigger. */
-        cell.force_vlm   = false;
+        /* image_paths and force_vlm come per-row from fields[6]/[7], overwriting
+         * the values copied from `base` so a global --image / --vlm can't leak
+         * into every cell. No audio column: keep it explicitly zeroed. */
         cell.image_count = 0;
         cell.audio_count = 0;
+        if (nf >= 7 && fields[6][0] != '\0') {
+            char* tok = fields[6];
+            while (tok && cell.image_count < MAX_PATHS) {
+                char* comma = strchr(tok, ',');
+                if (comma) *comma = '\0';
+                cell.image_paths[cell.image_count++] = tok;
+                tok                                  = comma ? comma + 1 : NULL;
+            }
+        }
+        cell.force_vlm = (nf >= 8 && fields[7][0] != '\0');
 
         if (base->output_json_dir) {
             snprintf(json_path, sizeof(json_path), "%s/%s.json", base->output_json_dir, cell.cell_id);
