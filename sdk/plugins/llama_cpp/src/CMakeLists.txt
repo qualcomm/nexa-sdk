@@ -8,7 +8,7 @@ target_include_directories(geniex_llama_cpp
     PRIVATE ../include/)
 
 target_link_libraries(geniex_llama_cpp
-    PUBLIC  llama common
+    PUBLIC  llama llama-common
     PRIVATE geniex mtmd)
 
 set_target_properties(geniex_llama_cpp PROPERTIES
