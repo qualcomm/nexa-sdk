@@ -104,6 +104,7 @@ jobs:
           name: ${{ steps.sdk.outputs.name }}
           path: pkg-geniex
       - uses: ./.github/actions/install-qdc-sdk
+      - run: pip install boto3 qai-hub
       - run: |
           python sdk/benchmark/qdc/run_qdc_jobs.py \
             --pkg-dir pkg-geniex \
