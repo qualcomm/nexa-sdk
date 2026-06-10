@@ -49,6 +49,8 @@ HERE = Path(__file__).parent
 
 AIHUB_BASE = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models"
 AIHUB_VERSION = "v0.52.0"
+QAIRT_VERSION = "2.45"
+BUNDLE_CACHE_BUCKET = "geniex-scorecard-cache"
 # Staged into every artifact and fed to VLM cells; reuses the committed VLM
 # e2e fixture (tests/conftest.py TEST_IMAGE_PATH).
 TEST_IMAGE = HERE.parents[2] / "cli" / "server" / "docs" / "ui" / "favicon-32x32.png"
@@ -81,9 +83,81 @@ def resolve_bundle_url(aihub_id: str, device: str) -> str | None:
     return next((a["download_url"] for a in assets if a.get("chipset") == slug), None)
 
 
+# ---------------------------------------------------------------------------
+# Compile-on-demand with S3 cache
+# ---------------------------------------------------------------------------
+
+
+def _s3_cache_key(model_id: str, device: str) -> str:
+    slug = CHIPSET[device]
+    return f"compiled/{model_id}/{slug}/qairt-{QAIRT_VERSION}/bundle.zip"
+
+
+def _s3_cache_exists(key: str) -> str | None:
+    """Return a pre-signed URL if the cached bundle exists, else None."""
+    import boto3
+    from botocore.exceptions import ClientError
+
+    s3 = boto3.client("s3")
+    try:
+        s3.head_object(Bucket=BUNDLE_CACHE_BUCKET, Key=key)
+    except ClientError:
+        return None
+    return s3.generate_presigned_url(
+        "get_object", Params={"Bucket": BUNDLE_CACHE_BUCKET, "Key": key}, ExpiresIn=3600
+    )
+
+
+def _s3_cache_upload(key: str, local_path: Path) -> str:
+    """Upload a bundle zip to S3 cache and return a pre-signed URL."""
+    import boto3
+
+    s3 = boto3.client("s3")
+    s3.upload_file(str(local_path), BUNDLE_CACHE_BUCKET, key)
+    log.info("cached bundle → s3://%s/%s", BUNDLE_CACHE_BUCKET, key)
+    return s3.generate_presigned_url(
+        "get_object", Params={"Bucket": BUNDLE_CACHE_BUCKET, "Key": key}, ExpiresIn=3600
+    )
+
+
+def _compile_via_aihub(model_id: str, device: str, tmp: Path) -> Path:
+    """Submit a compile job to AI Hub, wait, download the bundle zip."""
+    import qai_hub as hub
+
+    slug = CHIPSET[device]
+    log.info("submitting AI Hub compile: %s → %s (qairt %s)", model_id, slug, QAIRT_VERSION)
+    compile_job = hub.submit_compile_job(
+        model=f"https://huggingface.co/qualcomm/{model_id}",
+        device=hub.Device(slug),
+        options=f"--target_runtime qnn --qairt_version {QAIRT_VERSION}",
+        name=f"geniex-scorecard-{model_id}-{slug}",
+    )
+    assert compile_job.wait().success, f"compile failed: {compile_job.job_id}"
+    out_path = tmp / f"{model_id}.zip"
+    compile_job.download_target_model(str(out_path))
+    log.info("compile complete: %s → %s", compile_job.job_id, out_path)
+    return out_path
+
+
+def resolve_compiled_bundle_url(model_id: str, device: str) -> str:
+    """Return a download URL for a compiled bundle, using S3 cache when possible."""
+    key = _s3_cache_key(model_id, device)
+    cached = _s3_cache_exists(key)
+    if cached:
+        log.info("cache hit: %s", key)
+        return cached
+
+    log.info("cache miss: %s — compiling", key)
+    with tempfile.TemporaryDirectory() as td:
+        bundle_zip = _compile_via_aihub(model_id, device, Path(td))
+        return _s3_cache_upload(key, bundle_zip)
+
+
 def resolve_model_url(m: dict, device: str) -> tuple[str | None, str]:
     """Return (download_url, kind) for a model entry; url is None when no
     asset matches the device (QAIRT bundles only)."""
+    if m.get("compile"):
+        return resolve_compiled_bundle_url(m["compile_id"], device), "bundle"
     if "aihub_id" in m:
         return resolve_bundle_url(m["aihub_id"], device), "bundle"
     return m["url"], "gguf"

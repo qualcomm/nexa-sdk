@@ -107,5 +107,23 @@
     "aihub_id": "qwen2_5_vl_7b_instruct",
     "vlm": true,
     "image": true
+  },
+  {
+    "name": "Llama-3.2-1B-Instruct-qairt",
+    "plugin": "qairt",
+    "devices": [
+      "npu"
+    ],
+    "compile": true,
+    "compile_id": "llama_v3_2_1b_instruct"
+  },
+  {
+    "name": "Llama-3.2-3B-Instruct-qairt",
+    "plugin": "qairt",
+    "devices": [
+      "npu"
+    ],
+    "compile": true,
+    "compile_id": "llama_v3_2_3b_instruct"
   }
 ]

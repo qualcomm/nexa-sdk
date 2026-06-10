@@ -82,6 +82,10 @@ jobs:
         model: ${{ fromJson(needs.load-models.outputs.matrix) }}
     env:
       QDC_API_KEY: ${{ secrets.QDC_API_KEY }}
+      QAI_HUB_API_TOKEN: ${{ secrets.QAI_HUB_API_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SCORECARD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SCORECARD_AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-west-2
       GENIEX_RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
     steps:
       - uses: actions/checkout@v6
