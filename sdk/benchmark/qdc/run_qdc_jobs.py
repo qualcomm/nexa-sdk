@@ -189,15 +189,9 @@ BUILDERS = {
 
 def download_cells(client, job_id: str, tmp: Path) -> list[dict]:
     members = _qdc.download_log_members(
-        client, job_id, tmp, lambda n: n.endswith(".json") or n == "script.log"
+        client, job_id, tmp, lambda n: n.endswith(".json")
     )
-    cells = []
-    for name, data in members:
-        if name.endswith("script.log"):
-            text = data.decode("utf-8", errors="replace")
-            log.info("---- device script.log ----\n%s\n---- end script.log ----", text)
-            continue
-        cells.append(json.loads(data))
+    cells = [json.loads(data) for _, data in members]
     return sorted(cells, key=lambda c: c["cell_id"])
 
 

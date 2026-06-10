@@ -75,8 +75,9 @@ typedef struct {
     int32_t     warmup;
     int32_t     repeat;
     const char* prompt;
-    char*       prompt_buf;   /* allocated when --prompt-file is used */
-    bool        prompt_as_is; /* true => pass prompt verbatim, no cache-busting suffix */
+    char*       prompt_buf;         /* allocated when --prompt-file is used */
+    bool        prompt_as_is;       /* true => pass prompt verbatim, no cache-busting suffix */
+    bool        reset_between_runs; /* true => geniex_llm_reset() before each run, freeing KV */
     int32_t     n_ctx;
     int32_t     n_threads;
     int32_t     ngl_override; /* -1 = use resolved alias default; >=0 overrides */
@@ -159,6 +160,10 @@ static void usage(const char* argv0) {
         "                         chat content (e.g. a bundle's sample_prompt.txt\n"
         "                         ending in `<|im_start|>assistant\\n`) where a\n"
         "                         trailing suffix would corrupt the template.\n"
+        "  --reset-between-runs   call geniex_llm_reset() before every measured\n"
+        "                         and warmup run so the KV cache starts empty;\n"
+        "                         needed when prompt_tokens approaches n_ctx and\n"
+        "                         consecutive runs would otherwise overflow it.\n"
         "\n"
         "Optional (multimodal):\n"
         "  --tokenizer-path PATH  explicit tokenizer file\n"
@@ -309,31 +314,32 @@ static const char* arg_value(int argc, char** argv, int* i, const char* flag) {
 static int g_token_callback_delay_us = 0;
 
 static void parse_args(int argc, char** argv, options_t* o) {
-    o->plugin          = NULL;
-    o->device          = "auto";
-    o->device_id       = NULL;
-    o->model_path      = NULL;
-    o->tokenizer_path  = NULL;
-    o->mmproj_path     = NULL;
-    o->force_vlm       = false;
-    o->image_count     = 0;
-    o->audio_count     = 0;
-    o->max_new_tokens  = 128;
-    o->temperature     = 0.0f;
-    o->seed            = 42;
-    o->warmup          = 1;
-    o->repeat          = 3;
-    o->prompt          = DEFAULT_PROMPT;
-    o->prompt_buf      = NULL;
-    o->prompt_as_is    = false;
-    o->n_ctx           = 0;
-    o->n_threads       = 0;
-    o->ngl_override    = -1;
-    o->output_json     = NULL;
-    o->output_md       = NULL;
-    o->cell_id         = NULL;
-    o->matrix_file     = NULL;
-    o->output_json_dir = NULL;
+    o->plugin             = NULL;
+    o->device             = "auto";
+    o->device_id          = NULL;
+    o->model_path         = NULL;
+    o->tokenizer_path     = NULL;
+    o->mmproj_path        = NULL;
+    o->force_vlm          = false;
+    o->image_count        = 0;
+    o->audio_count        = 0;
+    o->max_new_tokens     = 128;
+    o->temperature        = 0.0f;
+    o->seed               = 42;
+    o->warmup             = 1;
+    o->repeat             = 3;
+    o->prompt             = DEFAULT_PROMPT;
+    o->prompt_buf         = NULL;
+    o->prompt_as_is       = false;
+    o->reset_between_runs = false;
+    o->n_ctx              = 0;
+    o->n_threads          = 0;
+    o->ngl_override       = -1;
+    o->output_json        = NULL;
+    o->output_md          = NULL;
+    o->cell_id            = NULL;
+    o->matrix_file        = NULL;
+    o->output_json_dir    = NULL;
 
     for (int i = 1; i < argc; ++i) {
         const char* a = argv[i];
@@ -385,6 +391,8 @@ static void parse_args(int argc, char** argv, options_t* o) {
             o->prompt     = o->prompt_buf;
         } else if (strcmp(a, "--prompt-as-is") == 0) {
             o->prompt_as_is = true;
+        } else if (strcmp(a, "--reset-between-runs") == 0) {
+            o->reset_between_runs = true;
         } else if (strcmp(a, "-c") == 0 || strcmp(a, "--ctx-size") == 0) {
             o->n_ctx = atoi(arg_value(argc, argv, &i, a));
         } else if (strcmp(a, "-t") == 0 || strcmp(a, "--threads") == 0) {
@@ -690,6 +698,10 @@ static void run_llm(const options_t* o, const char* device_id, int32_t ngl, run_
         int32_t run_idx   = is_warmup ? i : (i - o->warmup);
         char*   prompt    = build_run_prompt(o->prompt, run_idx, is_warmup, as_is);
 
+        if (o->reset_between_runs) {
+            check(geniex_llm_reset(llm), "geniex_llm_reset");
+        }
+
         geniex_LlmGenerateInput  gin;
         geniex_LlmGenerateOutput gout;
         memset(&gin, 0, sizeof(gin));
@@ -771,6 +783,10 @@ static void run_vlm(const options_t* o, const char* device_id, int32_t ngl, run_
         if (!prompt) {
             geniex_vlm_destroy(vlm);
             exit(1);
+        }
+
+        if (o->reset_between_runs) {
+            check(geniex_vlm_reset(vlm), "geniex_vlm_reset");
         }
 
         geniex_VlmGenerateInput  gin;

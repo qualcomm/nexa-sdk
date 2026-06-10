@@ -93,7 +93,7 @@ for ctx in 512 1024 4096; do
   echo "=== matrix ctx=$ctx ==="
   cat "$tsv"
   ./bin/geniex_benchmark --matrix-file "$tsv" --output-json-dir "$OUT" -r 3 \
-    -c "$ctx" --prompt-file "$prompt"
+    -c "$ctx" --prompt-file "$prompt" --reset-between-runs
   echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
 done
 echo "=== done ==="
