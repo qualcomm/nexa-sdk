@@ -1,3 +1,4 @@
+mod chipset;
 mod init;
 mod logging;
 mod mapping;

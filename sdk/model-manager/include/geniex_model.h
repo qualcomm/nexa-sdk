@@ -363,6 +363,61 @@ GENIEX_API void geniex_model_query_free(geniex_ModelQueryOutput* out);
  */
 GENIEX_API int32_t geniex_model_resolve_alias(const char* alias, char** out_full_name);
 
+/* ============================================================
+ *  Chipset
+ * ============================================================ */
+
+/**
+ * @brief One chipset AI Hub publishes assets for.
+ *
+ * `name` and the `aliases` array are heap-allocated; free the enclosing
+ * list with geniex_model_list_chipsets_free().
+ */
+typedef struct {
+    char*   name;        /**< Canonical chipset name, e.g. "SM8650".        */
+    char**  aliases;     /**< Accepted aliases, e.g. "sd8g3".               */
+    int32_t alias_count; /**< Length of `aliases`.                          */
+} geniex_ChipsetInfo;
+
+typedef struct {
+    geniex_ChipsetInfo* chipsets;
+    int32_t             count;
+} geniex_ChipsetList;
+
+/**
+ * @brief List every chipset supported by Qualcomm AI Hub, with aliases.
+ *
+ * Sourced from the remote `platform.json` (cached on disk for 24h), so the
+ * first call may hit the network.
+ *
+ * @param out  Populated on success. Call geniex_model_list_chipsets_free() when done.
+ * @return GENIEX_SUCCESS, or a negative geniex_ErrorCode.
+ */
+GENIEX_API int32_t geniex_model_list_chipsets(geniex_ChipsetList* out);
+
+/** Free every chipset's name + aliases array, then zero the struct. */
+GENIEX_API void geniex_model_list_chipsets_free(geniex_ChipsetList* out);
+
+/**
+ * @brief Detect the chipset of the current host via a local probe.
+ *
+ * Pure local detection — no network. Coverage: Windows-on-Snapdragon
+ * (X Elite / X Plus / X2 Elite), Linux on Qualcomm Dragonwing boards
+ * (QCS6490 / QCS9075), and Android on Snapdragon (`ro.soc.model`).
+ *
+ * The returned string is not normalised across platforms: Windows/Linux
+ * yield an AI Hub canonical chipset id (e.g. "qualcomm-snapdragon-x-elite"),
+ * while Android yields the raw SoC model (e.g. "SM8750"). Both are accepted
+ * by geniex_model_pull's `chipset` field.
+ *
+ * @param out_chipset  Set to a heap-allocated string on success, or NULL when
+ *                     the host cannot be probed on this platform. Free a
+ *                     non-NULL value with geniex_free().
+ * @return GENIEX_SUCCESS (even when *out_chipset is NULL), or a negative
+ *         geniex_ErrorCode on a hard failure (e.g. NULL out_chipset).
+ */
+GENIEX_API int32_t geniex_model_detect_chipset(char** out_chipset);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

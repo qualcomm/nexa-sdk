@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use model_manager_core::config::StoreConfig;
 use model_manager_core::pull::pull_with_source;
-use model_manager_core::source::ai_hub::{AiHubConfig, AiHubSource};
+use model_manager_core::source::ai_hub::{list_supported_chipsets, AiHubConfig, AiHubSource};
 use model_manager_core::store::Store;
 use model_manager_core::transport::{HttpTransport, ReqwestTransport, TransportConfig};
 use tempfile::tempdir;
@@ -300,4 +300,40 @@ async fn ai_hub_pull_errors_when_chipset_unknown() {
         format!("{err}").contains("not available"),
         "unexpected error: {err}"
     );
+}
+
+#[tokio::test]
+async fn list_supported_chipsets_returns_names_and_aliases() {
+    let server = MockServer::start().await;
+    let base = server.uri();
+    let version = "v0.99.0";
+
+    let platform_json = r#"{
+      "chipsets": [
+        { "name": "SM8650", "aliases": ["Snapdragon 8 Gen 3", "sd8g3"] },
+        { "name": "SM8750", "aliases": ["sd8elite"] }
+      ]
+    }"#;
+    install_static(
+        &server,
+        &format!("/qai-hub-models/releases/{version}/platform.json"),
+        platform_json.as_bytes().to_vec(),
+    )
+    .await;
+
+    let tmp = tempdir().unwrap();
+    let cfg = AiHubConfig {
+        endpoint: format!("{base}/qai-hub-models"),
+        version: version.to_string(),
+        chipset: String::new(),
+        cache_dir: tmp.path().join("aihub-cache"),
+        skip_cache: true,
+    };
+
+    let chipsets = list_supported_chipsets(&cfg).await.expect("list chipsets");
+    assert_eq!(chipsets.len(), 2);
+    assert_eq!(chipsets[0].name, "SM8650");
+    assert_eq!(chipsets[0].aliases, vec!["Snapdragon 8 Gen 3", "sd8g3"]);
+    assert_eq!(chipsets[1].name, "SM8750");
+    assert_eq!(chipsets[1].aliases, vec!["sd8elite"]);
 }

@@ -25,7 +25,7 @@ use crate::manifest::{ModelFileInfo, ModelManifest, ModelType};
 use crate::transport::{HttpTransport, ReqwestTransport};
 
 use self::manifest::{
-    InfoJson, ManifestModelEntry, ModelReleaseAssets, PlatformInfo, ReleaseManifest,
+    ChipsetInfo, InfoJson, ManifestModelEntry, ModelReleaseAssets, PlatformInfo, ReleaseManifest,
 };
 use self::remote_zip::{fetch_central_directory, Method, ZipEntry};
 use self::selector::{match_asset, UnavailableChipset};
@@ -65,6 +65,33 @@ impl AiHubConfig {
             skip_cache,
         }
     }
+}
+
+/// Fetch and parse `platform.json` (the chipset catalogue) for `cfg`,
+/// honouring the on-disk 24h cache. Shared by `AiHubSource::plan` and
+/// [`list_supported_chipsets`].
+async fn fetch_platform_info(
+    cfg: &AiHubConfig,
+    transport: &Arc<dyn HttpTransport>,
+) -> Result<PlatformInfo> {
+    let platform_url = format!(
+        "{}/releases/{}/{PLATFORM_FILENAME}",
+        cfg.endpoint, cfg.version
+    );
+    let platform_cache = cfg.cache_dir.join(PLATFORM_FILENAME);
+    let platform_bytes =
+        fetch_with_cache(&platform_url, &platform_cache, cfg.skip_cache, transport).await?;
+    serde_json::from_slice(&platform_bytes).map_err(|source| Error::ManifestParse {
+        what: "platform.json",
+        source,
+    })
+}
+
+/// List every chipset AI Hub publishes assets for, with its canonical
+/// name and aliases. Sourced from `platform.json`.
+pub async fn list_supported_chipsets(cfg: &AiHubConfig) -> Result<Vec<ChipsetInfo>> {
+    let transport: Arc<dyn HttpTransport> = Arc::new(ReqwestTransport::new()?);
+    Ok(fetch_platform_info(cfg, &transport).await?.chipsets)
 }
 
 pub struct AiHubSource {
@@ -159,20 +186,7 @@ impl ModelSource for AiHubSource {
                 source,
             })?;
 
-        let platform_url = format!("{endpoint}/releases/{version}/{PLATFORM_FILENAME}");
-        let platform_cache = self.cfg.cache_dir.join(PLATFORM_FILENAME);
-        let platform_bytes = fetch_with_cache(
-            &platform_url,
-            &platform_cache,
-            self.cfg.skip_cache,
-            &self.transport,
-        )
-        .await?;
-        let platform: PlatformInfo =
-            serde_json::from_slice(&platform_bytes).map_err(|source| Error::ManifestParse {
-                what: "platform.json",
-                source,
-            })?;
+        let platform = fetch_platform_info(&self.cfg, &self.transport).await?;
 
         let chipset: String = if self.cfg.chipset.is_empty() {
             detect::detect_host_chipset().ok_or_else(|| {
