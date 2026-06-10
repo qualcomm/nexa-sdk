@@ -34,8 +34,9 @@ Start-Transcript -Path "$LOG\harness.log" -Force | Out-Null
 # time and crashes pre-main with 0xC0000409. Mirrors run_windows.ps1 (scorecard).
 $cert = "$ROOT\ggml-htp-v1.cer"
 if (Test-Path $cert) {
-    & certutil.exe -addstore -f Root $cert | Out-Null
-    & certutil.exe -addstore -f TrustedPublisher $cert | Out-Null
+    Write-Output "=== install HTP cert ==="
+    & certutil.exe -addstore -f Root $cert
+    & certutil.exe -addstore -f TrustedPublisher $cert
 }
 
 # --- 2. Bootstrap a portable Python.
@@ -48,13 +49,16 @@ $PY_VER = "3.13.1"
 $PY_ZIP = "$ROOT\python-embed.zip"
 $PY_URL = "https://www.python.org/ftp/python/$PY_VER/python-$PY_VER-embed-arm64.zip"
 Write-Output "=== fetch python $PY_VER (arm64 embed) ==="
-Invoke-WebRequest -Uri $PY_URL -OutFile $PY_ZIP
+Invoke-WebRequest -Uri $PY_URL -OutFile $PY_ZIP -UseBasicParsing
 Expand-Archive -Path $PY_ZIP -DestinationPath $PY_DIR -Force
 $pth = Get-ChildItem "$PY_DIR\python*._pth" | Select-Object -First 1
 (Get-Content $pth.FullName) -replace '^#import site', 'import site' | Set-Content $pth.FullName
-Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "$ROOT\get-pip.py"
-& "$PY_DIR\python.exe" "$ROOT\get-pip.py" --no-warn-script-location
-& "$PY_DIR\python.exe" -m pip install --no-warn-script-location "pytest>=7.0" "tqdm>=4.65"
+Get-Content $pth.FullName
+Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "$ROOT\get-pip.py" -UseBasicParsing
+& "$PY_DIR\python.exe" "$ROOT\get-pip.py" --no-warn-script-location 2>&1
+& "$PY_DIR\python.exe" -m pip install --no-warn-script-location "pytest>=7.0" "tqdm>=4.65" 2>&1
+& "$PY_DIR\python.exe" --version
+& "$PY_DIR\python.exe" -m pytest --version
 
 # --- 3. Run the SDK pytest matrix against the windows-arm64 SDK.
 # tests/conftest.py treats Windows + arm64 as a Snapdragon host, so the
@@ -69,13 +73,18 @@ $env:PATH = "$ROOT\pkg-geniex\lib;$ROOT\pkg-geniex\lib\llama_cpp;$ROOT\pkg-genie
 # jobs and bursting all four model pulls in parallel times out fixtures.
 $env:HF_HUB_DOWNLOAD_CONCURRENCY = "1"
 
+Write-Output "=== smoke: import geniex ==="
+& "$PY_DIR\python.exe" -c "import geniex; geniex.init(); geniex.deinit(); print('geniex ok')" 2>&1
+
 Set-Location "$ROOT\tests"
 Write-Output "=== pytest ==="
+# norecursedirs is already set in tests/pytest.ini; do not pass -o here
+# (pytest -o splits on `=` only, but the embed build's argparse rejects the
+# space-containing list value with exit 4).
 & "$PY_DIR\python.exe" -m pytest . -v `
     --tb=short `
     --junitxml="$LOG\device-results.xml" `
-    -m "not api" `
-    -o "norecursedirs=cli qdc"
+    -m "not api" 2>&1
 $rc = $LASTEXITCODE
 Write-Output "=== pytest exit $rc ==="
 
