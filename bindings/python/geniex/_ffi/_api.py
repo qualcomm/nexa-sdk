@@ -21,6 +21,7 @@ from ctypes import CFUNCTYPE, POINTER, byref, c_char_p, c_int32, c_void_p
 
 from ._lib import load_library
 from ._types import (
+    geniex_ChipsetList,
     geniex_GetDeviceListInput,
     geniex_GetDeviceListOutput,
     geniex_GetPluginListOutput,
@@ -282,6 +283,15 @@ def _bind_all() -> None:
 
     lib.geniex_model_resolve_alias.argtypes = [c_char_p, POINTER(c_char_p)]
     lib.geniex_model_resolve_alias.restype = c_int32
+
+    lib.geniex_model_list_chipsets.argtypes = [POINTER(geniex_ChipsetList)]
+    lib.geniex_model_list_chipsets.restype = c_int32
+
+    lib.geniex_model_list_chipsets_free.argtypes = [POINTER(geniex_ChipsetList)]
+    lib.geniex_model_list_chipsets_free.restype = None
+
+    lib.geniex_model_detect_chipset.argtypes = [POINTER(c_char_p)]
+    lib.geniex_model_detect_chipset.restype = c_int32
 
 
 _bound = False

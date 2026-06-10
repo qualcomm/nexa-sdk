@@ -1,5 +1,6 @@
 package com.geniex.sdk
 
+import com.geniex.sdk.bean.ChipsetInfo
 import com.geniex.sdk.bean.FileProgress
 import com.geniex.sdk.bean.ModelPaths
 import com.geniex.sdk.bean.ModelPullInput
@@ -109,6 +110,14 @@ object ModelManagerWrapper {
 
     suspend fun resolveAlias(alias: String): String? = withContext(Dispatchers.IO) {
         native.resolveAlias(alias)
+    }
+
+    suspend fun listChipsets(): List<ChipsetInfo> = withContext(Dispatchers.IO) {
+        native.listChipsets().toList()
+    }
+
+    suspend fun detectChipset(): String? = withContext(Dispatchers.IO) {
+        native.detectChipset()
     }
 
     sealed class PullEvent {

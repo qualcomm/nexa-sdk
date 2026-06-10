@@ -29,6 +29,7 @@ from ._ffi._types import (
     GENIEX_HUB_LOCALFS,
     GENIEX_MODEL_TYPE_LLM,
     GENIEX_MODEL_TYPE_VLM,
+    geniex_ChipsetList,
     geniex_download_progress_cb,
     geniex_ModelListDetailedOutput,
     geniex_ModelPaths,
@@ -57,6 +58,9 @@ __all__ = [
     'set_type',
     'resolve_alias',
     'ensure_cached',
+    'ChipsetInfo',
+    'list_chipsets',
+    'detect_chipset',
 ]
 
 
@@ -92,6 +96,14 @@ class ModelDetail:
     model_type: str  # "llm" or "vlm"
     total_size: int
     precisions: list[str]
+
+
+@dataclass(frozen=True)
+class ChipsetInfo:
+    """One chipset Qualcomm AI Hub publishes assets for."""
+
+    name: str
+    aliases: list[str]
 
 
 @dataclass(frozen=True)
@@ -438,6 +450,47 @@ def resolve_alias(alias: str) -> str:
     _check(lib.geniex_model_resolve_alias(alias.encode(), byref(out)))
     try:
         return out.value.decode() if out.value else ''
+    finally:
+        lib.geniex_free(out)
+
+
+def list_chipsets() -> list[ChipsetInfo]:
+    """List every chipset Qualcomm AI Hub supports, with aliases.
+
+    Sourced from ``platform.json`` (cached 24h); the first call may hit the network.
+    """
+    _ensure_init()
+    lib = load_library()
+    out = geniex_ChipsetList()
+    _check(lib.geniex_model_list_chipsets(byref(out)))
+    try:
+        chipsets = []
+        for i in range(out.count):
+            c = out.chipsets[i]
+            chipsets.append(
+                ChipsetInfo(
+                    name=c.name.decode() if c.name else '',
+                    aliases=[c.aliases[j].decode() for j in range(c.alias_count)],
+                )
+            )
+        return chipsets
+    finally:
+        lib.geniex_model_list_chipsets_free(byref(out))
+
+
+def detect_chipset() -> str | None:
+    """Detect the current host's chipset via a local probe (no network).
+
+    Returns ``None`` when the platform cannot be probed.
+    """
+    _ensure_init()
+    lib = load_library()
+    out = c_char_p()
+    _check(lib.geniex_model_detect_chipset(byref(out)))
+    if not out.value:
+        return None
+    try:
+        return out.value.decode()
     finally:
         lib.geniex_free(out)
 

@@ -408,3 +408,18 @@ class geniex_ModelQueryOutput(Structure):
         ('candidates', POINTER(geniex_QuantCandidate)),
         ('candidate_count', c_int32),
     ]
+
+
+class geniex_ChipsetInfo(Structure):
+    _fields_ = [
+        ('name', c_char_p),
+        ('aliases', POINTER(c_char_p)),
+        ('alias_count', c_int32),
+    ]
+
+
+class geniex_ChipsetList(Structure):
+    _fields_ = [
+        ('chipsets', POINTER(geniex_ChipsetInfo)),
+        ('count', c_int32),
+    ]

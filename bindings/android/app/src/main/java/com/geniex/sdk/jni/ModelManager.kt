@@ -1,5 +1,6 @@
 package com.geniex.sdk.jni
 
+import com.geniex.sdk.bean.ChipsetInfo
 import com.geniex.sdk.bean.ModelDetail
 import com.geniex.sdk.bean.ModelPaths
 import com.geniex.sdk.bean.ModelPullInput
@@ -68,4 +69,10 @@ internal class ModelManager {
     external fun setType(modelName: String, modelType: Int): Int
 
     external fun resolveAlias(alias: String): String?
+
+    /** Chipsets Qualcomm AI Hub supports, with aliases (sourced from platform.json). */
+    external fun listChipsets(): Array<ChipsetInfo>
+
+    /** Detect the host chipset via a local probe. @return `null` if not probeable. */
+    external fun detectChipset(): String?
 }

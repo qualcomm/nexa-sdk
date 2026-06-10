@@ -244,6 +244,49 @@ func ModelListDetailed() ([]ModelDetail, error) {
 	return result, nil
 }
 
+// ChipsetInfo mirrors geniex_ChipsetInfo.
+type ChipsetInfo struct {
+	Name    string
+	Aliases []string
+}
+
+// ModelListChipsets lists every chipset Qualcomm AI Hub supports, with aliases.
+// Sourced from platform.json (cached 24h); the first call may hit the network.
+func ModelListChipsets() ([]ChipsetInfo, error) {
+	var out C.geniex_ChipsetList
+	if res := C.geniex_model_list_chipsets(&out); res != C.GENIEX_SUCCESS {
+		return nil, modelError(res)
+	}
+	defer C.geniex_model_list_chipsets_free(&out)
+
+	if out.chipsets == nil || out.count == 0 {
+		return nil, nil
+	}
+	chipsets := unsafe.Slice(out.chipsets, int(out.count))
+	result := make([]ChipsetInfo, out.count)
+	for i, c := range chipsets {
+		result[i] = ChipsetInfo{
+			Name:    C.GoString(c.name),
+			Aliases: cCharArrayToSlice(c.aliases, c.alias_count),
+		}
+	}
+	return result, nil
+}
+
+// ModelDetectChipset probes the current host for its chipset via a local
+// detector (no network). Returns "" when the platform can't be probed.
+func ModelDetectChipset() (string, error) {
+	var out *C.char
+	if res := C.geniex_model_detect_chipset(&out); res != C.GENIEX_SUCCESS {
+		return "", modelError(res)
+	}
+	if out == nil {
+		return "", nil
+	}
+	defer free(unsafe.Pointer(out))
+	return C.GoString(out), nil
+}
+
 // ModelRemove deletes a cached model ("org/repo" or "org/repo:quant").
 func ModelRemove(name string) error {
 	cName := C.CString(name)

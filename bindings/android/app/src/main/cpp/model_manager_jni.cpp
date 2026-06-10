@@ -254,6 +254,34 @@ jobject build_model_query(JNIEnv* env, const geniex_ModelQueryOutput& out) {
     return obj;
 }
 
+// Build a com.geniex.sdk.bean.ChipsetInfo from a geniex_ChipsetInfo.
+jobject build_chipset_info(JNIEnv* env, const geniex_ChipsetInfo& c) {
+    jclass cls = env->FindClass("com/geniex/sdk/bean/ChipsetInfo");
+    if (!cls) return nullptr;
+    jmethodID ctor = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;[Ljava/lang/String;)V");
+    if (!ctor) {
+        env->DeleteLocalRef(cls);
+        return nullptr;
+    }
+    jstring jName = env->NewStringUTF(c.name ? c.name : "");
+
+    jclass       stringCls = env->FindClass("java/lang/String");
+    jobjectArray jAliases  = env->NewObjectArray(c.alias_count, stringCls, nullptr);
+    for (int32_t i = 0; i < c.alias_count; ++i) {
+        jstring a = env->NewStringUTF(c.aliases[i] ? c.aliases[i] : "");
+        env->SetObjectArrayElement(jAliases, i, a);
+        env->DeleteLocalRef(a);
+    }
+
+    jobject obj = env->NewObject(cls, ctor, jName, jAliases);
+
+    env->DeleteLocalRef(jName);
+    env->DeleteLocalRef(jAliases);
+    env->DeleteLocalRef(stringCls);
+    env->DeleteLocalRef(cls);
+    return obj;
+}
+
 }  // namespace
 
 extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_ModelManager_init(
@@ -500,6 +528,39 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_geniex_sdk_jni_ModelManager_resolv
     if (alias.empty()) return nullptr;
     char*   out = nullptr;
     int32_t rc  = geniex_model_resolve_alias(alias.c_str(), &out);
+    if (rc != GENIEX_SUCCESS || !out) return nullptr;
+    jstring result = env->NewStringUTF(out);
+    geniex_free(out);
+    return result;
+}
+
+extern "C" JNIEXPORT jobjectArray JNICALL Java_com_geniex_sdk_jni_ModelManager_listChipsets(
+    JNIEnv* env, jobject /*thiz*/) {
+    jclass chipsetCls = env->FindClass("com/geniex/sdk/bean/ChipsetInfo");
+
+    geniex_ChipsetList out{};
+    int32_t            rc = geniex_model_list_chipsets(&out);
+    if (rc != GENIEX_SUCCESS) {
+        LOGe("[ModelManager JNI] listChipsets() failed rc=%d", rc);
+        jobjectArray empty = env->NewObjectArray(0, chipsetCls, nullptr);
+        env->DeleteLocalRef(chipsetCls);
+        return empty;
+    }
+
+    jobjectArray arr = env->NewObjectArray(out.count, chipsetCls, nullptr);
+    for (int32_t i = 0; i < out.count; ++i) {
+        jobject item = build_chipset_info(env, out.chipsets[i]);
+        env->SetObjectArrayElement(arr, i, item);
+        if (item) env->DeleteLocalRef(item);
+    }
+    env->DeleteLocalRef(chipsetCls);
+    geniex_model_list_chipsets_free(&out);
+    return arr;
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_geniex_sdk_jni_ModelManager_detectChipset(JNIEnv* env, jobject /*thiz*/) {
+    char*   out = nullptr;
+    int32_t rc  = geniex_model_detect_chipset(&out);
     if (rc != GENIEX_SUCCESS || !out) return nullptr;
     jstring result = env->NewStringUTF(out);
     geniex_free(out);
