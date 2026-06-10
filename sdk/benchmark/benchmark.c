@@ -1000,14 +1000,19 @@ static void write_json(const options_t* o, const char* device_id, int32_t ngl, i
     (void)json_field_dbl;
 }
 
-/* Trim the `-{plugin}-{device}` tail from a cell_id; falls back to the raw
- * id when the suffix isn't present. Caller frees. */
+/* Trim the `-{plugin}-{device}[-c{N}]` tail from a cell_id; falls back to the
+ * raw id when the suffix isn't present. Caller frees. */
 static char* model_label(const char* cell_id, const char* plugin, const char* device) {
     if (!cell_id) return NULL;
     size_t cl = strlen(cell_id);
-    size_t pl = plugin ? strlen(plugin) : 0;
-    size_t dl = device ? strlen(device) : 0;
-    /* expected suffix: "-<plugin>-<device>" */
+    /* Strip a trailing "-c<digits>" if present (scorecard ctx sweep). */
+    size_t end = cl;
+    while (end > 0 && cell_id[end - 1] >= '0' && cell_id[end - 1] <= '9') end--;
+    if (end >= 2 && end < cl && cell_id[end - 1] == 'c' && cell_id[end - 2] == '-') {
+        cl = end - 2;
+    }
+    size_t pl  = plugin ? strlen(plugin) : 0;
+    size_t dl  = device ? strlen(device) : 0;
     size_t suf = 1 + pl + 1 + dl;
     if (pl && dl && cl > suf && cell_id[cl - suf] == '-' && cell_id[cl - suf + 1 + pl] == '-' &&
         strncmp(cell_id + cl - suf + 1, plugin, pl) == 0 && strncmp(cell_id + cl - dl, device, dl) == 0) {
@@ -1019,7 +1024,8 @@ static char* model_label(const char* cell_id, const char* plugin, const char* de
     }
     char* out = (char*)malloc(cl + 1);
     if (!out) return NULL;
-    memcpy(out, cell_id, cl + 1);
+    memcpy(out, cell_id, cl);
+    out[cl] = '\0';
     return out;
 }
 

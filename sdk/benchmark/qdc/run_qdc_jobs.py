@@ -26,6 +26,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -117,6 +118,7 @@ def build_linux_artifact(
     script_path.chmod(0o755)
 
     shutil.copy(TEST_IMAGE, stage / "test.png")
+    shutil.copytree(HERE / "prompts", stage / "prompts")
 
     return Path(shutil.make_archive(str(tmp / "artifact"), "zip", stage))
 
@@ -138,6 +140,7 @@ def build_windows_artifact(
     shutil.copy(cert, stage / "ggml-htp-v1.cer")
 
     shutil.copy(TEST_IMAGE, stage / "test.png")
+    shutil.copytree(HERE / "prompts", stage / "prompts")
 
     return Path(shutil.make_archive(str(tmp / "artifact"), "zip", stage))
 
@@ -166,6 +169,7 @@ def build_android_artifact(
     shutil.copytree(HERE / "tests", stage / "tests")
     shutil.copy(HERE / "tests" / "requirements.txt", stage / "requirements.txt")
     shutil.copy(TEST_IMAGE, stage / "test.png")
+    shutil.copytree(HERE / "prompts", stage / "prompts")
     (stage / "pytest.ini").write_text("[pytest]\naddopts = --junitxml=results.xml\n")
 
     return Path(shutil.make_archive(str(tmp / "artifact"), "zip", stage))
@@ -215,6 +219,22 @@ def _human_size(n: int | None) -> str:
     return f"{b / 1024**3:.2f} GiB"
 
 
+_CTX_SUFFIX = re.compile(r"-c(\d+)$")
+
+
+def _ctx_from_cell(c: dict) -> int:
+    """Pull ctx from the `-c{N}` cell_id suffix; fall back to params.n_ctx."""
+    m = _CTX_SUFFIX.search(c.get("cell_id") or "")
+    if m:
+        return int(m.group(1))
+    return int((c.get("params") or {}).get("n_ctx") or 0)
+
+
+def _model_label(c: dict) -> str:
+    cid = _CTX_SUFFIX.sub("", c.get("cell_id") or "")
+    return cid.removesuffix(f"-{c['plugin']}-{c['device']}")
+
+
 def render(cells: list[dict], device: str, tag: str, sha: str) -> str:
     lines = [
         f"## QDC Scorecard — {device} — {tag}",
@@ -223,16 +243,19 @@ def render(cells: list[dict], device: str, tag: str, sha: str) -> str:
         f"- git sha: `{sha}`",
         f"- generated: `{datetime.now(timezone.utc).isoformat(timespec='seconds')}`",
         "",
-        "| Model | Size | Backend | Device | ngl | Test | TTFT (ms) | Prefill (tok/s) | Decode (tok/s) |",
-        "|-------|-----:|---------|--------|----:|------|----------:|----------------:|---------------:|",
+        "| Model | Size | Backend | Device | Ctx | ngl | Test | TTFT (ms) | Prefill (tok/s) | Decode (tok/s) |",
+        "|-------|-----:|---------|--------|----:|----:|------|----------:|----------------:|---------------:|",
     ]
-    for c in sorted(cells, key=lambda c: c["cell_id"]):
+    sort_key = lambda c: (_model_label(c), c["plugin"], c["device"], _ctx_from_cell(c))  # noqa: E731
+    for c in sorted(cells, key=sort_key):
         agg = c.get("agg") or {}
         params = c.get("params") or {}
-        model = c["cell_id"].removesuffix(f"-{c['plugin']}-{c['device']}")
+        model = _model_label(c)
         size = _human_size(c.get("model_size_bytes"))
         ngl_v = params.get("n_gpu_layers")
         ngl = "-" if c["plugin"] == "qairt" or not ngl_v else str(ngl_v)
+        ctx = _ctx_from_cell(c)
+        ctx_s = str(ctx) if ctx else "-"
         p_med = (agg.get("prompt_tokens") or {}).get("median")
         g_med = (agg.get("gen_tokens") or {}).get("median")
         test = (
@@ -241,7 +264,7 @@ def render(cells: list[dict], device: str, tag: str, sha: str) -> str:
             else "-"
         )
         lines.append(
-            f"| {model} | {size} | {c['plugin']} | {c['device']} | {ngl} | {test} | "
+            f"| {model} | {size} | {c['plugin']} | {c['device']} | {ctx_s} | {ngl} | {test} | "
             f"{_fmt_med_sd(agg, 'ttft_ms')} | {_fmt_med_sd(agg, 'prefill_tps')} | "
             f"{_fmt_med_sd(agg, 'decode_tps')} |"
         )
