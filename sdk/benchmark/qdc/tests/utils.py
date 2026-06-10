@@ -26,9 +26,11 @@ from appium.options.common import AppiumOptions
 HOST_BUNDLE = "/qdc/appium/pkg-geniex"
 HOST_ROWS = "/qdc/appium/matrix_rows.txt"
 HOST_IMAGE = "/qdc/appium/test.png"
+HOST_PROMPTS = "/qdc/appium/prompts"
 BUNDLE_PATH = "/data/local/tmp/pkg-geniex"
 MODELS_PATH = "/data/local/tmp/models"
 IMAGE_PATH = "/data/local/tmp/test.png"
+PROMPTS_PATH = "/data/local/tmp/prompts"
 QDC_LOGS_PATH = "/data/local/tmp/QDC_logs"
 RESULTS_PATH = f"{QDC_LOGS_PATH}/results"
 

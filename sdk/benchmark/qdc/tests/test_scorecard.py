@@ -31,15 +31,17 @@ from pathlib import Path
 from utils import (
     BUNDLE_PATH,
     HOST_IMAGE,
+    HOST_PROMPTS,
     HOST_ROWS,
     IMAGE_PATH,
     MODELS_PATH,
+    PROMPTS_PATH,
     RESULTS_PATH,
     push_bundle_if_needed,
     run_adb_command,
 )
 
-TSV = "/data/local/tmp/matrix.tsv"
+CTXS = (512, 1024, 4096)
 
 
 def _flatten_single_dir(d: Path) -> None:
@@ -90,12 +92,13 @@ def _fetch_and_push(
 
 def test_scorecard():
     push_bundle_if_needed()
-    run_adb_command(f"mkdir -p {MODELS_PATH} {RESULTS_PATH}")
+    run_adb_command(f"mkdir -p {MODELS_PATH} {RESULTS_PATH} {PROMPTS_PATH}")
 
     subprocess.run(["adb", "push", HOST_IMAGE, IMAGE_PATH], check=True)
+    subprocess.run(["adb", "push", f"{HOST_PROMPTS}/.", PROMPTS_PATH], check=True)
 
     rows = [r for r in Path(HOST_ROWS).read_text().splitlines() if r.strip()]
-    tsv_lines = []
+    tsv_by_ctx: dict[int, list[str]] = {ctx: [] for ctx in CTXS}
     with tempfile.TemporaryDirectory() as td:
         host_tmp = Path(td)
         for row in rows:
@@ -106,15 +109,13 @@ def test_scorecard():
             mpath, mmpath = pushed
             imgpath = IMAGE_PATH if image == "1" else ""
             for d in devs.split(","):
-                tsv_lines.append(
-                    f"{name}-{plugin}-{d}\t{plugin}\t{d}\t{mpath}"
-                    f"\t\t{mmpath}\t{imgpath}\t{vlm}"
-                )
+                for ctx in CTXS:
+                    tsv_by_ctx[ctx].append(
+                        f"{name}-{plugin}-{d}-c{ctx}\t{plugin}\t{d}\t{mpath}"
+                        f"\t\t{mmpath}\t{imgpath}\t{vlm}"
+                    )
 
-    assert tsv_lines, "no models pushed to device"
-    run_adb_command(
-        "printf '%s\\n' " + " ".join(f"'{ln}'" for ln in tsv_lines) + f" > {TSV}"
-    )
+    assert any(tsv_by_ctx.values()), "no models pushed to device"
 
     lib = f"{BUNDLE_PATH}/lib"
     env = (
@@ -122,13 +123,25 @@ def test_scorecard():
         f"ADSP_LIBRARY_PATH={lib} "
         f"GENIEX_PLUGIN_PATH={lib}"
     )
-    res = run_adb_command(
-        f"cd {BUNDLE_PATH} && {env} ./bin/geniex_benchmark "
-        f"--matrix-file {TSV} --output-json-dir {RESULTS_PATH} -r 3",
-        check=False,
-    )
+    failures = []
+    for ctx in CTXS:
+        tsv_path = f"/data/local/tmp/matrix-{ctx}.tsv"
+        prompt = f"{PROMPTS_PATH}/sample_prompt_{ctx}.txt"
+        run_adb_command(
+            "printf '%s\\n' "
+            + " ".join(f"'{ln}'" for ln in tsv_by_ctx[ctx])
+            + f" > {tsv_path}"
+        )
+        res = run_adb_command(
+            f"cd {BUNDLE_PATH} && {env} ./bin/geniex_benchmark "
+            f"--matrix-file {tsv_path} --output-json-dir {RESULTS_PATH} -r 3 "
+            f"-c {ctx} --prompt-file {prompt} --reset-between-runs",
+            check=False,
+        )
+        if res.returncode != 0:
+            failures.append(ctx)
     count = run_adb_command(f"ls {RESULTS_PATH} | wc -l", check=False).stdout.strip()
-    assert res.returncode == 0, f"geniex_benchmark exited {res.returncode}"
+    assert not failures, f"geniex_benchmark failed for ctx={failures}"
     assert count and int(count.split()[-1]) > 0, "no cell JSON produced on device"
 
 

@@ -5,6 +5,9 @@
 # via /bin/bash. Anything under /data/local/tmp/QDC_logs/ is auto-uploaded.
 # run_qdc_jobs.py substitutes {MODELS} with `name|plugin|csv_devices|url|kind`
 # lines before upload.
+#
+# We sweep ctx in {512, 1024, 4096} per cell to align with test-llama.cpp's
+# PERFORMANCE SESSION; each ctx gets its own pre-trimmed prompt file.
 
 set +e
 umask 022
@@ -12,8 +15,9 @@ umask 022
 LOG=/data/local/tmp/QDC_logs
 OUT=$LOG/results
 MODELS=/data/local/tmp/models
-BUNDLE=/data/local/tmp/TestContent/pkg-geniex
-TSV=/data/local/tmp/matrix.tsv
+TC=/data/local/tmp/TestContent
+BUNDLE=$TC/pkg-geniex
+PROMPTS=$TC/prompts
 
 mkdir -p "$LOG" "$OUT" "$MODELS"
 exec > "$LOG/script.log" 2>&1
@@ -25,9 +29,13 @@ chmod +x bin/* 2>/dev/null
 export LD_LIBRARY_PATH="$BUNDLE/lib:$BUNDLE/lib/llama_cpp:$BUNDLE/lib/qairt:$LD_LIBRARY_PATH"
 export GENIEX_PLUGIN_PATH="$BUNDLE/lib"
 
-IMG=/data/local/tmp/TestContent/test.png
+IMG=$TC/test.png
 
-: > "$TSV"
+TSV512=/data/local/tmp/matrix-512.tsv
+TSV1024=/data/local/tmp/matrix-1024.tsv
+TSV4096=/data/local/tmp/matrix-4096.tsv
+: > "$TSV512" > "$TSV1024" > "$TSV4096"
+
 while IFS='|' read -r name plugin devs url kind mmproj_url vlm image; do
   [ -z "$name" ] && continue
   dir="$MODELS/$name"
@@ -66,17 +74,27 @@ if len(e)==1 and os.path.isdir(os.path.join(d,e[0])):
   [ "$image" = "1" ] && imgpath="$IMG"
   IFS=','
   for d in $devs; do
-    printf '%s-%s-%s\t%s\t%s\t%s\t\t%s\t%s\t%s\n' \
-      "$name" "$plugin" "$d" "$plugin" "$d" "$mpath" "$mmpath" "$imgpath" "$vlm" >> "$TSV"
+    for ctx in 512 1024 4096; do
+      tsv_var="TSV$ctx"
+      printf '%s-%s-%s-c%s\t%s\t%s\t%s\t\t%s\t%s\t%s\n' \
+        "$name" "$plugin" "$d" "$ctx" "$plugin" "$d" "$mpath" "$mmpath" "$imgpath" "$vlm" \
+        >> "${!tsv_var}"
+    done
   done
   IFS='|'
 done <<'EOF'
 {MODELS}
 EOF
 
-echo "=== matrix ==="
-cat "$TSV"
-./bin/geniex_benchmark --matrix-file "$TSV" --output-json-dir "$OUT" -r 3
-echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files)"
+for ctx in 512 1024 4096; do
+  tsv_var="TSV$ctx"
+  tsv="${!tsv_var}"
+  prompt="$PROMPTS/sample_prompt_${ctx}.txt"
+  echo "=== matrix ctx=$ctx ==="
+  cat "$tsv"
+  ./bin/geniex_benchmark --matrix-file "$tsv" --output-json-dir "$OUT" -r 3 \
+    -c "$ctx" --prompt-file "$prompt" --reset-between-runs
+  echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
+done
 echo "=== done ==="
 exit 0
