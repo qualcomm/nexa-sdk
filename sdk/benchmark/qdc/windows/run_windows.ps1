@@ -107,7 +107,7 @@ foreach ($ctx in $ctxList) {
     Write-Output "=== matrix ctx=$ctx ==="
     if (Test-Path $tsv) { Get-Content $tsv }
     & "$BUNDLE\bin\geniex_benchmark.exe" --matrix-file $tsv --output-json-dir "$OUT" -r 3 `
-        -c $ctx --prompt-file $prompt --prompt-as-is
+        -c $ctx --prompt-file $prompt
     Write-Output "rc=$LASTEXITCODE  ($((Get-ChildItem $OUT).Count) cell json files so far)"
 }
 Write-Output "=== done ==="

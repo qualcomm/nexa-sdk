@@ -135,7 +135,7 @@ def test_scorecard():
         res = run_adb_command(
             f"cd {BUNDLE_PATH} && {env} ./bin/geniex_benchmark "
             f"--matrix-file {tsv_path} --output-json-dir {RESULTS_PATH} -r 3 "
-            f"-c {ctx} --prompt-file {prompt} --prompt-as-is",
+            f"-c {ctx} --prompt-file {prompt}",
             check=False,
         )
         if res.returncode != 0:
