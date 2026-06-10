@@ -51,8 +51,14 @@ $PY_URL = "https://www.python.org/ftp/python/$PY_VER/python-$PY_VER-embed-arm64.
 Write-Output "=== fetch python $PY_VER (arm64 embed) ==="
 Invoke-WebRequest -Uri $PY_URL -OutFile $PY_ZIP -UseBasicParsing
 Expand-Archive -Path $PY_ZIP -DestinationPath $PY_DIR -Force
+# The embed build's ._pth is isolated-mode: when present, Python ignores
+# $env:PYTHONPATH entirely and only honours the directories listed here +
+# (when `import site` is uncommented) site-packages from get-pip. Append
+# the in-tree bindings/python so `import geniex` works without a wheel.
 $pth = Get-ChildItem "$PY_DIR\python*._pth" | Select-Object -First 1
-(Get-Content $pth.FullName) -replace '^#import site', 'import site' | Set-Content $pth.FullName
+$content = (Get-Content $pth.FullName) -replace '^#import site', 'import site'
+$content += "$ROOT\bindings\python"
+$content | Set-Content $pth.FullName
 Get-Content $pth.FullName
 Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "$ROOT\get-pip.py" -UseBasicParsing
 & "$PY_DIR\python.exe" "$ROOT\get-pip.py" --no-warn-script-location 2>&1
@@ -65,7 +71,8 @@ Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "$ROOT\ge
 # `snapdragon`-marked llama_cpp NPU/Hybrid + qairt cells all run here.
 $env:GENIEX_DEVICE_TEST = "1"
 $env:GENIEX_LIB_PATH = "$ROOT\pkg-geniex\lib"
-$env:PYTHONPATH = "$ROOT\bindings\python"
+# Note: PYTHONPATH is ignored by the embed build's isolated-mode loader; the
+# bindings/python path is added to python313._pth above instead.
 # Plugin libs live one dir down from GENIEX_LIB_PATH; PATH lets the OS loader
 # find their transitive deps when ctypes opens libgeniex.dll.
 $env:PATH = "$ROOT\pkg-geniex\lib;$ROOT\pkg-geniex\lib\llama_cpp;$ROOT\pkg-geniex\lib\qairt;$ROOT\pkg-geniex\lib\qairt\htp-files;$env:PATH"
