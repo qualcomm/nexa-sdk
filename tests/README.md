@@ -84,8 +84,15 @@ quantization rather than model identity (`tests/_models.py`):
 
 | Modality | llama_cpp (HF GGUF) | QAIRT (AI Hub) |
 |----------|---------------------|----------------|
-| LLM      | `unsloth/Qwen3-4B-Instruct-2507-GGUF` Q4_0 | `qualcomm/Qwen3-4B-Instruct-2507` |
+| LLM      | `unsloth/Qwen3-4B-GGUF` Q4_0 | `qualcomm/Qwen3-4B` |
 | VLM      | `unsloth/Qwen2.5-VL-7B-Instruct-GGUF` Q4_0 + mmproj-F16 | `qualcomm/Qwen2.5-VL-7B-Instruct` |
+
+The LLM is Qwen3-4B **base**, not Instruct-2507: Instruct-2507 emits a long
+`<think>` preamble before the answer that, on the 256-token budget the
+suite uses, pushes the keyword off the end of the completion and turns
+`test_quality_keywords` into a thinking-budget test rather than a
+backend-quality test (seen on QDC NPU/Hybrid). The base model answers
+directly.
 
 Override the QAIRT model identifiers without editing the suite:
 
