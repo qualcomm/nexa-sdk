@@ -1,129 +1,220 @@
-# GenieX
+<div align="center" style="text-decoration: none;">
+  <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
+  <p>
+    <a href="https://www.producthunt.com/products/nexasdk-for-mobile?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_campaign=badge-nexasdk-for-mobile" target="_blank" rel="noopener noreferrer">
+        <img alt="NexaSDK for Mobile - #1 Product of the Day" width="180" height="39" src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1049998&theme=dark&period=daily&t=1765991451976">
+    </a>
+  </p>
+  <p>
+    <a href="https://docs.nexa.ai">
+        <img src="https://img.shields.io/badge/docs-website-brightgreen?logo=readthedocs" alt="Documentation">
+    </a>
+  </p>
+</div>
 
-Multi-platform AI inference runtime for Snapdragon / Hexagon — runs LLMs on NPU, GPU, or CPU through a pluggable C SDK with Go (CLI), Python, and Java (Android) bindings.
+# NexaSDK
 
-> Status: pre-1.0, under active development. Public API and tags may change; see [notes/release.md](notes/release.md).
+**NexaSDK lets you build the smartest and fastest on-device AI with minimum energy.** It is a highly performant local inference framework that runs the latest multimodal AI models locally on NPU, GPU, and CPU - across Android, Windows, and Linux devices with a few lines of code.
 
-## Runtimes & compute units
+NexaSDK supported latest models **weeks or months before anyone else** — Qwen3-VL, DeepSeek-OCR, Gemma3n (Vision), and more.
 
-| Runtime / GGML backend | Compute unit   | Model format | Enabled by                                |
-| ---------------------- | -------------- | ------------ | ----------------------------------------- |
-| llama.cpp / Hexagon    | Snapdragon NPU | GGUF         | `llama_cpp` + `-DGGML_HEXAGON=ON`         |
-| llama.cpp / OpenCL     | Adreno GPU     | GGUF         | `llama_cpp` + `-DGGML_OPENCL=ON`          |
-| QAIRT / QNN            | Snapdragon NPU | QAIRT `.bin` | `qairt` + `-DGENIEX_PLUGIN_QAIRT=ON`      |
-| llama.cpp / CPU        | Any            | GGUF         | `llama_cpp` (default; disable both flags) |
+> ⭐ **Star this repo** to keep up with exciting updates and new releases about latest on-device AI capabilities.
 
-The `llama_cpp` and `qairt` runtimes both target the NPU but through **separate user-space stacks** (ggml-hexagon DSP skels vs. Qualcomm QNN) that consume **different model formats**. They are not substitutes. QAIRT libs are bundled under `third-party/geniex-qairt/`; Hexagon and OpenCL SDKs are external installs.
+## 🏆 Recognized Milestones
 
-## Install
+- **Qualcomm** featured us **3 times** in official blogs.
+  - [Innovating Multimodal AI on Qualcomm Hexagon NPU](https://www.qualcomm.com/developer/blog/2025/09/omnineural-4b-nexaml-qualcomm-hexagon-npu).
+  - [First-ever Day-0 model support on Qualcomm Hexagon NPU for compute and mobile platforms, Auto and IoT](https://www.qualcomm.com/developer/blog/2025/10/granite-4-0-to-the-edge-on-device-ai-for-real-world-performance).
+  - [A simple way to bring on-device AI to smartphones with Snapdragon](https://www.qualcomm.com/developer/blog/2025/11/nexa-ai-for-android-simple-way-to-bring-on-device-ai-to-smartphones-with-snapdragon)
 
-Release assets live on the [Releases page](https://github.com/qcom-ai-hub/geniex/releases). `<TAG>` below is the release tag (e.g. `v0.4.0`).
+## 🚀 Quick Start
 
-### Windows (installer)
-
-Download `geniex-cli-setup-windows-arm64-<TAG>.exe` and the matching `geniex-sdk-windows-arm64-<TAG>.zip`, then run the installer. For the latest stable installer without picking a tag, fetch [`https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/geniex-cli.exe`](https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/geniex-cli.exe) — this S3 object always mirrors the newest stable release.
-
-If the SDK name ends in `-selfsigned`, first follow [notes/run.md § Self-signed fallback](notes/run.md#self-signed-fallback) to import `ggml-htp-v1.cer` and enable test-signing. Full walkthrough: [notes/run.md § Running a prebuilt CI release](notes/run.md#running-a-prebuilt-ci-release-windows-on-snapdragon).
-
-### Linux ARM64
-
-Install on a Snapdragon device (EVK, container, or any ARM64 Linux with a Qualcomm BSP):
-
-```bash
-# Optional: verify QCOM driver and system-library prerequisites first.
-curl -fsSL https://raw.githubusercontent.com/qcom-ai-hub/geniex/main/cli/release/linux/check.sh | sh
-
-curl -fsSL https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/install.sh | sh
-```
-
-If the launcher's directory isn't on your `PATH` yet, the installer prints the exact line to add — typically:
-
-```bash
-echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc   # or ~/.zshrc / ~/.profile
-```
-
-Open a new shell or `source` that file, then use it:
-
-```bash
-geniex pull Qwen/Qwen3-0.6B-GGUF
-geniex infer Qwen/Qwen3-0.6B-GGUF -p "Hello, in one short sentence please."
-```
-
-Pin a version: `... | sh -s -- --version v0.1.8`. Override the install location: `... | sh -s -- --prefix /opt/geniex`. Other flags: `-q`, `--help`.
+| Platform        | Links                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| 🖥️ CLI          | [Quick Start](#-cli) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-go/NexaCLI)               |
+| 🐍 Python       | [Quick Start](#-python-sdk) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-python/overview)   |
+| 🤖 Android      | [Quick Start](#-android-sdk) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-android/overview) |
+| 🐳 Linux Docker | [Quick Start](#-linux-docker) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-docker/overview) |
 
 ---
 
-Prefer Docker (versioned image, repeatable, no host-side install):
+### 🖥️ CLI
 
-```bash
-docker pull ghcr.io/qcom-ai-hub/geniex-cli:<TAG>
+**Download:**
 
-# interactive mode
-docker run -it --rm --privileged \
-  -v "$PWD/data:/data" \
-  -v /usr/lib:/opt/qcom-lib:ro \
-  ghcr.io/qcom-ai-hub/geniex-cli:<TAG> \
-  infer Qwen/Qwen3-0.6B-GGUF
+| Windows                                                                                                  | Linux                                                                                        |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| [arm64 (Qualcomm NPU)](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) | [arm64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh) |
+| [x64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_windows_x86_64.exe) | [x64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_x86_64.sh)  |
 
-# server mode
-docker run -it --rm --privileged \
-  -v "$PWD/data:/data" \
-  -v /usr/lib:/opt/qcom-lib:ro \
-  --network=host \
-  ghcr.io/qcom-ai-hub/geniex-cli:<TAG> \
-  serve
-# interactive shell connect to server
-docker run -it --rm --privileged \
-  -v "$PWD/data:/data" \
-  -v /usr/lib:/opt/qcom-lib:ro \
-  --network=host \
-  ghcr.io/qcom-ai-hub/geniex-cli:<TAG> \
-  run <model>
+
+
+**NPU Access Token (required for NPU models):**
+
+> **Note:** Our previous token validation service has been deprecated. For any NPU usage, simply set the access token below — no additional registration or validation is needed.
+
+For Windows:
+```shell
+$env:NEXA_TOKEN="key/eyJhY2NvdW50Ijp7ImlkIjoiNDI1Y2JiNWQtNjk1NC00NDYxLWJiOWMtYzhlZjBiY2JlYzA2In0sInByb2R1Y3QiOnsiaWQiOiJkYjI4ZTNmYy1mMjU4LTQ4ZTctYmNkYi0wZmE4YjRkYTJhNWYifSwicG9saWN5Ijp7ImlkIjoiMmYyOWQyMjctNDVkZS00MzQ3LTg0YTItMjUwNTYwMmEzYzMyIiwiZHVyYXRpb24iOjMxMTA0MDAwMH0sInVzZXIiOnsiaWQiOiI3MGE2YzA4NS1jYjc3LTQ3YmEtOWUxNC1lNjFjYTA2ZThmZjUiLCJlbWFpbCI6ImFsYW40QG5leGE0YWkuY29tIn0sImxpY2Vuc2UiOnsiaWQiOiI4OTlhZGQ2NS1lOTI2LTQ2M2ItODllNi0xMjc0NzM3ZjA1MzYiLCJjcmVhdGVkIjoiMjAyNS0wOS0wNlQwMDo1MzozNi4yMDNaIiwiZXhwaXJ5IjoiMjAzNS0xMi0zMVQyMzo1OTo1OS4wMDBaIn19.BXoUHIEzFMuuZbBT7RvsKO9nTi5950C6kHO64blF7XBnfKvZ6ClA8a55tmszI1ZWdngzpNFTzMM5PV5euuzMCA=="
 ```
 
-`--privileged` exposes the NPU/GPU devices and `./data` persists the model cache. `:latest` tracks the most recent stable tag.
-
-### Python
-
-```bash
-pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple geniex
+For Linux / Android adb shell:
+```shell
+export NEXA_TOKEN="key/eyJhY2NvdW50Ijp7ImlkIjoiNDI1Y2JiNWQtNjk1NC00NDYxLWJiOWMtYzhlZjBiY2JlYzA2In0sInByb2R1Y3QiOnsiaWQiOiJkYjI4ZTNmYy1mMjU4LTQ4ZTctYmNkYi0wZmE4YjRkYTJhNWYifSwicG9saWN5Ijp7ImlkIjoiMmYyOWQyMjctNDVkZS00MzQ3LTg0YTItMjUwNTYwMmEzYzMyIiwiZHVyYXRpb24iOjMxMTA0MDAwMH0sInVzZXIiOnsiaWQiOiI3MGE2YzA4NS1jYjc3LTQ3YmEtOWUxNC1lNjFjYTA2ZThmZjUiLCJlbWFpbCI6ImFsYW40QG5leGE4YWkuY29tIn0sImxpY2Vuc2UiOnsiaWQiOiI4OTlhZGQ2NS1lOTI2LTQ2M2ItODllNi0xMjc0NzM3ZjA1MzYiLCJjcmVhdGVkIjoiMjAyNS0wOS0wNlQwMDo1MzozNi4yMDNaIiwiZXhwaXJ5IjoiMjAzNS0xMi0zMVQyMzo1OTo1OS4wMDBaIn19.BXoUHIEzFMuuZbBT7RvsKO9nTi5950C6kHO64blF7XBnfKvZ6ClA8a55tmszI1ZWdngzpNFTzMM5PV5euuzMCA=="
 ```
 
-The sdist auto-downloads the matching SDK zip per host at install time. API, CLI (`geniex-py`), and env vars: [bindings/python/README.md](bindings/python/README.md). Install sources (GitHub Release URL, offline mirror): [bindings/python/BUILD.md § Install sources](bindings/python/BUILD.md#install-sources).
+**Run your first model:**
 
-### Android (AAR)
+```bash
+# Chat with Qwen3
+nexa infer ggml-org/Qwen3-1.7B-GGUF
 
-Download `geniex-android-aar-<TAG>.aar` from the Releases page and reference it as a local dependency:
+# Multimodal: drag images into the CLI
+nexa infer NexaAI/Qwen3-VL-4B-Instruct-GGUF
+
+# NPU (Windows arm64 with Snapdragon X Elite)
+nexa infer NexaAI/OmniNeural-4B
+```
+
+- **Models:** LLM, Multimodal, ASR, OCR, Rerank, Object Detection, Image Generation, Embedding
+- **Formats:** GGUF, NEXA
+- 📖 [CLI Reference Docs](https://docs.nexa.ai/en/nexa-sdk-go/NexaCLI)
+
+---
+
+### 🐍 Python SDK
+
+```bash
+pip install nexaai
+```
+
+```python
+from nexaai import LLM, GenerationConfig, ModelConfig, LlmChatMessage
+
+llm = LLM.from_(model="NexaAI/Qwen3-0.6B-GGUF", config=ModelConfig())
+
+conversation = [
+    LlmChatMessage(role="user", content="Hello, tell me a joke")
+]
+prompt = llm.apply_chat_template(conversation)
+for token in llm.generate_stream(prompt, GenerationConfig(max_tokens=100)):
+    print(token, end="", flush=True)
+```
+
+- **Models:** LLM, Multimodal, ASR, OCR, Rerank, Object Detection, Image Generation, Embedding
+- **Formats:** GGUF, NEXA
+- 📖 [Python SDK Docs](https://docs.nexa.ai/en/nexa-sdk-python/quickstart)
+
+---
+
+### 🤖 Android SDK
+
+Add to your `app/AndroidManifest.xml`
+
+```xml
+<application android:extractNativeLibs="true">
+```
+
+Add to your `build.gradle.kts`:
 
 ```kotlin
-// settings.gradle.kts
-dependencyResolutionManagement {
-    repositories { flatDir { dirs("libs") } }
+dependencies {
+    implementation("ai.nexa:core:0.0.19")
 }
-// app/build.gradle.kts
-dependencies { implementation(files("libs/geniex-android-aar-<TAG>.aar")) }
 ```
 
-API and architecture: [bindings/android/README.md](bindings/android/README.md).
+```kotlin
+// Initialize SDK
+NexaSdk.getInstance().init(this)
 
-### SDK zip (integrators)
+// Load and run model
+VlmWrapper.builder()
+    .vlmCreateInput(VlmCreateInput(
+        model_name = "omni-neural",
+        model_path = "/data/data/your.app/files/models/OmniNeural-4B/files-1-1.nexa",
+        plugin_id = "npu",
+        config = ModelConfig()
+    ))
+    .build()
+    .onSuccess { vlm ->
+        vlm.generateStreamFlow("Hello!", GenerationConfig()).collect { print(it) }
+    }
+```
 
-Extract `geniex-sdk-<os>-arm64-<TAG>.zip` and point your build at its `include/` and `lib/` directories. To build the SDK in-tree instead, see [notes/build.md § Build the SDK](notes/build.md#build-the-sdk).
+- **Requirements:** Android minSdk 27, Qualcomm Snapdragon 8 Gen 4 Chip
+- **Models:** LLM, Multimodal, ASR, OCR, Rerank, Embedding
+- **NPU Models:** [Supported Models](https://docs.nexa.ai/en/nexa-sdk-android/overview#supported-models)
+- 📖 [Android SDK Docs](https://docs.nexa.ai/en/nexa-sdk-android/quickstart)
 
-## Documentation
-To use `geniex`, please refer to [docs](docs/README.md) for detailed guides and API references.
+---
 
+### 🐳 Linux Docker
 
-For contribution to this project, see docs below to build and test your changes.
+```bash
+docker pull nexa4ai/nexasdk:latest
 
-| File                               | Topic                                                                 |
-| ---------------------------------- | --------------------------------------------------------------------- |
-| [notes/build.md](notes/build.md)     | Build CLI, SDK, and Python bindings (Linux / Windows ARM64 / Android) |
-| [notes/run.md](notes/run.md)         | Runtime / compute-unit selection, model pull, Windows self-signed HTP fallback |
-| [notes/release.md](notes/release.md) | SemVer tag procedure, channels, Hexagon HTP signing pipeline          |
-| [notes/AI.md](notes/AI.md)           | Claude Code integration (slash commands, skills)                      |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Commits, branches, PR format, FFI-update rule                         |
+export NEXA_TOKEN="your_token_here"
+docker run --rm -it --privileged \
+  -e NEXA_TOKEN \
+  nexa4ai/nexasdk:latest infer NexaAI/Granite-4.0-h-350M-NPU
+```
 
-## License
+- **Requirements:** Qualcomm Dragonwing IQ9, ARM64 systems
+- **Models:** LLM, VLM, ASR, CV, Rerank, Embedding
+- **NPU Models:** [Supported Models](https://docs.nexa.ai/en/nexa-sdk-docker/overview#supported-models)
+- 📖 [Linux Docker Docs](https://docs.nexa.ai/en/nexa-sdk-docker/quickstart)
 
-Apache 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+---
+
+## ⚙️ Features & Comparisons
+
+<div align="center">
+
+| Features                                 | **NexaSDK**                                                | **Ollama** | **llama.cpp** | **LM Studio** |
+| ---------------------------------------- | ---------------------------------------------------------- | ---------- | ------------- | ------------- |
+| NPU support                              | ✅ NPU-first                                               | ❌         | ❌            | ❌            |
+| Android SDK support                  | ✅ NPU/GPU/CPU support                                     | ⚠️         | ⚠️            | ❌            |
+| Linux support (Docker image)             | ✅                                                         | ✅         | ✅            | ❌            |
+| Day-0 model support  | ✅                                                         | ❌         | ⚠️            | ❌            |
+| Full multimodality support               | ✅ Image, Audio, Text, Embedding, Rerank, ASR, TTS         | ⚠️         | ⚠️            | ⚠️            |
+| Cross-platform support                   | ✅ Desktop, Mobile (Android), Automotive, IoT (Linux) | ⚠️         | ⚠️            | ⚠️            |
+| One line of code to run                  | ✅                                                         | ✅         | ⚠️            | ✅            |
+| OpenAI-compatible API + Function calling | ✅                                                         | ✅         | ✅            | ✅            |
+
+<p align="center" style="margin-top:14px">
+  <i>
+      <b>Legend:</b>
+      <span title="Full support">✅ Supported</span> &nbsp; | &nbsp;
+      <span title="Partial or limited support">⚠️ Partial or limited support </span> &nbsp; | &nbsp;
+      <span title="Not Supported">❌ No</span>
+  </i>
+</p>
+</div>
+
+## 🙏 Acknowledgements
+
+We would like to thank the following projects:
+
+- [ggml](https://github.com/ggml-org/ggml)
+- [mlx-lm](https://github.com/ml-explore/mlx-lm)
+- [mlx-vlm](https://github.com/Blaizzy/mlx-vlm)
+- [mlx-audio](https://github.com/Blaizzy/mlx-audio)
+
+## 📄 License
+
+NexaSDK uses a dual licensing model:
+
+### CPU/GPU Components
+
+Licensed under [Apache License 2.0](LICENSE).
+
+### NPU Components
+
+- **Personal Use**: Free license key available from [Nexa AI Model Hub](https://sdk.nexa.ai/model). Each key activates 1 device for NPU usage.
+- **Commercial Use**: Contact [hello@nexa.ai](mailto:hello@nexa.ai) for licensing.
+
+## 🤝 Contact & Community Support
+
+Want more model support, backend support, device support or other features? We'd love to hear from you!
+
+Feel free to [submit an issue](https://github.com/NexaAI/nexa-sdk/issues) on our GitHub repository with your requests, suggestions, or feedback. Your input helps us prioritize what to build next.
