@@ -76,11 +76,22 @@ pytest tests -m "api or (llama_cpp and device_cpu)"
 GENIEX_DEVICE_TEST=1 pytest tests
 ```
 
+## Models
+
+The matrix uses one model per modality, aligned across both plugins so a
+keyword-quality divergence between llama_cpp and QAIRT traces to backend /
+quantization rather than model identity (`tests/_models.py`):
+
+| Modality | llama_cpp (HF GGUF) | QAIRT (AI Hub) |
+|----------|---------------------|----------------|
+| LLM      | `unsloth/Qwen3-4B-Instruct-2507-GGUF` Q4_0 | `qualcomm/Qwen3-4B-Instruct-2507` |
+| VLM      | `unsloth/Qwen2.5-VL-7B-Instruct-GGUF` Q4_0 + mmproj-F16 | `qualcomm/Qwen2.5-VL-7B-Instruct` |
+
 Override the QAIRT model identifiers without editing the suite:
 
 ```bash
-GENIEX_QAIRT_MODEL=aihub/<other-llm> \
-GENIEX_QAIRT_VLM_MODEL=aihub/<other-vlm> \
+GENIEX_QAIRT_MODEL=qualcomm/<other-llm> \
+GENIEX_QAIRT_VLM_MODEL=qualcomm/<other-vlm> \
 GENIEX_DEVICE_TEST=1 pytest tests -m qairt
 ```
 
