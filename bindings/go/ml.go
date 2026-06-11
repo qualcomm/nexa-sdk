@@ -58,6 +58,11 @@ var (
 	ErrCommonModelLoad              = SDKError(C.GENIEX_ERROR_COMMON_MODEL_LOAD)
 	ErrCommonPluginLoad             = SDKError(C.GENIEX_ERROR_COMMON_PLUGIN_LOAD)
 	ErrCommonPluginInvalid          = SDKError(C.GENIEX_ERROR_COMMON_PLUGIN_INVALID)
+	ErrCommonNetwork                = SDKError(C.GENIEX_ERROR_COMMON_NETWORK)
+	ErrCommonAuth                   = SDKError(C.GENIEX_ERROR_COMMON_AUTH)
+	ErrCommonHubModelNotFound       = SDKError(C.GENIEX_ERROR_COMMON_HUB_MODEL_NOT_FOUND)
+	ErrCommonRateLimited            = SDKError(C.GENIEX_ERROR_COMMON_RATE_LIMITED)
+	ErrCommonHubServer              = SDKError(C.GENIEX_ERROR_COMMON_HUB_SERVER)
 	ErrLlmTokenizationContextLength = SDKError(C.GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
 )
 

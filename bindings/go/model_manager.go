@@ -439,7 +439,7 @@ func ModelLastErrorMessage() string {
 func modelError(res C.int32_t) error {
 	err := SDKError(res)
 	if msg := ModelLastErrorMessage(); msg != "" {
-		return fmt.Errorf("%s: %w", msg, err)
+		return fmt.Errorf("%w, %s", err, msg)
 	}
 	return err
 }
