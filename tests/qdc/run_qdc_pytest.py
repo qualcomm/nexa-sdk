@@ -27,7 +27,7 @@ framework (``windows/run_pytest.ps1``):
   - the entry script writes the JUnit XML to ``C:\\Temp\\QDC_Logs\\`` and the
     POWERSHELL framework auto-uploads everything in QDC_Logs for collection.
 
-The QDC submit/poll/collect plumbing is shared with the benchmark scorecard via
+The QDC submit/poll/collect plumbing is shared with Geniex Bench via
 ``sdk/benchmark/qdc/_qdc.py``.
 """
 

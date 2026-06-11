@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""adb + appium helpers for the on-device scorecard run (QDC Android phones)."""
+"""adb + appium helpers for the on-device bench run (QDC Android phones)."""
 
 from __future__ import annotations
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Appium session fixture for the on-device scorecard run."""
+"""Appium session fixture for the on-device bench run."""
 
 import os
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""On-device geniex-bench scorecard run for QDC Android phones.
+"""On-device geniex-bench run for QDC Android phones.
 
 The host (this pytest process) builds the matrix.tsv with model-manager ids
 in column 4 and runs geniex-bench on-device; the benchmark resolves each id
@@ -44,7 +44,7 @@ from utils import (
 CTXS = (512, 1024, 4096)
 
 
-def test_scorecard():
+def test_bench():
     push_bundle_if_needed()
     run_adb_command(f"mkdir -p {MM_CACHE_PATH} {RESULTS_PATH} {PROMPTS_PATH}")
 

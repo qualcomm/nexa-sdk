@@ -30,7 +30,7 @@ The Go CLI tests under `tests/cli/` are excluded from pytest discovery
 | qairt     | `npu`       | ✅  | ✅  |
 
 = 8 generation cells, plus the API subset. The `gpu` (GPUOpenCL/Adreno)
-alias is excluded — it isn't in the production scorecard matrix either.
+alias is excluded — it isn't in the production Geniex Bench matrix either.
 
 Each cell carries two layers of coverage:
 

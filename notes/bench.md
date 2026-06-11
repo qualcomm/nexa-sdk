@@ -1,10 +1,10 @@
-# Scorecard
+# Geniex Bench
 
-The scorecard pipeline benchmarks `geniex-bench` on real Qualcomm hardware via QDC
+The Geniex Bench pipeline benchmarks `geniex-bench` on real Qualcomm hardware via QDC
 (Qualcomm Device Cloud) and reports results as a GitHub Actions step summary.
 
 ```
-build-sdk  -->  load-models  -->  scorecard (device x model matrix)  -->  aggregate (per device)
+build-sdk  -->  load-models  -->  bench (device x model matrix)  -->  aggregate (per device)
 ```
 
 ## 1. Benchmark artifact compilation & upload
@@ -23,10 +23,10 @@ Each platform gets a zip artifact assembled by `build_*_artifact()` in
 
 - **Linux / Windows** — pre-built SDK package + entry script
   (`run_linux.sh` or `run_windows.ps1`) + sample prompts + VLM test image.
-- **Android** — SDK package + pytest suite (`test_scorecard.py`, `utils.py`) +
+- **Android** — SDK package + pytest suite (`test_bench.py`, `utils.py`) +
   matrix rows + prompts.
 
-The model matrix is defined in `sdk/benchmark/qdc/scorecard-models.json`
+The model matrix is defined in `sdk/benchmark/qdc/bench-models.json`
 (currently 19 models across `llama_cpp` and `qairt` plugins).
 
 ## 2. QDC job execution
@@ -48,14 +48,14 @@ On-device, all platforms perform the same work:
    stats (median / stdev / min / max for TTFT, prefill tok/s, decode tok/s).
 4. Results land in `QDC_logs/results/` which QDC auto-collects.
 
-## 3. Result collection & scorecard rendering
+## 3. Result collection & bench report rendering
 
-Orchestrated by `scorecard.yml` in 4 jobs:
+Orchestrated by `bench.yml` in 4 jobs:
 
 1. **build-sdk** — cross-compile binaries for all 3 platforms.
-2. **load-models** — parse `scorecard-models.json`, emit the matrix + device list.
-3. **scorecard** — one job per (device, model) pair: submit to QDC, wait, download
-   per-cell JSON.  Uploaded as artifact `scorecard-cells-{device}-{model}`.
+2. **load-models** — parse `bench-models.json`, emit the matrix + device list.
+3. **bench** — one job per (device, model) pair: submit to QDC, wait, download
+   per-cell JSON.  Uploaded as artifact `bench-cells-{device}-{model}`.
 4. **aggregate** — one job per device: download all matching cell artifacts, call
    `render_aggregate()` which flattens cells, builds a markdown table, and writes
    it to `$GITHUB_STEP_SUMMARY`.
@@ -63,7 +63,7 @@ Orchestrated by `scorecard.yml` in 4 jobs:
 Example output:
 
 ```
-## QDC Scorecard -- SM8850
+## QDC Bench -- SM8850
 
 | Model       | Backend   | Device | Ctx | ngl | Test       | TTFT (ms) | Prefill (tok/s) | Decode (tok/s) |
 |-------------|-----------|--------|----:|----:|------------|----------:|----------------:|---------------:|

@@ -1,4 +1,4 @@
-name: Scorecard
+name: Geniex Bench
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
         type: string
         default: ""
       model:
-        description: "Model names from scorecard-models.json, comma-separated (blank = all)"
+        description: "Model names from bench-models.json, comma-separated (blank = all)"
         type: string
         default: ""
 
@@ -40,7 +40,7 @@ jobs:
           PICK_MODEL: ${{ github.event.inputs.model }}
         run: |
           set -euo pipefail
-          MODELS_FILE=sdk/benchmark/qdc/scorecard-models.json
+          MODELS_FILE=sdk/benchmark/qdc/bench-models.json
 
           all_devs='["QCS9075M","SC8380XP","SC8480XP","SM8750","SM8850"]'
           if [ -n "$PICK_DEVICE" ]; then
@@ -69,7 +69,7 @@ jobs:
           fi
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
-  scorecard:
+  bench:
     name: ${{ matrix.device }} · ${{ matrix.model.plugin }} · ${{ matrix.model.name }}
     needs: [build-sdk, load-models]
     runs-on: ubuntu-latest
@@ -109,13 +109,13 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: scorecard-cells-${{ matrix.device }}-${{ matrix.model.name }}
+          name: bench-cells-${{ matrix.device }}-${{ matrix.model.name }}
           path: ${{ matrix.device }}-${{ matrix.model.name }}.json
           if-no-files-found: ignore
 
   aggregate:
     name: aggregate · ${{ matrix.device }}
-    needs: [load-models, scorecard]
+    needs: [load-models, bench]
     if: always()
     runs-on: ubuntu-latest
     strategy:
@@ -130,7 +130,7 @@ jobs:
           python-version: "3.11"
       - uses: actions/download-artifact@v8
         with:
-          pattern: scorecard-cells-${{ matrix.device }}-*
+          pattern: bench-cells-${{ matrix.device }}-*
           path: cells
       - run: |
           python sdk/benchmark/qdc/run_qdc_jobs.py \

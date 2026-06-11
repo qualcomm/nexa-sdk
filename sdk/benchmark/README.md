@@ -14,7 +14,7 @@ It accepts either a **local model path** (a geniex bundle dir, or a `.gguf`
 file / its folder) or a **model-manager id** (`org/repo[:quant]`); ids are
 resolved via the `geniex_model_*` C API — downloading on first use and
 reusing the cached copy thereafter. Runs on Windows, Android, and Linux —
-the same binary feeds the scorecard.
+the same binary feeds Geniex Bench.
 
 ## Build
 
@@ -159,7 +159,7 @@ Run `geniex-bench --help` for the full flag list.
 
 ## Markdown row shape
 
-`--output-md` (and the QDC scorecard) produce a llama-bench-aligned table:
+`--output-md` (and the QDC bench report) produce a llama-bench-aligned table:
 
 ```
 | Model     | Size    | Backend    | Device | ngl | Test       | TTFT (ms)   | Prefill (tok/s) | Decode (tok/s) |
@@ -208,9 +208,9 @@ geniex-bench --matrix-file matrix.tsv --output-json-dir results/ \
 The earlier `sdk/tests/` C++ doctest tree was unused in CI and overlapped
 the Python e2e suite. It was replaced by this single C example. Caching,
 alias resolution, and matrix orchestration originally stayed on the
-Python side; the QDC scorecard ran `curl` / `Invoke-WebRequest` on each
+Python side; the QDC bench run ran `curl` / `Invoke-WebRequest` on each
 device for every model. That serial download was the slowest phase of
-the scorecard and OOMed on large GGUFs on Windows. Linking the C binary
+the bench run and OOMed on large GGUFs on Windows. Linking the C binary
 against `libgeniex_model` and resolving column-4 model ids via
 `geniex_model_pull` collapses the device-side download to one
 multi-connection, resumable HTTPS call — and exercises the same model

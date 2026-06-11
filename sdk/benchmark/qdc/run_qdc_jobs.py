@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run geniex-bench on a QDC device and render a scorecard.
+"""Run geniex-bench on a QDC device and render a bench report.
 
 Builds an artifact (SDK pkg + entry script), submits it as a QDC job, downloads
-the per-cell JSON geniex-bench emits, and writes a markdown scorecard to
+the per-cell JSON geniex-bench emits, and writes a markdown bench report to
 GITHUB_STEP_SUMMARY. Linux (QCS9075M, BASH), Windows (SC8380XP, PowerShell), and
 Android (SM8850, APPIUM via adb) are implemented.
 """
@@ -86,7 +86,7 @@ def _aihub_chipset_supported(aihub_id: str, device: str) -> bool:
 
 
 def resolve_model_url(m: dict, device: str) -> str | None:
-    """Best-effort public download URL for the scorecard `Build & models`
+    """Best-effort public download URL for the bench report `Build & models`
     block. None when no asset matches (QAIRT bundles on unsupported chipsets).
     Not used for the actual download — the device-side mm pull does that."""
     if "aihub_id" in m:
@@ -118,7 +118,7 @@ def model_rows(models: list[dict], device: str) -> list[str]:
     rows = []
     for m in models:
         if "model_id" not in m:
-            raise SystemExit(f"{m['name']}: missing model_id in scorecard-models.json")
+            raise SystemExit(f"{m['name']}: missing model_id in bench-models.json")
         if m.get("hub") == "aihub" and not _aihub_chipset_supported(
             m["aihub_id"], device
         ):
@@ -317,7 +317,7 @@ def render(
     label: str,
     models: list[dict] | None = None,
 ) -> str:
-    lines = [f"## QDC Scorecard — {device} — {label}", ""]
+    lines = [f"## QDC Bench — {device} — {label}", ""]
     lines += _details_block(cells, device, label, models)
     lines += [
         "| Model | Backend | Device | Ctx | ngl | Test | TTFT (ms) | Prefill (tok/s) | Decode (tok/s) |",
@@ -376,7 +376,7 @@ def render_aggregate(cells_dir: Path, device: str, models_file: Path) -> int:
     label = detect_geniex_label(_short_sha())
     if not cells:
         write_summary(
-            f"## QDC Scorecard — {device} — {label}\n\nNo results recovered.\n"
+            f"## QDC Bench — {device} — {label}\n\nNo results recovered.\n"
         )
         return 0
     models = json.loads(models_file.read_text()) if models_file.exists() else None
@@ -388,7 +388,7 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--pkg-dir", type=Path)
     p.add_argument("--device", default="QCS9075M")
-    p.add_argument("--models-file", type=Path, default=HERE / "scorecard-models.json")
+    p.add_argument("--models-file", type=Path, default=HERE / "bench-models.json")
     p.add_argument("--model-name", help="run only this model from --models-file")
     p.add_argument("--cells-out", type=Path, help="write the per-cell JSON list here")
     p.add_argument("--render-dir", type=Path, help="render mode: aggregate JSON here")

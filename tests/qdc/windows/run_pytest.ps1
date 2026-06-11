@@ -31,7 +31,7 @@ Start-Transcript -Path "$LOG\harness.log" -Force | Out-Null
 
 # --- 1. Trust the HTP self-signed cert.
 # Without it the Hexagon backend fails its code-integrity check at .so load
-# time and crashes pre-main with 0xC0000409. Mirrors run_windows.ps1 (scorecard).
+# time and crashes pre-main with 0xC0000409. Mirrors run_windows.ps1 (Geniex Bench).
 $cert = "$ROOT\ggml-htp-v1.cer"
 if (Test-Path $cert) {
     Write-Output "=== install HTP cert ==="

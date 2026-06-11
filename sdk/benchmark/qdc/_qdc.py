@@ -14,7 +14,7 @@
 
 """Shared QDC primitives: client, job submit/poll, and log download.
 
-Both the benchmark scorecard (run_qdc_jobs.py) and the pytest harness
+Both the benchmark runner (run_qdc_jobs.py) and the pytest harness
 (tests/qdc/run_qdc_pytest.py) submit an artifact, poll until the job is
 terminal, then pull files out of the device's QDC_logs. The QDC-specific
 plumbing lives here so neither caller reimplements it.

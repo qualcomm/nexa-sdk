@@ -23,7 +23,7 @@
  * argument. When it isn't a filesystem path, the model-manager API is
  * used to download (resume-capable, multi-connection) and resolve the
  * model + mmproj + tokenizer paths, replacing the curl/IWR shell loops
- * the QDC scorecard used to run on each device.
+ * the QDC bench run used to run on each device.
  */
 
 #include <geniex.h>
@@ -1200,7 +1200,7 @@ static void write_json(const options_t* o, const char* device_id, int32_t ngl, i
 static char* model_label(const char* cell_id, const char* plugin, const char* device) {
     if (!cell_id) return NULL;
     size_t cl = strlen(cell_id);
-    /* Strip a trailing "-c<digits>" if present (scorecard ctx sweep). */
+    /* Strip a trailing "-c<digits>" if present (bench ctx sweep). */
     size_t end = cl;
     while (end > 0 && cell_id[end - 1] >= '0' && cell_id[end - 1] <= '9') end--;
     if (end >= 2 && end < cl && cell_id[end - 1] == 'c' && cell_id[end - 2] == '-') {
