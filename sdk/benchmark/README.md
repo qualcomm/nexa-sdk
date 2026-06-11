@@ -1,4 +1,4 @@
-# geniex_benchmark — C inference benchmark example
+# geniex-bench — C inference benchmark example
 
 Single-file C example that drives the public geniex C API. One invocation
 runs one `(plugin, device, model)` cell (warmup + repeated measured runs)
@@ -29,9 +29,9 @@ Gated on the `GENIEX_BENCHMARK` cmake option, which the snapdragon presets in
 ```powershell
 cd sdk
 cmake --preset arm64-windows-snapdragon-release -B build
-cmake --build build -j --target geniex_benchmark
-# → build\benchmark\geniex_benchmark.exe
-cmake --install build --prefix pkg-geniex   # optional → pkg-geniex\bin\geniex_benchmark.exe
+cmake --build build -j --target geniex-bench
+# → build\benchmark\geniex-bench.exe
+cmake --install build --prefix pkg-geniex   # optional → pkg-geniex\bin\geniex-bench.exe
 ```
 
 ### Linux (cross-compile from x86_64)
@@ -45,9 +45,9 @@ docker run --rm -u $(id -u):$(id -g) \
   --platform linux/amd64 \
   ghcr.io/qcom-ai-hub/geniex-toolchain-linux:v0.0.2 \
   bash -c 'cmake --preset arm64-linux-snapdragon-release -B build-linux . \
-    && cmake --build build-linux -j --target geniex_benchmark \
+    && cmake --build build-linux -j --target geniex-bench \
     && cmake --install build-linux --prefix pkg-geniex'
-# → pkg-geniex/bin/geniex_benchmark
+# → pkg-geniex/bin/geniex-bench
 ```
 
 ### Android (cross-compile from Linux)
@@ -58,9 +58,9 @@ docker run --rm -u $(id -u):$(id -g) \
   --platform linux/amd64 \
   ghcr.io/qcom-ai-hub/geniex-toolchain-android:v0.0.1 \
   bash -c 'cmake --preset arm64-android-snapdragon-release -B build-android . \
-    && cmake --build build-android -j --target geniex_benchmark \
+    && cmake --build build-android -j --target geniex-bench \
     && cmake --install build-android --prefix pkg-geniex'
-# → pkg-geniex/bin/geniex_benchmark
+# → pkg-geniex/bin/geniex-bench
 ```
 
 ## Run
@@ -73,19 +73,19 @@ and `GENIEX_PLUGIN_PATH=./lib` (see [`notes/run.md`](../../../notes/run.md)).
 
 ```bash
 # LLM, llama_cpp — point -m at a .gguf file
-geniex_benchmark \
+geniex-bench \
   --plugin llama_cpp --device hybrid \
   -m /path/to/Qwen3-0.6B-Q4_0.gguf
 
 # LLM, QAIRT — the bundle dir is the "model path"
-geniex_benchmark \
+geniex-bench \
   --plugin qairt --device npu \
   -m /path/to/qualcomm/Qwen3-4B-Instruct-2507/
 
 # VLM, llama_cpp — pass the model gguf + its mmproj (switches to VLM mode)
 # and one or more --image. The prompt is run through the model's chat template
 # (which places the image tokens) before generation.
-geniex_benchmark \
+geniex-bench \
   --plugin llama_cpp --device hybrid \
   -m /path/to/SmolVLM-500M-Instruct-Q8_0.gguf \
   --mmproj-path /path/to/mmproj-SmolVLM-500M-Instruct-f16.gguf \
@@ -93,19 +93,19 @@ geniex_benchmark \
 
 # VLM, QAIRT — the vision encoder is baked into the bundle (no mmproj), so
 # pass --vlm to force VLM mode plus one or more --image
-geniex_benchmark \
+geniex-bench \
   --plugin qairt --device npu --vlm \
   -m /path/to/qualcomm/Qwen2.5-VL-7B-Instruct/ \
   --image /path/to/sample.jpg
 
 # GPU (llama_cpp) — the gpu alias selects GPUOpenCL but offloads no layers by
 # default; pass a high --n-gpu-layers to actually run on the Adreno GPU
-geniex_benchmark \
+geniex-bench \
   --plugin llama_cpp --device gpu --n-gpu-layers 999 \
   -m /path/to/Qwen3-4B-Q4_K_M.gguf
 
 # Customise: prompt, sample count, output files
-geniex_benchmark \
+geniex-bench \
   --plugin llama_cpp --device hybrid \
   -m .../Qwen3-1.7B-Q4_0.gguf \
   --warmup 1 -r 3 \
@@ -117,11 +117,11 @@ geniex_benchmark \
 On Windows the same invocations work with `.exe` and backslash paths, e.g.:
 
 ```powershell
-build\benchmark\geniex_benchmark.exe --plugin qairt --device npu `
+build\benchmark\geniex-bench.exe --plugin qairt --device npu `
   -m $env:USERPROFILE\.cache\geniex\models\qualcomm\Qwen3-4B-Instruct-2507
 ```
 
-Run `geniex_benchmark --help` for the full flag list.
+Run `geniex-bench --help` for the full flag list.
 
 ## Defaults
 
@@ -178,7 +178,7 @@ Qwen3-0.6B-llama_cpp-npu	llama_cpp	npu	/data/local/tmp/.cache/geniex/models/bart
 Qwen3-4B-qairt-npu	qairt	npu	/data/local/tmp/.cache/geniex/models/qualcomm/Qwen3-4B-Instruct-2507
 EOF
 
-geniex_benchmark --matrix-file matrix.tsv --output-json-dir results/
+geniex-bench --matrix-file matrix.tsv --output-json-dir results/
 ```
 
 For a one-cell-per-process invocation (cold-start each time, useful as

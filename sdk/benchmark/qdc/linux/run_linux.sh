@@ -1,5 +1,5 @@
 #!/bin/bash
-# geniex_benchmark entry script for QDC Linux IoT (BASH framework).
+# geniex-bench entry script for QDC Linux IoT (BASH framework).
 #
 # QDC extracts the artifact zip to /data/local/tmp/TestContent/ and runs this
 # via /bin/bash. Anything under /data/local/tmp/QDC_logs/ is auto-uploaded.
@@ -92,7 +92,7 @@ for ctx in 512 1024 4096; do
   prompt="$PROMPTS/sample_prompt_${ctx}.txt"
   echo "=== matrix ctx=$ctx ==="
   cat "$tsv"
-  ./bin/geniex_benchmark --matrix-file "$tsv" --output-json-dir "$OUT" -r 3 \
+  ./bin/geniex-bench --matrix-file "$tsv" --output-json-dir "$OUT" -r 3 \
     -c "$ctx" --prompt-file "$prompt" --reset-between-runs
   echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
 done

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run geniex_benchmark on a QDC device and render a scorecard.
+"""Run geniex-bench on a QDC device and render a scorecard.
 
 Builds an artifact (SDK pkg + entry script), submits it as a QDC job, downloads
-the per-cell JSON geniex_benchmark emits, and writes a markdown scorecard to
+the per-cell JSON geniex-bench emits, and writes a markdown scorecard to
 GITHUB_STEP_SUMMARY. Linux (QCS9075M, BASH), Windows (SC8380XP, PowerShell), and
 Android (SM8850, APPIUM via adb) are implemented.
 """
@@ -153,7 +153,7 @@ def build_android_artifact(
     pkg_dir: Path, models: list[dict], device: str, tmp: Path
 ) -> Path:
     # Phones lack python3/curl, so the appium pytest harness on the QDC host
-    # fetches+extracts each model and adb-pushes it, then runs geniex_benchmark
+    # fetches+extracts each model and adb-pushes it, then runs geniex-bench
     # on-device; results land in the device's QDC_logs and are auto-collected.
     stage = tmp / "stage"
     shutil.copytree(pkg_dir, stage / "pkg-geniex")

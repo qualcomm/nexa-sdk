@@ -67,7 +67,7 @@ def run_adb_command(cmd: str, *, check: bool = True) -> subprocess.CompletedProc
 def push_bundle_if_needed() -> None:
     """Push pkg-geniex to the device once, making bin/ executable."""
     check = subprocess.run(
-        ["adb", "shell", f"ls {BUNDLE_PATH}/bin/geniex_benchmark"],
+        ["adb", "shell", f"ls {BUNDLE_PATH}/bin/geniex-bench"],
         text=True,
         errors="replace",
         stdout=subprocess.PIPE,

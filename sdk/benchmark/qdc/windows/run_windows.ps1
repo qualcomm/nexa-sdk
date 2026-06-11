@@ -1,4 +1,4 @@
-# geniex_benchmark entry script for QDC Windows (POWERSHELL framework).
+# geniex-bench entry script for QDC Windows (POWERSHELL framework).
 #
 # QDC extracts the artifact zip to C:\Temp\TestContent\ and runs this via
 # PowerShell. Anything under C:\Temp\QDC_Logs\ is auto-uploaded. run_qdc_jobs.py
@@ -106,7 +106,7 @@ foreach ($ctx in $ctxList) {
     $prompt = "$PROMPTS\sample_prompt_$ctx.txt"
     Write-Output "=== matrix ctx=$ctx ==="
     if (Test-Path $tsv) { Get-Content $tsv }
-    & "$BUNDLE\bin\geniex_benchmark.exe" --matrix-file $tsv --output-json-dir "$OUT" -r 3 `
+    & "$BUNDLE\bin\geniex-bench.exe" --matrix-file $tsv --output-json-dir "$OUT" -r 3 `
         -c $ctx --prompt-file $prompt --reset-between-runs
     Write-Output "rc=$LASTEXITCODE  ($((Get-ChildItem $OUT).Count) cell json files so far)"
 }

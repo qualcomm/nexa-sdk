@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  *
- * geniex_benchmark — single-cell C inference benchmark, public-API only.
+ * geniex-bench — single-cell C inference benchmark, public-API only.
  *
  * Flag naming follows llama.cpp's `llama-bench` (-r / --repetitions,
  * -n / --n-gen, -c / --ctx-size, -t / --threads, -m / --model,

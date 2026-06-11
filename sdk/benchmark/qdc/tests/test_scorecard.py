@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""On-device geniex_benchmark scorecard run for QDC Android phones.
+"""On-device geniex-bench scorecard run for QDC Android phones.
 
 The host (this pytest process) fetches each model, adb-pushes it, builds the
-matrix.tsv, then runs geniex_benchmark on-device. The per-cell JSON is written
+matrix.tsv, then runs geniex-bench on-device. The per-cell JSON is written
 straight to the device's QDC_logs/results, which QDC auto-collects — keeping
 run_qdc_jobs.py's download_cells path identical to Linux.
 """
@@ -133,7 +133,7 @@ def test_scorecard():
             + f" > {tsv_path}"
         )
         res = run_adb_command(
-            f"cd {BUNDLE_PATH} && {env} ./bin/geniex_benchmark "
+            f"cd {BUNDLE_PATH} && {env} ./bin/geniex-bench "
             f"--matrix-file {tsv_path} --output-json-dir {RESULTS_PATH} -r 3 "
             f"-c {ctx} --prompt-file {prompt} --reset-between-runs",
             check=False,
@@ -141,7 +141,7 @@ def test_scorecard():
         if res.returncode != 0:
             failures.append(ctx)
     count = run_adb_command(f"ls {RESULTS_PATH} | wc -l", check=False).stdout.strip()
-    assert not failures, f"geniex_benchmark failed for ctx={failures}"
+    assert not failures, f"geniex-bench failed for ctx={failures}"
     assert count and int(count.split()[-1]) > 0, "no cell JSON produced on device"
 
 

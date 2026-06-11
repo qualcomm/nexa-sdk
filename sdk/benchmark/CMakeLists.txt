@@ -1,11 +1,11 @@
-add_executable(geniex_benchmark benchmark.c)
+add_executable(geniex-bench benchmark.c)
 
-target_include_directories(geniex_benchmark
+target_include_directories(geniex-bench
     PRIVATE
         ${COMMON_INCLUDE}
 )
 
-target_link_libraries(geniex_benchmark
+target_link_libraries(geniex-bench
     PRIVATE geniex
 )
 
@@ -13,14 +13,14 @@ target_link_libraries(geniex_benchmark
 # (Linux aarch64). bionic / msvcrt fold sqrt into libc, but glibc keeps it
 # in libm and the linker enforces --as-needed.
 if(NOT WIN32 AND NOT ANDROID)
-    target_link_libraries(geniex_benchmark PRIVATE m)
+    target_link_libraries(geniex-bench PRIVATE m)
 endif()
 
-target_compile_definitions(geniex_benchmark PRIVATE GENIEX_SHARED)
+target_compile_definitions(geniex-bench PRIVATE GENIEX_SHARED)
 
-set_target_properties(geniex_benchmark PROPERTIES
+set_target_properties(geniex-bench PROPERTIES
     C_STANDARD 11
     C_STANDARD_REQUIRED ON
 )
 
-install(TARGETS geniex_benchmark RUNTIME DESTINATION bin)
+install(TARGETS geniex-bench RUNTIME DESTINATION bin)
