@@ -1,8 +1,6 @@
 name: Geniex Bench
 
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
     inputs:
       device:
@@ -23,7 +21,6 @@ jobs:
     uses: ./.github/workflows/_build-sdk.yml
     secrets: inherit
     with:
-      version_tag: ${{ github.event_name == 'push' && github.ref_name || '' }}
       upload_artifact: true
 
   load-models:
@@ -82,7 +79,6 @@ jobs:
         model: ${{ fromJson(needs.load-models.outputs.matrix) }}
     env:
       QDC_API_KEY: ${{ secrets.QDC_API_KEY }}
-      GENIEX_RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -121,8 +117,6 @@ jobs:
     strategy:
       matrix:
         device: ${{ fromJson(needs.load-models.outputs.devices) }}
-    env:
-      GENIEX_RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
