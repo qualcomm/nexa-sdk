@@ -10,7 +10,7 @@ GenieX 内置推理服务器，提供**兼容 OpenAI 协议的 API**。在设备
 ## **前置条件**
 
 - 已安装 CLI——详见[安装](/cn/run/cli/install)。
-- 容器内交互式 shell（仅 Docker）——详见[交互式运行](/cn/run/cli/install#交互式运行)。
+- 容器内交互式 shell（仅 Docker）——详见[交互式运行](/cn/run/cli/install#run-interactively)。
 - 已拉取模型。`geniex serve` **不会**自动下载模型。
 
 ## **启动服务器**
@@ -70,8 +70,8 @@ geniex serve
 | 格式 | 示例 |
 |---|---|
 | 本地文件路径（`file://` 前缀可选） | `C:/Users/Username/Pictures/photo.jpg`、`file:///tmp/photo.jpg` |
-| HTTP / HTTPS URL —— 由服务器拉取 | `https://example.com/image.jpg` |
-| Base64 data URL —— 内联图像字节 | `data:image/png;base64,iVBORw0KGgo...` |
+| HTTP / HTTPS URL——由服务器拉取 | `https://example.com/image.jpg` |
+| Base64 data URL——内联图像字节 | `data:image/png;base64,iVBORw0KGgo...` |
 
 <Note>
 **在 Docker 中运行？** 本地路径会在**容器内**解析，而不是宿主机。安装命令已经把 `$PWD/data` 挂载到 `/data`——把图片放进去，然后传 `/data/cat.jpg` 即可。或者直接用 HTTP URL 或 base64 data URL，绕过文件系统。
@@ -100,18 +100,18 @@ geniex serve
 
 ## **Python 客户端（OpenAI SDK）**
 
-由于服务器使用 OpenAI 协议，可直接将官方 `openai` Python 客户端指向本地端点，复用已有的 OpenAI 代码。先通过 `pip install openai` 安装：
+由于服务器使用 OpenAI 协议，可直接将官方 `openai` Python 客户端指向本地端点，复用任意已有的 OpenAI 代码。先通过 `pip install openai` 安装，然后：
 
 ```python python
 from openai import OpenAI
 
 client = OpenAI(
     base_url="http://127.0.0.1:18181/v1",
-    api_key="geniex",  # 任意非空字符串，服务器不会校验
+    api_key="geniex",  # any non-empty string; the server does not check it
 )
 
 stream = client.chat.completions.create(
-    model="unsloth/Qwen3-4B-GGUF:Q4_0",  # org/repo[:precision]，Q4_0 对 Hexagon NPU 支持最佳
+    model="unsloth/Qwen3-4B-GGUF:Q4_0",  # org/repo[:precision] — Q4_0 has the best Hexagon NPU support
     messages=[
         {"role": "user", "content": "Hello! Briefly introduce yourself."},
     ],
@@ -128,13 +128,13 @@ print()
 ```
 
 <Note>
-请将 `model` 替换为已经拉取的模型。可选的 `:<precision>` 后缀用于选择量化版本（例如 `Q4_0`、`Q4_K_M`、`Q8_0`），`Q4_0` 在 Hexagon NPU 上的 llama.cpp 运行时支持最佳。详见[量化与设备落点](/cn/models/supported#量化与设备落点)。
+请将 `model` 替换为已经拉取的模型。可选的 `:<precision>` 后缀用于选择精度（量化）变体（例如 `Q4_0`、`Q4_K_M`、`Q8_0`），`Q4_0` 推荐用于 Hexagon NPU 上的 llama.cpp。详见[精度（量化）与设备落点](/cn/models/supported#精度量化与设备落点)。
 </Note>
 
 ## **其他端点**
 
-- `GET /v1/models` —— 列出可用模型。
-- `GET /v1/models/{model}` —— 查询指定模型的信息。
+- `GET /v1/models`——列出可用模型。
+- `GET /v1/models/{model}`——查询指定模型的信息。
 
 <br />
 

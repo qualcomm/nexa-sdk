@@ -5,134 +5,144 @@ description: "常见错误及处理方法。"
 
 import Feedback from "/snippets/page-feedback.mdx";
 
-## 安装 / pip
+## **安装 / pip**
 
-### pip 安装时出现 SSL 或证书错误（企业代理 / QDC）
+<AccordionGroup>
+  <Accordion title="pip 安装时出现 SSL 或证书错误（企业代理 / QDC）">
+    常见于启用了 TLS 检测的网络——包括 **Qualcomm Developer Cloud（QDC）**。预先下载 SDK 并把 pip 指向本地文件。完整 PowerShell 片段见 [Python 安装](/cn/run/python/install#通过-pip-安装)。
+  </Accordion>
 
-常见于启用了 TLS 检测的网络——包括 **Qualcomm Developer Cloud（QDC）**。预先下载 SDK 并把 pip 指向本地文件即可。完整 PowerShell 片段见 [Python 安装](/cn/run/python/install#通过-pip-安装)。
+  <Accordion title="Windows SmartScreen 拦截 CLI 安装包">
+    `.exe` 尚未代码签名。在 SmartScreen 对话框中点击 **More info → Run anyway**。
+  </Accordion>
+</AccordionGroup>
 
-### Windows SmartScreen 拦截 CLI 安装包
+## **CLI**
 
-`.exe` 尚未代码签名。在 SmartScreen 对话框中点击 **更多信息 → 仍要运行**。
+<AccordionGroup>
+  <Accordion title="安装后 `geniex` 找不到">
+    安装包不会自动加入 `PATH`。运行：
 
-## CLI
+    ```powershell
+    Set-Alias geniex (where.exe geniex)
+    ```
+  </Accordion>
 
-### 安装后 `geniex` 找不到
+  <Accordion title="`--device cpu` 或 `--device gpu` 在 Qualcomm AI Hub 模型上报错">
+    Qualcomm AI Engine Direct 仅支持 NPU。请使用 `--device npu`（或省略该标志——`npu` 是 `qairt` 的默认值）。如需在 CPU/GPU 上运行，改用 [llama.cpp 运行时](/cn/get-started/platforms#llamacpp)的 GGUF 模型。
+  </Accordion>
+</AccordionGroup>
 
-安装包不会自动加入 `PATH`。运行：
+## **服务器**
 
-```powershell windows
-Set-Alias geniex (where.exe geniex)
-```
+<AccordionGroup>
+  <Accordion title="`geniex serve` 返回 'model not found'">
+    服务器不会自动下载。先拉取模型：
 
-### `--device cpu` 或 `--device gpu` 在 QAIRT 模型上报错
+    ```bash
+    geniex pull ai-hub-models/Qwen3-4B-Instruct-2507
+    ```
 
-QAIRT 仅支持 NPU。请使用 `--device npu`（或省略——QAIRT 默认即 `npu`）。如需 CPU/GPU，改用 [llama.cpp 运行时](/cn/get-started/platforms#llamacpp)的 GGUF 模型。
+    随后重启 `geniex serve`。
+  </Accordion>
 
-## 服务器
+  <Accordion title="Docker 容器看不到 NPU">
+    NPU 访问必须带 `--privileged` 标志。确认你的 `docker run` 包含它，以及 `/usr/lib` 的卷挂载。详见 [CLI 安装（Docker）](/cn/run/cli/install)。
+  </Accordion>
+</AccordionGroup>
 
-### `geniex serve` 报 "model not found"
+## **Linux**
 
-服务器不会自动下载。先拉取模型：
+<AccordionGroup>
+  <Accordion title="`docker pull` 报权限错误 / 未授权">
+    需要同时满足两点：
 
-```bash
-geniex pull ai-hub-models/Qwen3-4B-Instruct-2507
-```
+    1. **镜像仓库登录。** 登录你拉取所用的仓库：
 
-随后重启 `geniex serve`。
+       ```bash bash
+       # GitHub Container Registry — PAT (classic) with at least read:packages:
+       export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxx
+       docker login ghcr.io -u <your-github-username> -p "$GITHUB_TOKEN"
 
-### Docker 容器看不到 NPU
+       # Qualcomm Container Registry:
+       docker login docker-registry.qualcomm.com -u '$app' -p GB2S6KXMJXTPV8VHNFNS7Q6LVH75LOOBTLT8D723WUX6PSFZMTX95GIQG4EFWH5C021ONZ5763VI9IDHU96Q7VAZJ2830CLX3NPI6STQOJWRYXLLA2ZYTL1S
+       ```
 
-NPU 访问必须带 `--privileged` 标志，并挂载 `/usr/lib`。详见 [CLI 安装（Docker）](/cn/run/cli/install)。
+       出现 `Login Succeeded` 即成功。
 
-## Linux
+    2. **加入 docker 用户组。** 若 `docker pull` 返回 `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`，说明当前用户不在 `docker` 组：
 
-### `docker pull` 报权限错误 / 未授权
+       ```bash bash
+       sudo usermod -aG docker $USER
+       newgrp docker        # apply the new group in the current shell
+       ```
 
-需要同时满足两点：
+       然后重新执行拉取。
+  </Accordion>
 
-1. **镜像仓库登录。** 登录你拉取所用的仓库：
+  <Accordion title="`geniex` install.sh 报缺少共享库">
+    在全新的 Ubuntu 24.04 ARM64 主机（例如 IQ9075 EVK）上，`install.sh` 会检查 `libCB.so.1`、`libOpenCL_adreno.so.1`、`libcdsprpc.so.1.0.0`、`libgsl.so.1`、`libllvm-*.so.1`、`libpropertyvault.so.0.0.0`、`libdmabufheap.so.0.0.0`，以及 Debian 的 `libatomic1` / `libglib2.0-0` 等库。分两步安装。
 
-   ```bash bash
-   # GitHub Container Registry —— 具备至少 read:packages 的 PAT (classic)：
-   export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxx
-   docker login ghcr.io -u <your-github-username> -p "$GITHUB_TOKEN"
+    **1. 标准 APT 包**
 
-   # Qualcomm Container Registry：
-   docker login docker-registry.qualcomm.com -u '$app' -p GB2S6KXMJXTPV8VHNFNS7Q6LVH75LOOBTLT8D723WUX6PSFZMTX95GIQG4EFWH5C021ONZ5763VI9IDHU96Q7VAZJ2830CLX3NPI6STQOJWRYXLLA2ZYTL1S
-   ```
+    满足 `geniex` 安装器报告的 `libatomic1` 与 `libglib2.0-0` 依赖，并提供通用 OpenCL ICD loader：
 
-   出现 `Login Succeeded` 即成功。
+    ```bash bash
+    sudo apt update
+    sudo apt install -y \
+      libatomic1 \
+      libglib2.0-0 \
+      ocl-icd-libopencl1
+    ```
 
-2. **加入 docker 用户组。** 若 `docker pull` 返回 `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`，说明当前用户不在 `docker` 组：
+    <Note>`ocl-icd-libopencl1` 会在下一步被 `qcom-adreno1` 替换。</Note>
 
-   ```bash bash
-   sudo usermod -aG docker $USER
-   newgrp docker        # 在当前 shell 中应用新组
-   ```
+    **2. 高通驱动包（来自 `ubuntu-qcom-iot` PPA）**
 
-   然后重新执行拉取。
+    提供 `geniex` 所需的高通专有库：
 
-### `geniex` install.sh 报缺少共享库
+    | Missing library | Provided by |
+    | --- | --- |
+    | `libOpenCL_adreno.so.1`, `libCB.so.1`, `libadreno_utils.so.1`, `libgsl.so.1`, `libllvm-*.so.1` | `qcom-adreno1` |
+    | `libdmabufheap.so.0.0.0` | `qcom-libdmabufheap` *(auto-dep of `qcom-adreno1`)* |
+    | `libpropertyvault.so.0.0.0` | `qcom-property-vault` *(auto-dep of `qcom-adreno1`)* |
+    | `libcdsprpc.so.1.0.0` | `qcom-fastrpc1` |
 
-在全新的 Ubuntu 24.04 ARM64 主机（例如 IQ9075 EVK）上，`install.sh` 会检查 `libCB.so.1`、`libOpenCL_adreno.so.1`、`libcdsprpc.so.1.0.0`、`libgsl.so.1`、`libllvm-*.so.1`、`libpropertyvault.so.0.0.0`、`libdmabufheap.so.0.0.0`，以及 Debian 的 `libatomic1` / `libglib2.0-0`。分两步安装。
+    ```bash bash
+    sudo apt-get install -y qcom-adreno1 qcom-fastrpc1
+    ```
 
-**1. 标准 APT 包**
+    PPA（`ppa:ubuntu-qcom-iot/qcom-ppa`）在 IQ9075 EVK Ubuntu 镜像中已预配置。`qcom-adreno1` 会自动拉入 `qcom-libdmabufheap` 与 `qcom-property-vault`。
 
-满足 `geniex` 安装器报告的 `libatomic1` 与 `libglib2.0-0` 依赖，并提供通用 OpenCL ICD loader：
+    完成后重新运行 `install.sh`，"Linking host NPU libraries" 步骤即可成功。
+  </Accordion>
 
-```bash bash
-sudo apt update
-sudo apt install -y \
-  libatomic1 \
-  libglib2.0-0 \
-  ocl-icd-libopencl1
-```
+  <Accordion title="容器内可加载模型但推理报 `Failed to create device: 14001`">
+    容器无法访问 NPU。确认 `docker run` 带 `--privileged` 与 `/usr/lib` 挂载，并且宿主已安装高通驱动包（`qcom-adreno1`、`qcom-fastrpc1`）——参见上面的缺少共享库条目。
+  </Accordion>
+</AccordionGroup>
 
-<Note>`ocl-icd-libopencl1` 会在下一步被 `qcom-adreno1` 替换。</Note>
+## **Android**
 
-**2. 高通驱动包（来自 `ubuntu-qcom-iot` PPA）**
+<AccordionGroup>
+  <Accordion title="模型可加载，但生成自我重复或无输出">
+    demo（或你的代码）把**原始用户文本**传给了 `generateStreamFlow`，而非 chat template 化后的 prompt。Qualcomm AI Engine Direct 流水线把输入视为已格式化——请传 `applyChatTemplate().formattedText`，而不是原始用户消息。
+  </Accordion>
 
-提供 `geniex` 所需的高通专有库：
+  <Accordion title="Qualcomm AI Hub 拉取报 `INVALID_INPUT`">
+    Android 上 Qualcomm AI Hub 拉取必须显式传 `chipset`——自动识别仅在骁龙 Windows 上生效。把 `ModelPullInput.chipset` 设为 `"SM8750"`（骁龙 8 至尊版）或 `"SM8850"`（骁龙 8 至尊版 Gen 5）。详见 [Android API 参考 → ModelPullInput](/cn/run/android/api-reference#modelpullinput)。
+  </Accordion>
 
-| 缺少的库 | 由谁提供 |
-| --- | --- |
-| `libOpenCL_adreno.so.1`、`libCB.so.1`、`libadreno_utils.so.1`、`libgsl.so.1`、`libllvm-*.so.1` | `qcom-adreno1` |
-| `libdmabufheap.so.0.0.0` | `qcom-libdmabufheap` *（`qcom-adreno1` 自动依赖）* |
-| `libpropertyvault.so.0.0.0` | `qcom-property-vault` *（`qcom-adreno1` 自动依赖）* |
-| `libcdsprpc.so.1.0.0` | `qcom-fastrpc1` |
+  <Accordion title="Qualcomm AI Engine Direct 加载报 'unknown model name'">
+    Qualcomm AI Hub 返回的 model id 必须匹配 Qualcomm AI Engine Direct 运行时注册表中的条目（`qwen3_4b_instruct_2507`、`qwen2_5_vl_7b_instruct` 等）。新增 Qualcomm AI Hub 模型需先在 C++ 侧注册——见 `third-party/geniex-qairt/models/{llm,vlm}_model_registry.h`。
+  </Accordion>
 
-```bash bash
-sudo apt-get install -y qcom-adreno1 qcom-fastrpc1
-```
+  <Accordion title="Qualcomm AI Engine Direct 拒绝 `nGpuLayers` 或 `nCtx`">
+    Qualcomm AI Hub 模型在编译期固化了 KV 缓存与上下文长度。请保持 `nGpuLayers` 与 `nCtx` 为默认值，改用 `max_tokens` 与 `enable_thinking` 调节。
+  </Accordion>
+</AccordionGroup>
 
-PPA（`ppa:ubuntu-qcom-iot/qcom-ppa`）在 IQ9075 EVK Ubuntu 镜像中已预配置。`qcom-adreno1` 会自动拉入 `qcom-libdmabufheap` 与 `qcom-property-vault`。
-
-完成后重新运行 `install.sh`，"Linking host NPU libraries" 步骤即可成功。
-
-### 容器内可加载模型但推理报 `Failed to create device: 14001`
-
-容器无法访问 NPU。确认 `docker run` 带 `--privileged` 与 `/usr/lib` 挂载，并且宿主已安装高通驱动包（`qcom-adreno1`、`qcom-fastrpc1`）——参见上面的"缺少共享库"条目。
-
-## Android
-
-### 模型可加载，但生成自我重复或无输出
-
-demo（或你的代码）把**原始用户文本**传给了 `generateStreamFlow`，而非 chat template 化后的 prompt。QAIRT 流水线把输入视为已格式化——请传 `applyChatTemplate().formattedText`，而不是原始消息。
-
-### AI Hub 拉取报 INVALID_INPUT
-
-Android 上 AI Hub 拉取必须显式传 `chipset`——自动识别仅在骁龙 Windows 上生效。把 `ModelPullInput.chipset` 设为 `"SM8750"`（骁龙 8 至尊版）或 `"SM8850"`（骁龙 8 至尊版 Gen 5）。详见 [Android API 参考 → ModelPullInput](/cn/run/android/api-reference#modelpullinput)。
-
-### QAIRT 加载报 "unknown model name"
-
-AI Hub 返回的 model id 必须匹配 QAIRT 运行时注册表中的条目（`qwen3_4b_instruct_2507`、`qwen2_5_vl_7b_instruct` 等）。新增 AI Hub 模型需先在 C++ 侧注册——见 `third-party/geniex-qairt/models/{llm,vlm}_model_registry.h`。
-
-### QAIRT 拒绝 `nGpuLayers` 或 `nCtx`
-
-QAIRT 模型包在编译期固化了 KV 缓存与上下文长度。请保持 `nGpuLayers` 与 `nCtx` 为默认值，改用 `max_tokens` 与 `enable_thinking` 调节。
-
-## 仍有问题？
+## **仍有问题？**
 
 <CardGroup cols={2}>
   <Card title="GitHub Issues" icon="github" href="https://github.com/qualcomm/nexa-sdk/issues">

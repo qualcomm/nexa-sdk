@@ -18,7 +18,7 @@ val plugin_id: String?   // "llama_cpp" | "qairt" | null
 | `plugin_id`   | 运行时                            | 模型格式                 | 计算单元                        |
 |---------------|-----------------------------------|--------------------------|---------------------------------|
 | `"llama_cpp"` | llama.cpp + GGML Hexagon 后端     | GGUF                     | CPU / Adreno GPU / Hexagon NPU |
-| `"qairt"`     | 高通 AI Runtime                    | AI Hub 预编译 bin        | 仅 Hexagon NPU                  |
+| `"qairt"`     | Qualcomm® AI Engine Direct        | Qualcomm AI Hub 预编译 bin | 仅 Hexagon NPU                |
 | `null`        | SDK 根据模型路径自动判断           | —                        | —                               |
 
 常量定义见 [`PluginIdValue`](https://github.com/qcom-ai-hub/geniex/blob/main/bindings/android/app/src/main/java/com/geniex/sdk/bean/InputPluginBase.kt)（`LLAMA_CPP`、`QAIRT`）。
@@ -39,7 +39,7 @@ val device_id: String?   // "cpu" | "gpu" | "npu" | null
 | `"cpu"` | 纯 CPU。强制 `nGpuLayers = 0`。                                     |
 
 <Note>
-QAIRT 仅支持 NPU。对 QAIRT 模型传 `"cpu"` 或 `"gpu"` 仅记录告警并回退到 NPU，不会报错。
+Qualcomm AI Engine Direct 仅支持 NPU。对 Qualcomm AI Hub Model 传 `"cpu"` 或 `"gpu"` 仅记录告警并回退到 NPU，不会报错。
 </Note>
 
 ---
@@ -83,11 +83,11 @@ ModelManagerWrapper.clean()            // 清空所有缓存模型
 ```kotlin
 data class ModelPullInput(
     val model_name:   String,                     // "org/repo" 或别名
-    val quant:        String? = null,             // 例如 "Q4_0"、"Q4_K_M"
+    val quant:        String? = null,             // 精度（量化）例如 "Q4_0"、"Q4_K_M"
     val hub:          HubSource = HubSource.AUTO, // AUTO 按 model_name 路由
     val local_path:   String? = null,             // 仅在 hub == LOCALFS 时使用
     val hf_token:     String? = null,             // 也可回退到 GENIEX_HFTOKEN 环境变量
-    val chipset:      String? = null,             // Android 上拉取 AI Hub 必填（例如 "SM8750"）
+    val chipset:      String? = null,             // Android 上拉取 Qualcomm AI Hub 必填（例如 "SM8750"）
     val display_name: String? = null,
 )
 ```
@@ -122,7 +122,7 @@ data class ModelPaths(
 ```
 
 <Note>
-在 Android 上拉取 AI Hub **必须**显式传 `chipset`。Rust 侧仅在骁龙 Windows 上自动识别。骁龙 8 至尊版用 `"SM8750"`，骁龙 8 至尊版 Gen 5 用 `"SM8850"`。
+在 Android 上拉取 Qualcomm AI Hub **必须**显式传 `chipset`。Rust 侧仅在骁龙 Windows 上自动识别。骁龙 8 至尊版用 `"SM8750"`，骁龙 8 至尊版 Gen 5 用 `"SM8850"`。
 </Note>
 
 ---
@@ -327,17 +327,17 @@ vlmWrapper.applyChatTemplate(chat.toTypedArray(), null, false).onSuccess { t ->
 
 ---
 
-## **QAIRT（AI Hub NPU 模型）**
+## **Qualcomm® AI Hub Models（通过 Qualcomm AI Engine Direct 使用 NPU）**
 
 来自 Qualcomm AI Hub 的预编译模型。仅 NPU，绑定指定芯片（`SM8750` = 骁龙 8 至尊版，`SM8850` = 骁龙 8 至尊版 Gen 5）。
 
-### 下载 AI Hub 模型
+### 下载 Qualcomm AI Hub Models
 
 ```kotlin
 ModelManagerWrapper.pullFlow(
     ModelPullInput(
         model_name = "ai-hub-models/Qwen2.5-VL-7B-Instruct",
-        hub        = HubSource.AUTO,     // AUTO 把 `ai-hub-models/*` 路由到 AI Hub
+        hub        = HubSource.AUTO,     // AUTO 把 `ai-hub-models/*` 路由到 Qualcomm AI Hub
         chipset    = "SM8750",           // Android 上必填
     )
 ).collect { event ->
@@ -369,7 +369,7 @@ LlmWrapper.builder()
             model_path = paths.model_path,
             config     = ModelConfig(max_tokens = 2048, enable_thinking = false),
             plugin_id  = "qairt",
-            device_id  = null,           // null → NPU（QAIRT 唯一选项）
+            device_id  = null,           // null → NPU（Qualcomm AI Engine Direct 唯一选项）
         )
     )
     .build()
@@ -390,7 +390,7 @@ llmWrapper.applyChatTemplate(chat.toTypedArray(), null, false).onSuccess { t ->
 ```
 
 <Note>
-QAIRT 会以 `PARAM_NOT_SUPPORTED` 拒绝 `nGpuLayers != 0` 与 `nCtx != 0`——KV 缓存与上下文长度由 AI Hub 模型包在编译期固化。两者保持默认即可，仅调整 `max_tokens` / `enable_thinking`。
+Qualcomm AI Engine Direct 会以 `PARAM_NOT_SUPPORTED` 拒绝 `nGpuLayers != 0` 与 `nCtx != 0`——KV 缓存与上下文长度由 Qualcomm AI Hub 模型包在编译期固化。两者保持默认即可，仅调整 `max_tokens` / `enable_thinking`。
 </Note>
 
 ### VLM
@@ -435,7 +435,7 @@ vlmWrapper.applyChatTemplate(chat.toTypedArray(), null, false).onSuccess { t ->
 ```
 
 <Note>
-请把 **chat template 化的 prompt**（`t.formattedText`）传入 `generateStreamFlow`，绝不要传原始用户文本。QAIRT VLM 把 prompt 视为已格式化——传原始文本会得到退化的输出。
+请把 **chat template 化的 prompt**（`t.formattedText`）传入 `generateStreamFlow`，绝不要传原始用户文本。Qualcomm AI Engine Direct VLM 把 prompt 视为已格式化——传原始文本会得到退化的输出。
 </Note>
 
 ---

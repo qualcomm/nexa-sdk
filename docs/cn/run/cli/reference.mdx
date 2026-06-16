@@ -29,39 +29,20 @@ geniex pull local/my-model --local-path /path/to/model-dir
 
 <Note>`pull` 会将文件复制到 GenieX 缓存。拉取成功后可安全删除源文件，避免保留两份副本。</Note>
 
-CLI 会引导你完成设置流程：
+**精度（量化）（仅 llama.cpp）**
 
-**1. 设备选择**
-
-首次运行时（QAIRT 与 llama.cpp 插件均适用），系统会提示选择设备：
+对于 GGUF 模型，CLI 会提示选择精度：
 
 ```powershell
-Select your device
-┃ > Snapdragon X Elite CRD
-┃   Snapdragon X Plus 8-Core CRD
-┃   Snapdragon X2 Elite CRD
-```
-
-如需更改：
-
-```powershell
-geniex config set device
-```
-
-**2. 量化（仅 llama.cpp）**
-
-对于 GGUF 模型，CLI 会提示选择量化：
-
-```powershell
-Choose a quant version to download
+Choose a precision version to download
 > Q4_0       [1.2 GiB] (default)
   Q8_0       [2.0 GiB]
   F16        [3.8 GiB]
 ```
 
-<Tip>`Q4_0` 在 Hexagon NPU 上支持最佳。详见[量化与设备落点](/cn/models/supported#量化与设备落点)。</Tip>
+<Tip>`Q4_0` 在 Hexagon NPU 上支持最佳。详见[精度（量化）与设备落点](/cn/models/supported#精度量化与设备落点)。</Tip>
 
-QAIRT 模型已预量化——无需选择。
+Qualcomm AI Hub 模型已预量化——无需选择。
 
 ### **`geniex infer` — LLM**
 
@@ -71,26 +52,26 @@ QAIRT 模型已预量化——无需选择。
 geniex infer ai-hub-models/Qwen3-4B
 ```
 
-**思考模式** —— 控制模型是否在回复前展示推理过程：
+**思考模式**——控制模型是否在回复前展示推理过程：
 
 ```powershell
-geniex infer ai-hub-models/Qwen3-4B --think         # 展示推理步骤
-geniex infer ai-hub-models/Qwen3-4B --think=false   # 直接回复
+geniex infer ai-hub-models/Qwen3-4B --think         # show reasoning steps
+geniex infer ai-hub-models/Qwen3-4B --think=false   # respond directly
 ```
 
-**计算单元选择**（通过 `--device`）—— 选择运行模型的计算单元（默认：`npu`）：
+**计算单元选择**（通过 `--device`）——选择运行模型的计算单元（默认：`npu`）：
 
 ```powershell
-# llama.cpp 模型支持所有计算单元
+# llama.cpp models support all compute units
 geniex infer unsloth/Qwen3.5-0.8B-GGUF --device npu
 geniex infer unsloth/Qwen3.5-0.8B-GGUF --device gpu
 geniex infer unsloth/Qwen3.5-0.8B-GGUF --device cpu
 
-# QAIRT 模型仅支持 NPU
+# Qualcomm AI Hub Models only support NPU
 geniex infer ai-hub-models/Qwen3-4B --device npu
 ```
 
-<Warning>QAIRT 模型仅在 NPU 上运行。对 QAIRT 模型使用 `--device cpu` 或 `--device gpu` 会返回错误。</Warning>
+<Warning>Qualcomm AI Hub 模型仅在 NPU 上运行。使用 `--device cpu` 或 `--device gpu` 会返回错误。</Warning>
 
 ### **`geniex infer` — VLM**
 
@@ -100,7 +81,7 @@ geniex infer ai-hub-models/Qwen3-4B --device npu
 geniex infer ai-hub-models/Qwen2.5-VL-7B-Instruct-GGUF
 ```
 
-如果只需文本输入，直接启动并对话即可。若要让模型基于图像回复，请提供**绝对路径**或将图片文件直接拖入终端：
+如果只需文本输入，直接启动并对话即可。若要使用图像输入，请提供**绝对路径**或将图片文件直接拖入终端：
 
 ```bash
 Describe this picture </full/path/to/image.png>
@@ -129,7 +110,7 @@ geniex serve
 | `--top-k` | int | — | Top-k 采样。仅考虑概率最高的 k 个 token。 |
 | `--min-p` | float | — | Min-p 采样阈值。 |
 | `--repetition-penalty` | float | `1` | 重复惩罚。值 > 1 减少重复。 |
-| `--presence-penalty` | float | — | 对已出现的 token 进行惩罚。 |
+| `--presence-penalty` | float | — | 对已出现过的 token 进行惩罚。 |
 | `--frequency-penalty` | float | — | 按频率比例惩罚 token。 |
 | `--seed` | int | — | 随机种子，用于可复现输出。 |
 | `--grammar-path` | string | — | GBNF 语法文件路径，用于约束生成。 |
@@ -157,8 +138,8 @@ geniex serve
 | `geniex list` | 显示所有已下载模型的名称与大小。 | `geniex list` |
 | `geniex remove <model>` | 按名称删除指定的本地模型。 | `geniex remove unsloth/Qwen3-0.6B-GGUF` |
 | `geniex clean` | 删除所有本地缓存的模型。 | `geniex clean` |
-| `geniex infer -h` | 显示 `geniex infer` 的帮助菜单。 | `geniex infer -h` |
-| `geniex serve -h` | 显示 `geniex serve` 的帮助菜单。 | `geniex serve -h` |
+| `geniex infer -h` | 显示 `geniex infer` 的帮助信息。 | `geniex infer -h` |
+| `geniex serve -h` | 显示 `geniex serve` 的帮助信息。 | `geniex serve -h` |
 
 <br />
 
