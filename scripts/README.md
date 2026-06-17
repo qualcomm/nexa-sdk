@@ -17,7 +17,7 @@ The `llama_cpp` and `qairt` runtimes both target the NPU but through **separate 
 
 ## Install
 
-Release assets live on the [Releases page](https://github.com/qcom-ai-hub/geniex/releases). `<TAG>` below is the release tag (e.g. `v0.4.0`).
+Release assets live on the [Releases page](https://github.com/qualcomm/nexa-sdk/releases). `<TAG>` below is the release tag (e.g. `v0.4.0`).
 
 ### Windows (installer)
 
@@ -31,7 +31,7 @@ Install on a Snapdragon device (EVK, container, or any ARM64 Linux with a Qualco
 
 ```bash
 # Optional: verify QCOM driver and system-library prerequisites first.
-curl -fsSL https://raw.githubusercontent.com/qcom-ai-hub/geniex/main/cli/release/linux/check.sh | sh
+curl -fsSL https://raw.githubusercontent.com/qualcomm/nexa-sdk/main/cli/release/linux/check.sh | sh
 
 curl -fsSL https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/install.sh | sh
 ```
@@ -57,7 +57,7 @@ Prefer Docker (versioned image, repeatable, no host-side install):
 
 ```bash
 # Option A — GitHub Container Registry:
-IMAGE=ghcr.io/qcom-ai-hub/geniex-cli:<TAG>
+IMAGE=ghcr.io/qualcomm/geniex-cli:<TAG>
 docker pull "$IMAGE"
 
 # Option B — Qualcomm registry (requires login):
