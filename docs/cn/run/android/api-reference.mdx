@@ -1,21 +1,21 @@
 ---
 title: "API 参考"
-description: "GenieX Android SDK —— 运行时 / 计算单元选择、模型管理与 LLM/VLM 推理 API。"
+description: "GenieX Android SDK —— 运行环境 / 计算单元选择、模型管理与 LLM/VLM 推理 API。"
 ---
 
 import Feedback from "/snippets/page-feedback.mdx";
 
-## **运行时与计算单元选择**
+## **运行环境与计算单元选择**
 
-### 运行时
+### 运行环境
 
-通过 `runtime_id` 选择推理运行时：
+通过 `runtime_id` 选择推理运行环境：
 
 ```kotlin
 val runtime_id: String?   // "llama_cpp" | "qairt" | null
 ```
 
-| `runtime_id`   | 运行时                            | 模型格式                 | 计算单元                        |
+| `runtime_id`   | 运行环境                          | 模型格式                 | 计算单元                        |
 |---------------|-----------------------------------|--------------------------|---------------------------------|
 | `"llama_cpp"` | llama.cpp + GGML Hexagon 后端     | GGUF                     | CPU / Adreno GPU / Hexagon NPU |
 | `"qairt"`     | Qualcomm® AI Engine Direct        | Qualcomm AI Hub 预编译 bin | 仅 Hexagon NPU                |
@@ -25,7 +25,7 @@ val runtime_id: String?   // "llama_cpp" | "qairt" | null
 
 ### 计算单元
 
-转发给原生 SDK `geniex_resolve_device` 的计算单元别名。
+给原生 SDK `geniex_resolve_device` 的计算单元别名。
 
 ```kotlin
 val compute_unit: String?   // "cpu" | "gpu" | "npu" | null
@@ -33,7 +33,7 @@ val compute_unit: String?   // "cpu" | "gpu" | "npu" | null
 
 | 别名    | 行为                                                                |
 |---------|---------------------------------------------------------------------|
-| `null`  | 运行时默认值——`llama_cpp` 与 `qairt` 均为 `npu`。                 |
+| `null`  | 运行环境默认值——`llama_cpp` 与 `qairt` 均为 `npu`。               |
 | `"npu"` | Hexagon NPU 加速。骁龙上推荐。                                       |
 | `"gpu"` | 通过 OpenCL 使用 Adreno GPU（仅 `llama_cpp`）。                      |
 | `"cpu"` | 纯 CPU。强制 `nGpuLayers = 0`。                                     |
@@ -51,10 +51,10 @@ Qualcomm AI Engine Direct 仅支持 NPU。对 Qualcomm AI Hub Model 传 `"cpu"` 
 ### `ModelManagerWrapper`
 
 ```kotlin
-// 初始化（幂等——可在每个 Activity.onCreate 中安全调用）。
+// Init (idempotent — safe to call on every Activity.onCreate).
 GenieXSdk.getInstance().init(context)
 
-// 流式拉取并报告进度。
+// Pull with streaming progress.
 ModelManagerWrapper.pullFlow(
     ModelPullInput(
         model_name = "unsloth/Qwen3-0.6B-GGUF",
@@ -63,31 +63,31 @@ ModelManagerWrapper.pullFlow(
     )
 ).collect { event ->
     when (event) {
-        is ModelManagerWrapper.PullEvent.Progress  -> /* 更新 UI */
-        ModelManagerWrapper.PullEvent.Completed    -> /* 完成 */
-        is ModelManagerWrapper.PullEvent.Error     -> /* 显示错误 */
+        is ModelManagerWrapper.PullEvent.Progress  -> /* update UI */
+        ModelManagerWrapper.PullEvent.Completed    -> /* done */
+        is ModelManagerWrapper.PullEvent.Error     -> /* show error */
     }
 }
 
-// 获取已拉取模型在磁盘上的路径。
+// Resolve on-disk paths for a previously-pulled model.
 val paths: ModelPaths? = ModelManagerWrapper.getPaths("unsloth/Qwen3-0.6B-GGUF")
 
-// 列出 / 清理。
+// Inventory / cleanup.
 ModelManagerWrapper.list()              // List<String>
-ModelManagerWrapper.remove("org/repo") // 0 = 成功
-ModelManagerWrapper.clean()            // 清空所有缓存模型
+ModelManagerWrapper.remove("org/repo") // 0 = success
+ModelManagerWrapper.clean()            // wipe all cached models
 ```
 
 ### `ModelPullInput`
 
 ```kotlin
 data class ModelPullInput(
-    val model_name:   String,                     // "org/repo" 或别名
-    val precision:    String? = null,             // 精度（量化）例如 "Q4_0"、"Q4_K_M"
-    val hub:          HubSource = HubSource.AUTO, // AUTO 按 model_name 路由
-    val local_path:   String? = null,             // 仅在 hub == LOCALFS 时使用
-    val hf_token:     String? = null,             // 也可回退到 GENIEX_HFTOKEN 环境变量
-    val chipset:      String? = null,             // Android 上拉取 Qualcomm AI Hub 必填（例如 "SM8750"）
+    val model_name:   String,                     // "org/repo" or alias
+    val precision:    String? = null,             // precision (quantization) e.g. "Q4_0", "Q4_K_M"
+    val hub:          HubSource = HubSource.AUTO, // AUTO routes by model_name
+    val local_path:   String? = null,             // only when hub == LOCALFS
+    val hf_token:     String? = null,             // falls back to GENIEX_HFTOKEN env
+    val chipset:      String? = null,             // required for Qualcomm AI Hub on Android (e.g. "SM8750")
     val display_name: String? = null,
 )
 ```
@@ -96,7 +96,7 @@ data class ModelPullInput(
 
 ```kotlin
 enum class HubSource(val value: Int) {
-    AUTO(0),          // 按前缀路由（例如 ai-hub-models/* → AIHUB）
+    AUTO(0),          // routes by prefix (e.g. ai-hub-models/* → AIHUB)
     HUGGINGFACE(1),
     MODELSCOPE(2),
     AIHUB(3),
@@ -114,8 +114,8 @@ data class ModelPaths(
     val model_path:     String,
     val model_dir:      String,
     val model_name:     String,
-    val runtime_id:      String,            // 权威值——优先于 UI 选择
-    val mmproj_path:    String? = null,    // VLM 投影权重
+    val runtime_id:      String,            // authoritative — prefer over UI selection
+    val mmproj_path:    String? = null,    // VLM projection weights
     val tokenizer_path: String? = null,
     val compute_unit:      String? = null,
 )
@@ -148,7 +148,7 @@ data class LlmCreateInput(
 data class VlmCreateInput(
     val model_name:  String,
     val model_path:  String,
-    val mmproj_path: String? = null,     // GGUF VLM 的视觉投影权重
+    val mmproj_path: String? = null,     // vision projection weights (GGUF VLMs)
     val config:      ModelConfig,
     val runtime_id:   String? = null,
     val compute_unit:   String? = null,
@@ -159,7 +159,7 @@ data class VlmCreateInput(
 
 ```kotlin
 data class ModelConfig(
-    var nCtx:                  Int     = 2048,     // 上下文大小；0 表示模型默认值
+    var nCtx:                  Int     = 2048,     // context size; 0 = model default
     var nThreads:              Int     = 8,
     var nThreadsBatch:         Int     = 8,
     var nBatch:                Int     = 2048,
@@ -197,7 +197,7 @@ data class VlmChatMessage(
 
 data class VlmContent(
     val type: String?,                     // "text" | "image"
-    val text: String?,                     // 文本内容；image 时为绝对路径
+    val text: String?,                     // text content, or absolute file path for image
 )
 ```
 
@@ -250,7 +250,7 @@ LlmWrapper.builder()
             model_path = paths.model_path,
             config     = ModelConfig(nCtx = 4096),
             runtime_id  = "llama_cpp",
-            compute_unit  = null,       // null → npu（骁龙上推荐）
+            compute_unit  = null,       // null → npu (recommended on Snapdragon)
         )
     )
     .build()
@@ -327,18 +327,18 @@ vlmWrapper.applyChatTemplate(chat.toTypedArray(), null, false).onSuccess { t ->
 
 ---
 
-## **Qualcomm® AI Hub Models（通过 Qualcomm AI Engine Direct 使用 NPU）**
+## **Qualcomm® AI Hub 模型（通过 Qualcomm AI Engine Direct 使用 NPU）**
 
 来自 Qualcomm AI Hub 的预编译模型。仅 NPU，绑定指定芯片（`SM8750` = 骁龙 8 至尊版，`SM8850` = 骁龙 8 至尊版 Gen 5）。
 
-### 下载 Qualcomm AI Hub Models
+### 下载 Qualcomm AI Hub 模型
 
 ```kotlin
 ModelManagerWrapper.pullFlow(
     ModelPullInput(
         model_name = "ai-hub-models/Qwen2.5-VL-7B-Instruct",
-        hub        = HubSource.AUTO,     // AUTO 把 `ai-hub-models/*` 路由到 Qualcomm AI Hub
-        chipset    = "SM8750",           // Android 上必填
+        hub        = HubSource.AUTO,     // AUTO routes `ai-hub-models/*` to Qualcomm AI Hub
+        chipset    = "SM8750",           // REQUIRED on Android
     )
 ).collect { event ->
     when (event) {
@@ -369,7 +369,7 @@ LlmWrapper.builder()
             model_path = paths.model_path,
             config     = ModelConfig(max_tokens = 2048, enable_thinking = false),
             runtime_id  = "qairt",
-            compute_unit  = null,           // null → NPU（Qualcomm AI Engine Direct 唯一选项）
+            compute_unit  = null,           // null → NPU (only option for Qualcomm AI Engine Direct)
         )
     )
     .build()

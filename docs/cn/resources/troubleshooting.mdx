@@ -29,7 +29,7 @@ import Feedback from "/snippets/page-feedback.mdx";
   </Accordion>
 
   <Accordion title="`--compute cpu` 或 `--compute gpu` 在 Qualcomm AI Hub 模型上报错">
-    Qualcomm AI Engine Direct 仅支持 NPU。请使用 `--compute npu`（或省略该标志——`npu` 是 `qairt` 的默认值）。如需在 CPU/GPU 上运行，改用 [llama.cpp 运行时](/cn/get-started/platforms#llamacpp)的 GGUF 模型。
+    Qualcomm AI Engine Direct 仅支持 NPU。请使用 `--compute npu`（或省略该标志——`npu` 是 `qairt` 的默认值）。如需在 CPU/GPU 上运行，改用 [llama.cpp 运行环境](/cn/get-started/platforms#llamacpp)的 GGUF 模型。
   </Accordion>
 </AccordionGroup>
 
@@ -118,7 +118,7 @@ import Feedback from "/snippets/page-feedback.mdx";
   </Accordion>
 
   <Accordion title="容器内可加载模型但推理报 `Failed to create device: 14001`">
-    容器无法访问 NPU。确认 `docker run` 带 `--privileged` 与 `/usr/lib` 挂载，并且宿主已安装高通驱动包（`qcom-adreno1`、`qcom-fastrpc1`）——参见上面的缺少共享库条目。
+    容器无法访问 NPU。确认 `docker run` 带 `--privileged` 与 `/usr/lib` 挂载，并且主机已安装高通驱动包（`qcom-adreno1`、`qcom-fastrpc1`）——参见上面的缺少共享库条目。
   </Accordion>
 </AccordionGroup>
 
@@ -134,7 +134,7 @@ import Feedback from "/snippets/page-feedback.mdx";
   </Accordion>
 
   <Accordion title="Qualcomm AI Engine Direct 加载报 'unknown model name'">
-    Qualcomm AI Hub 返回的 model id 必须匹配 Qualcomm AI Engine Direct 运行时注册表中的条目（`qwen3_4b_instruct_2507`、`qwen2_5_vl_7b_instruct` 等）。新增 Qualcomm AI Hub 模型需先在 C++ 侧注册——见 `third-party/geniex-qairt/models/{llm,vlm}_model_registry.h`。
+    Qualcomm AI Hub 返回的 model id 必须匹配 Qualcomm AI Engine Direct 运行环境注册表中的条目（`qwen3_4b_instruct_2507`、`qwen2_5_vl_7b_instruct` 等）。新增 Qualcomm AI Hub 模型需先在 C++ 侧注册——见 `third-party/geniex-qairt/models/{llm,vlm}_model_registry.h`。
   </Accordion>
 
   <Accordion title="Qualcomm AI Engine Direct 拒绝 `nGpuLayers` 或 `nCtx`">

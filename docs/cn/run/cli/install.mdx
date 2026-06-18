@@ -5,7 +5,7 @@ description: "在 Windows ARM64 上安装 GenieX CLI，或在 Linux ARM64 上通
 
 import Feedback from "/snippets/page-feedback.mdx";
 
-CLI 提供 Windows ARM64 原生可执行文件，以及面向 Dragonwing QCS9075 等 IoT 设备的 Linux ARM64 Docker 镜像。
+CLI 提供 Windows ARM64 原生可执行文件，以及面向跃龙 QCS9075 等 IoT 设备的 Linux ARM64 Docker 镜像。
 
 <Tabs>
   <Tab title="Windows ARM64">
@@ -40,12 +40,12 @@ CLI 提供 Windows ARM64 原生可执行文件，以及面向 Dragonwing QCS9075
   </Tab>
 
   <Tab title="Linux ARM64 (Native)">
-    直接安装到 Dragonwing ARM64 Linux 主机（EVK、容器或任何带有高通 BSP 的设备）——无需 Docker。
+    直接安装到跃龙 ARM64 Linux 主机（EVK、容器或任何带有高通 BSP 的设备）——无需 Docker。
 
     ### **前置条件**
 
     - Linux ARM64 主机。
-    - Dragonwing IoT 芯片——详见[支持的平台](/cn/get-started/platforms)。
+    - 跃龙 IoT 芯片——详见[支持的平台](/cn/get-started/platforms)。
 
     ### **安装**
 
@@ -76,7 +76,7 @@ CLI 提供 Windows ARM64 原生可执行文件，以及面向 Dragonwing QCS9075
     ### **高级选项**
 
     <AccordionGroup>
-      <Accordion title="Install locations">
+      <Accordion title="安装位置">
         脚本无需 `sudo` 运行，并根据当前用户选择安装位置：
 
         - **Root**（EVK / 容器）→ 二进制位于 `/usr/local/lib/geniex/`，启动器位于 `/usr/local/bin/geniex`。
@@ -85,7 +85,7 @@ CLI 提供 Windows ARM64 原生可执行文件，以及面向 Dragonwing QCS9075
         脚本下载最新稳定版本，校验 SHA256，并原子化安装。
       </Accordion>
 
-      <Accordion title="Pin a version or use a custom prefix">
+      <Accordion title="固定版本或使用自定义前缀">
         在 `sh -s --` 后传入参数：
 
         ```bash bash
@@ -97,11 +97,11 @@ CLI 提供 Windows ARM64 原生可执行文件，以及面向 Dragonwing QCS9075
         ```
       </Accordion>
 
-      <Accordion title="Add to PATH manually">
+      <Accordion title="手动加入 PATH">
         若启动器目录不在 `PATH` 中，将安装脚本打印的行添加进去——一般为：
 
         ```bash bash
-        echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc   # or ~/.zshrc / ~/.profile
+        echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc   # 或 ~/.zshrc / ~/.profile
         ```
 
         打开新 shell 或 `source` 该文件。

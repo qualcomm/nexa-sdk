@@ -51,7 +51,7 @@ geniex serve
 
 在浏览器中打开 `http://127.0.0.1:18181` 即可访问内置的 Swagger UI。
 
-**步骤 1.** 展开 `POST /v1/chat/completions` 端点，查看示例请求体与 schema。
+**步骤 1.** 展开 `POST/v1/chat/completions` 端点，查看示例请求体与 schema。
 
 ![Swagger UI 展示 chat completions 端点及示例请求体](/Images/server/curl-1.png)
 
@@ -74,7 +74,7 @@ geniex serve
 | Base64 data URL——内联图像字节 | `data:image/png;base64,iVBORw0KGgo...` |
 
 <Note>
-**在 Docker 中运行？** 本地路径会在**容器内**解析，而不是宿主机。安装命令已经把 `$PWD/data` 挂载到 `/data`——把图片放进去，然后传 `/data/cat.jpg` 即可。或者直接用 HTTP URL 或 base64 data URL，绕过文件系统。
+**在 Docker 中运行？** 本地路径会在**容器内**解析，而不是主机。安装命令已经把 `$PWD/data` 挂载到 `/data`——把图片放进去，然后传 `/data/cat.jpg` 即可。或者直接用 HTTP URL 或 base64 data URL，绕过文件系统。
 </Note>
 
 ```json Example Value

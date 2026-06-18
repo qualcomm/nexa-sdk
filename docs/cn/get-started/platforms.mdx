@@ -1,30 +1,30 @@
 ---
-title: "平台与运行时"
-description: "GenieX 支持的骁龙平台，以及在每类平台上应选哪种运行时。"
+title: "平台与运行环境"
+description: "GenieX 支持的骁龙平台，以及在每类平台上应选哪种运行环境。"
 ---
 
 import Feedback from "/snippets/page-feedback.mdx";
 
-GenieX 仅运行在 Qualcomm 骁龙平台上——没有 x86 或非骁龙 ARM 构建。开始之前，先选择你要运行的**骁龙平台**，再根据你想运行的模型选择对应的**运行时**。
+GenieX 仅运行在高通骁龙平台上——不适用于 x86 或非骁龙 ARM 产品。开始之前，先选择你要运行的**骁龙平台**，再根据你想运行的模型选择对应的**运行环境**。
 
 ## **骁龙平台**
 
-GenieX 覆盖三类骁龙平台——计算、移动与 IoT，分别对应 Windows ARM64、Android 与 Linux ARM64。
+GenieX 覆盖三类骁龙平台——计算、移动与 IoT端，分别对应 Windows ARM64、Android 与 Linux ARM64。
 
 | 操作系统 | 芯片 | 接入方式 |
 |---|---|---|
-| **Windows ARM64** *（计算 / Copilot+ PC）* | <ul><li>Snapdragon X Elite</li><li>Snapdragon X2 Elite</li></ul> | <ul><li>[CLI](/cn/run/cli/quickstart)</li><li>[Python SDK](/cn/run/python/quickstart)</li><li>[本地服务器](/cn/run/cli/local-server)</li></ul> |
-| **Android** *（移动）* | <ul><li>骁龙 8 至尊版（`SM8750`）</li><li>骁龙 8 至尊版 Gen 5（`SM8850`）</li></ul> | <ul><li>[Android SDK](/cn/run/android/quickstart)（Kotlin，Maven Central）</li></ul> |
-| **Linux ARM64** *（Dragonwing IoT —— 摄像头、机器人、工业）* | <ul><li>Dragonwing QCS9075</li></ul> | <ul><li>[原生安装](/cn/run/cli/install)</li><li>[Docker](/cn/run/linux/install)</li></ul> |
+| **Windows ARM64** *（桌面端 / Copilot+ PC）* | <ul><li>骁龙 X Elite</li><li>骁龙 X2 Elite</li></ul> | <ul><li>[CLI](/cn/run/cli/quickstart)</li><li>[Python SDK](/cn/run/python/quickstart)</li><li>[本地服务器](/cn/run/cli/local-server)</li></ul> |
+| **Android** *（移动端）* | <ul><li>骁龙 8 至尊版（`SM8750`）</li><li>骁龙 8 至尊版 Gen 5（`SM8850`）</li></ul> | <ul><li>[Android SDK](/cn/run/android/quickstart)（Kotlin，Maven Central）</li></ul> |
+| **Linux ARM64** *（跃龙 IoT —— 摄像头、机器人、工业）* | <ul><li>跃龙 QCS9075</li></ul> | <ul><li>[原生安装](/cn/run/cli/install)</li><li>[Docker](/cn/run/linux/install)</li></ul> |
 
-<Tip>**手头无设备？** 登录 [Qualcomm Developer Cloud (QDC)](https://qdc.qualcomm.com/) 即可远程访问 Snapdragon X、8 至尊版与 Dragonwing QCS9075。详见 [FAQ 中的 QDC 操作步骤](/cn/resources/faq#qdcqualcomm-device-cloud)。</Tip>
+<Tip>**手头无设备？** 登录 [Qualcomm Developer Cloud (QDC)](https://qdc.qualcomm.com/) 即可远程访问骁龙X、骁龙8至尊版与跃龙QCS9075。详见 [FAQ 中的 QDC 操作步骤](/cn/resources/faq#qdcqualcomm-device-cloud)。</Tip>
 
-## **GenieX 运行时**
+## **GenieX 运行环境**
 
-GenieX 内置两种运行时，让你在同一套 SDK 中同时获得**广泛的模型覆盖**与**骁龙上的最佳性能**：
+GenieX 内置两种运行环境，让你在同一套 SDK 中同时获得**广泛的模型支持**与**骁龙芯片上的最佳性能**：
 
-- **`llama_cpp`** —— Hugging Face 上的任意 GGUF 模型，可通过 Qualcomm 的 GGML Hexagon 后端在 Hexagon NPU、Adreno GPU 或 CPU 上运行。模型选择面最广。
-- **`qairt`**（[Qualcomm® AI Engine Direct](https://www.qualcomm.com/developer/software/qualcomm-ai-engine-direct-sdk)）—— 来自 [Qualcomm AI Hub](https://aihub.qualcomm.com/models/) 的预编译模型包，按芯片编译并量化，固定运行在 Hexagon NPU 上。当模型在 Qualcomm AI Hub 可用时，是最快的路径。
+- **`llama_cpp`** —— Hugging Face 上的任意 GGUF 模型，可通过 Qualcomm 的 GGML Hexagon 后端在 Hexagon NPU、Adreno GPU 或 CPU 上运行，模型选择面最广。
+- **`qairt`**（[Qualcomm® AI Engine Direct](https://www.qualcomm.com/developer/software/qualcomm-ai-engine-direct-sdk)）—— 来自 [Qualcomm AI Hub](https://aihub.qualcomm.com/models/) 的预编译模型包，按芯片编译并量化，固定运行在 Hexagon NPU 上。当你使用的模型来自 Qualcomm AI Hub 官方时，这是最高效的运行环境。
 
 <Note>**Qualcomm AI Engine Direct**（也称为 *Qualcomm AI Engine Direct SDK*、*Qualcomm AI Runtime*，以及历史上的 *QAIRT*）是官方名称。本文档中我们统一使用该官方名称。</Note>
 
@@ -41,18 +41,18 @@ GenieX 内置两种运行时，让你在同一套 SDK 中同时获得**广泛的
 
 如果不传入计算单元：
 
-| 运行时 | 默认计算单元 |
+| 运行环境 | 默认计算单元 |
 |---|---|
 | `llama_cpp` | `hybrid`（HTP + CPU 按张量调度——骁龙上的快速路径） |
 | `qairt` | `npu` |
 
-部分模型族会覆盖该默认值——例如 `gpt-oss` 在 `llama_cpp` 下会回退到 `npu`，因为它无法在 hybrid 路径上运行。
+部分模型系列会覆盖该默认值——例如 `gpt-oss` 在 `llama_cpp` 下会回退到 `npu`，因为它无法在 hybrid 路径上运行。
 
 ---
 
 ## **llama.cpp**
 
-`llama_cpp` 运行时通过 llama.cpp + Qualcomm 的 GGML Hexagon 后端执行**任意 GGUF 模型**。可从 Hugging Face 拉取任意社区 GGUF 模型，并在骁龙 NPU、Adreno GPU 或纯 CPU 上运行。
+`llama_cpp` 运行环境通过 llama.cpp + Qualcomm 的 GGML Hexagon 后端执行**任意 GGUF 模型**。可从 Hugging Face 拉取任意社区 GGUF 模型，并在骁龙 NPU、Adreno GPU 或纯 CPU 上运行。
 
 ### 计算单元
 
@@ -63,15 +63,15 @@ GenieX 内置两种运行时，让你在同一套 SDK 中同时获得**广泛的
 | `npu` | 固定到 Hexagon NPU（`HTP0`）。最佳 NPU 独占路径。 |
 | `gpu` | 通过 OpenCL 使用 Adreno GPU。 |
 | `cpu` | 纯 CPU。强制 `nGpuLayers = 0`。 |
-| `hybrid` *(默认)* | 空 `device_id` + `n_gpu_layers=999`——llama.cpp 的 HTP+CPU 按张量调度。**骁龙上的快速路径。** |
+| `hybrid` *(默认)* | 空 `device_id` + `n_gpu_layers=999`——llama.cpp 的 HTP+CPU 按张量调度。**快捷使用。** |
 
-`geniex pull` 时选择的精度也会决定模型最终落到哪里——详见[精度（量化）与设备落点](/cn/models/supported#精度量化与设备落点)。
+`geniex pull` 时选择的精度也会决定模型最终落到哪里运行——详见[精度（量化）与设备落点](/cn/models/supported#精度量化与设备落点)。
 
 ---
 
 ## **Qualcomm AI Engine Direct**
 
-`qairt` 运行时通过 [Qualcomm® AI Engine Direct](https://www.qualcomm.com/developer/software/qualcomm-ai-engine-direct-sdk) 执行 **Qualcomm AI Hub** 上的预编译模型包。仅支持 NPU，模型包针对特定骁龙芯片编译并量化——当模型在 Qualcomm AI Hub 可用时，通常是最快的 NPU 路径。
+`qairt` 运行环境通过 [Qualcomm® AI Engine Direct](https://www.qualcomm.com/developer/software/qualcomm-ai-engine-direct-sdk) 执行 **Qualcomm AI Hub** 上的预编译模型包。仅支持 NPU，模型包针对特定骁龙芯片编译并量化——当模型在 Qualcomm AI Hub 可用时，通常是最快的 NPU 部署方式。
 
 ### 计算单元
 
@@ -82,13 +82,13 @@ Qualcomm AI Engine Direct **仅支持 NPU**。
 | `npu` *(默认)* | 固定 `HTP0`——唯一支持的路径。 |
 | `cpu` / `gpu` | 自动转为 `npu` 并打印告警，绝不报错。 |
 
-### 运行时限制
+### 运行环境限制
 
 模型包内已固化其**精度、上下文长度与 KV 缓存大小**——三者均无法在运行时修改。在 Android 上，`nGpuLayers != 0` 与 `nCtx != 0` 会被拒绝并返回 `PARAM_NOT_SUPPORTED`，请保持两者为默认值，仅调整 `max_tokens` / `enable_thinking`。如需改变精度或上下文长度，请从 [Qualcomm AI Hub](https://aihub.qualcomm.com/models/) 获取另一个模型包。
 
 ### Android 上的芯片
 
-在 Android 上拉取 Qualcomm AI Hub 模型时**必须显式传入芯片**——自动识别仅在骁龙 Windows 上生效。可选值：
+在 Android 上拉取 Qualcomm AI Hub 模型时**必须显式传入芯片类型**——自动识别仅在骁龙 Windows 上生效。可选值：
 
 | 芯片 ID | 芯片 |
 |---|---|

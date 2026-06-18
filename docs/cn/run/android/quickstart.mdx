@@ -5,7 +5,7 @@ description: "使用 Kotlin 运行 GenieX Android SDK 中的第一个模型。"
 
 import Feedback from "/snippets/page-feedback.mdx";
 
-本页将带你从 Kotlin 应用中运行第一个模型，然后再换用另一个模型。如需一个完整的参考应用——包含聊天 UI、模型选择器和 VLM 支持——请参阅[示例应用](https://github.com/qcom-ai-hub/geniex/tree/main/examples/android)。
+本页将指导你在 Kotlin APP中运行第一个模型，然后再换用另一个模型。如需一个完整的参考应用——包含聊天 UI、模型选择器和 VLM 支持——请参阅[示例应用](https://github.com/qcom-ai-hub/geniex/tree/main/examples/android)。
 
 ## **前置条件**
 
@@ -90,17 +90,17 @@ import Feedback from "/snippets/page-feedback.mdx";
     ```
 
     <Warning>
-    始终将 `templated.formattedText`（经过 chat template 处理的 prompt）传入 `generateStreamFlow`，而 **不是** 原始用户文本。原生流水线期望接收一个已经过 template 处理的 prompt。
+    始终将 `templated.formattedText`（经过 chat template 处理的 prompt）传入 `generateStreamFlow`，而 **不是** 原始用户文本。原生工作流期望接收一个已经过 template 处理的 prompt。
     </Warning>
   </Step>
 </Steps>
 
 ## **切换模型**
 
-切换模型主要就是更改 `model_name` 和 `runtime_id`。这里有两种运行时：
+切换模型主要就是更改 `model_name` 和 `runtime_id`。这里有两种运行环境：
 
 - **`llama_cpp`** —— 运行任意 GGUF 模型。通过 `compute_unit` 支持 NPU / GPU / CPU 计算单元。
-- **`qairt`**（Qualcomm AI Engine Direct）—— 运行 Qualcomm AI Hub Models。仅支持 NPU，在 Android 上需要显式指定 `chipset`。
+- **`qairt`**（Qualcomm AI Engine Direct）—— 运行 Qualcomm AI Hub 模型。仅支持 NPU，在 Android 上需要显式指定 `chipset`。
 
 ### 另一个 GGUF 模型 (llama.cpp)
 
@@ -116,9 +116,9 @@ ModelPullInput(
 
 对于 VLM，还需将 `paths.mmproj_path` 传入 `VlmCreateInput`——参阅 [API 参考 → VLM](/cn/run/android/api-reference#vlm)。
 
-### 一个 Qualcomm AI Hub Model（通过 Qualcomm AI Engine Direct 使用 NPU）
+### Qualcomm AI Hub 模型（通过 Qualcomm AI Engine Direct 使用 NPU）
 
-Qualcomm AI Hub Models 是按芯片组预编译的，且仅在 NPU 上运行。在 Android 上你 **必须** 传入 `chipset`：
+Qualcomm AI Hub 模型会按芯片组预编译，且仅在 NPU 上运行。在 Android 上你 **必须** 传入 `chipset`：
 
 ```kotlin
 ModelManagerWrapper.pullFlow(
@@ -148,9 +148,9 @@ Qualcomm AI Engine Direct 会忽略此设置——`cpu`/`gpu` 会带警告地被
 
 位于 `examples/android/` 的[示例应用](https://github.com/qcom-ai-hub/geniex/tree/main/examples/android)是一个完整连通的聊天客户端，构建在上述代码片段之上。当你构建自己的 UI 时，有几个值得借鉴的模式：
 
-- **模型选择器 UI** —— 下拉菜单由 `examples/android/app/src/main/assets/model_list.json` 驱动。每个条目固定了一个 `model_name`、`hub`，以及（对于 Qualcomm AI Engine Direct）一个 `chipset`。编辑此文件即可添加新模型而无需改动代码。
+- **模型选择器 UI** —— 下拉菜单由 `examples/android/app/src/main/assets/model_list.json` 驱动。每个条目固定了一个 `model_name`、`hub`，以及一个 `chipset`（对于 Qualcomm AI Engine Direct）。编辑此文件即可添加新模型而无需改动代码。
 - **带进度的断点续传下载** —— 来自 `pullFlow` 的 `Progress` 事件携带每个文件的字节计数；示例将它们直接接入 `LinearProgressIndicator`。
-- **运行时感知的计算单元选择器** —— 当所选模型使用 Qualcomm AI Engine Direct 时，选择器会隐藏 GPU/CPU 选项。参阅 `LoadDialog.kt`。
+- **运行环境感知的计算单元选择器** —— 当所选模型使用 Qualcomm AI Engine Direct 时，选择器会隐藏 GPU/CPU 选项。参阅 `LoadDialog.kt`。
 - **VLM 图片选择器** —— 对于 VLM，示例会将绝对文件路径传入 `VlmContent("image", path)`。不要传入 content URI——原生侧会直接读取文件。
 
 在 Android Studio 中打开 `examples/android/`（不是 `bindings/android/`——那是 SDK 源代码），然后点击 **Run ▶**。
@@ -158,10 +158,10 @@ Qualcomm AI Engine Direct 会忽略此设置——`cpu`/`gpu` 会带警告地被
 ## **下一步**
 
 <CardGroup cols={2}>
-  <Card title="API reference" href="/cn/run/android/api-reference" icon="book">
-    Wrapper 类、运行时 / 计算单元选择与数据结构。
+  <Card title="API 参考" href="/cn/run/android/api-reference" icon="book">
+    Wrapper 类、运行环境 / 计算单元选择与数据结构。
   </Card>
-  <Card title="Platforms & runtimes" href="/cn/get-started/platforms" icon="route">
+  <Card title="平台与运行环境" href="/cn/get-started/platforms" icon="route">
     骁龙平台，以及何时选择 llama.cpp 或 Qualcomm AI Engine Direct。
   </Card>
 </CardGroup>

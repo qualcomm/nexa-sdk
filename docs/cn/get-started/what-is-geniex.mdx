@@ -1,37 +1,37 @@
 ---
 title: "GenieX 是什么"
-description: "面向 Qualcomm 骁龙的端侧 AI 推理运行时——通过 CLI、Python、Android 和 Docker 运行前沿 LLM 与 VLM。"
+description: "面向 Qualcomm 骁龙的端侧 AI 推理框架——通过 CLI、Python、Android 和 Docker 运行前沿 LLM 与 VLM。"
 ---
 
 import Feedback from "/snippets/page-feedback.mdx";
 
-GenieX 是为 Qualcomm 平台打造的端侧生成式 AI 推理运行时。它是在 Hexagon NPU、Adreno GPU 或 CPU 上用几行代码本地运行前沿语言模型与视觉语言模型的最简单方式。它是 Qualcomm GENIE 的社区版。
+GenieX 是为 Qualcomm 平台打造的端侧生成式 AI 推理框架。是在 Hexagon NPU、Adreno GPU 或 CPU 上本地运行前沿语言模型与视觉语言模型的最简单方式——仅几行代码。GenieX 是 Qualcomm GENIE 的社区版。
 
 ## **架构**
 
 <img
   src="/Mintlify-image/geniex_arch.png"
-  alt="GenieX 架构栈：CLI、Python API、Java API、Docker 与 Serve 接口位于 GenieX SDK 之上，后者会分发到 llama.cpp 运行时（基于 GGML，覆盖 CPU/GPU/HTP 内核）或运行在 NPU 上的 Qualcomm AI Engine Direct 运行时。目标平台为 Windows、Android 与 Linux。"
+  alt="GenieX 架构栈：CLI、Python API、Java API、Docker 与 Serve 接口位于 GenieX SDK 之上，后者会分发到 llama.cpp 运行环境（基于 GGML，覆盖 CPU/GPU/HTP 内核）或运行在 NPU 上的 Qualcomm AI Engine Direct 运行环境。目标平台为 Windows、Android 与 Linux。"
   style={{ borderRadius: '0.5rem' }}
 />
 
-GenieX 通过同一套 SDK 暴露五种入口——CLI、Python、Java/Kotlin、Docker 以及兼容 OpenAI 协议的服务器，并由该 SDK 按需分发到 **llama.cpp 运行时**（覆盖 CPU / GPU / Hexagon HTP 的 GGML 内核）或 **[Qualcomm® AI Engine Direct](https://www.qualcomm.com/developer/software/qualcomm-ai-engine-direct-sdk) 运行时**（仅 NPU）。同一套 SDK 可运行在 Windows ARM64、Android 与 Linux ARM64 上。
+GenieX 通过同一套 SDK 提供五种入口——CLI、Python、Java/Kotlin、Docker 以及兼容 OpenAI 协议的服务器，并由该 SDK 按需分发到 **llama.cpp 运行环境**（覆盖 CPU / GPU / Hexagon HTP 的 GGML 内核）或 **[Qualcomm® AI Engine Direct](https://www.qualcomm.com/developer/software/qualcomm-ai-engine-direct-sdk) 运行环境**（仅 NPU）。同一套 SDK 可运行在 Windows ARM64、Android 与 Linux ARM64 上。
 
 <Note>**Qualcomm AI Engine Direct** 是官方名称，它也被称为 *Qualcomm AI Engine Direct SDK*、*Qualcomm AI Runtime*，以及历史上的 *QAIRT*。本文档中我们统一使用该官方名称。</Note>
 
-## **为什么是两种运行时？**
+## **为什么是两种运行环境？**
 
-这样你就能在同一套 SDK 中同时获得**广泛的模型覆盖**与**最佳性能**：
+这样你就能在同一套 SDK 中同时获得**广泛的模型支持**与**最佳性能**：
 
-- **大多数模型开箱即用** —— 将 GenieX 指向 Hugging Face 上几乎任意 GGUF 模型，它即可通过 llama.cpp 在 CPU / GPU / NPU 上运行。
+- **大多数模型开箱即用** —— 通过 GenieX 推理 Hugging Face 上几乎任意 GGUF 模型，它即可通过 llama.cpp 在 CPU / GPU / NPU 上运行。
 - **Qualcomm® AI Hub 模型以最佳方式运行** —— 发布到 [Qualcomm AI Hub](https://aihub.qualcomm.com/) 的模型已按芯片预编译，并通过 Qualcomm AI Engine Direct 在 Hexagon NPU 上运行，以获得端侧的峰值性能。
 
-何时选哪一种，详见[平台与运行时](/cn/get-started/platforms#geniex-运行时)。
+何时选哪一种，详见[平台与运行环境](/cn/get-started/platforms#geniex-运行环境)。
 
 ## **GenieX 能做什么**
 
-- **本地运行模型** —— 覆盖骁龙 X（Windows ARM64）、骁龙 8 至尊版（Android）以及 Dragonwing IoT 芯片。
-- **选择运行时** —— `llama.cpp` 适配任意社区 GGUF 模型，Qualcomm AI Engine Direct（`qairt`）适配 Qualcomm AI Hub 预编译的 NPU 模型包。
+- **本地运行模型** —— 覆盖骁龙 X（Windows ARM64）、骁龙 8 至尊版（Android）以及跃龙 IoT 芯片。
+- **选择运行环境** —— `llama.cpp` 适配任意社区 GGUF 模型，Qualcomm AI Engine Direct（`qairt`）适配 Qualcomm AI Hub 预编译的 NPU 模型包。
 - **构建应用** —— 通过 CLI、兼容 OpenAI 协议的本地服务器、Python SDK、Android SDK 或 Docker 镜像。
 
 ## **从这里开始**
@@ -40,11 +40,11 @@ GenieX 通过同一套 SDK 暴露五种入口——CLI、Python、Java/Kotlin、
   <Card title="快速入门" href="/cn/get-started/quickstart" icon="rocket">
     选择适合的接入方式，几分钟内完成首次推理。
   </Card>
-  <Card title="平台与运行时" href="/cn/get-started/platforms" icon="microchip">
+  <Card title="平台与运行环境" href="/cn/get-started/platforms" icon="microchip">
     GenieX 支持的骁龙平台，以及何时选 llama.cpp 或 Qualcomm AI Engine Direct。
   </Card>
   <Card title="模型" href="/cn/models/supported" icon="cube">
-    在 llama.cpp 与 Qualcomm AI Engine Direct 运行时上经过验证的 LLM 与 VLM。
+    在 llama.cpp 与 Qualcomm AI Engine Direct 运行环境上经过验证的 LLM 与 VLM 模型。
   </Card>
 </CardGroup>
 
@@ -52,7 +52,7 @@ GenieX 通过同一套 SDK 暴露五种入口——CLI、Python、Java/Kotlin、
 
 <CardGroup cols={2}>
   <Card title="提交 Issue" href="https://github.com/qualcomm/nexa-sdk/issues" icon="github">
-    在 GitHub 上提交 bug、提需求或浏览开放的 Issue。
+    在 GitHub 上提交 bug、需求或浏览开放的 Issue。
   </Card>
   <Card title="加入 Slack" href="https://nexa-ai-community.slack.com/ssb/redirect" icon="slack">
     与 GenieX 团队及其他开发者协作交流。

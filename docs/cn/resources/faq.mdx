@@ -1,6 +1,6 @@
 ---
 title: "常见问题"
-description: "关于 GenieX、其运行时及支持芯片的常见问题。"
+description: "关于 GenieX、其运行环境及支持芯片的常见问题。"
 ---
 
 import Feedback from "/snippets/page-feedback.mdx";
@@ -22,21 +22,21 @@ import Feedback from "/snippets/page-feedback.mdx";
   </Accordion>
 
   <Accordion title="哪里能看到 GenieX 支持的硬件？">
-    [支持的平台](/cn/get-started/platforms) —— Windows ARM64 上的 Snapdragon X、Android 上的骁龙 8 至尊版、Linux ARM64 上的 Dragonwing QCS9075。
+    [支持的平台](/cn/get-started/platforms) —— Windows ARM64 上的 骁龙 X、Android 上的骁龙 8 至尊版、Linux ARM64 上的跃龙 QCS9075。
   </Accordion>
 </AccordionGroup>
 
-## **运行时**
+## **运行环境**
 
 <AccordionGroup>
   <Accordion title="llama.cpp 与 Qualcomm AI Engine Direct 有什么区别？">
     - **llama.cpp** —— 运行任意 GGUF 模型，支持 NPU/GPU/CPU 计算单元。最适合试用社区模型。
     - **[Qualcomm® AI Engine Direct](https://www.qualcomm.com/developer/software/qualcomm-ai-engine-direct-sdk)**（`qairt`）—— 运行 Qualcomm AI Hub 预编译模型，仅 NPU。当模型在 Qualcomm AI Hub 可用时，通常是最快路径。
 
-    详见[平台与运行时](/cn/get-started/platforms#geniex-运行时)。
+    详见[平台与运行环境](/cn/get-started/platforms#geniex-运行环境)。
   </Accordion>
 
-  <Accordion title="默认运行时是哪个？">
+  <Accordion title="默认运行环境是哪个？">
     如果不传计算单元：
     - `llama_cpp` 默认 `hybrid`（HTP + CPU 按张量调度——骁龙上的快速路径）。
     - `qairt` 默认 `npu`。
@@ -53,13 +53,13 @@ import Feedback from "/snippets/page-feedback.mdx";
 
 <AccordionGroup>
   <Accordion title="能运行 Hugging Face 上任意模型吗？">
-    llama.cpp 运行时可执行任意 **GGUF** 模型。详见[运行 Hugging Face 上的 GGUF 模型](/cn/models/supported#运行-hugging-face-上的-gguf-模型)。
+    llama.cpp 运行环境可执行任意 **GGUF** 模型。详见[运行 Hugging Face 上的 GGUF 模型](/cn/models/supported#运行-hugging-face-上的-gguf-模型)。
 
     Qualcomm AI Engine Direct 需要预编译的 Qualcomm AI Hub 模型——新增模型需先在 C++ 侧注册。
   </Accordion>
 
   <Accordion title="受支持模型列表在哪里？">
-    [模型](/cn/models/supported) —— 按运行时拆分（Qualcomm AI Engine Direct、llama.cpp）。
+    [模型](/cn/models/supported) —— 按运行环境拆分（Qualcomm AI Engine Direct、llama.cpp）。
   </Accordion>
 </AccordionGroup>
 
@@ -67,11 +67,11 @@ import Feedback from "/snippets/page-feedback.mdx";
 
 <AccordionGroup>
   <Accordion title="必须用骁龙设备吗？">
-    是。GenieX 面向高通骁龙芯片——Hexagon NPU、Adreno GPU 与骁龙 ARM CPU 计算单元。没有 x86 或非骁龙 ARM 构建。如手头无设备，可使用 [Qualcomm Developer Cloud / Device Cloud](/cn/get-started/platforms)。
+    是。GenieX 面向高通骁龙芯片——Hexagon NPU、Adreno GPU 与骁龙 ARM CPU 计算单元。不支持 x86 或非骁龙 ARM 设备。如手头无设备，可使用 [Qualcomm Developer Cloud / Device Cloud](/cn/get-started/platforms)。
   </Accordion>
 
   <Accordion title="我的 Qualcomm AI Hub 模型提示需要 NPU——能在 CPU 上跑吗？">
-    不能。Qualcomm AI Engine Direct 设计上仅支持 NPU。`cpu` 与 `gpu` 别名会被自动转为 NPU 并打印告警。如需 CPU/GPU 回退，请改用 llama.cpp 运行时（GGUF 模型）。
+    不能。Qualcomm AI Engine Direct 设计上仅支持 NPU。`cpu` 与 `gpu` 别名会被自动转为 NPU 并打印告警。如需 CPU/GPU 回退，请改用 llama.cpp 运行环境（GGUF 模型）。
   </Accordion>
 </AccordionGroup>
 
@@ -79,17 +79,17 @@ import Feedback from "/snippets/page-feedback.mdx";
 
 <AccordionGroup>
   <Accordion title="我必须有自己的 QDC 设备吗？">
-    不需要。登录 [Qualcomm Developer Cloud](https://qdc.qualcomm.com/)，选择一台骁龙设备，启动 Interactive Session——整个流程就是这样。哪些芯片在支持范围内，详见[支持的平台](/cn/get-started/platforms)。
+    不需要。登录 [Qualcomm Developer Cloud](https://qdc.qualcomm.com/)，选择一台骁龙设备，启动交互式会话——整个流程就是这样。关于哪些芯片在支持范围内，详见[支持的平台](/cn/get-started/platforms)。
   </Accordion>
 
   <Accordion title="如何通过 SSH 连接到 QDC 设备？">
     <Steps>
       <Step title="建立 SSH 隧道">
-        在 QDC 控制台中前往 **Interactive Sessions**，点击 **Connect** 查看 SSH 连接说明。
+        在 QDC 控制台中前往 **Interactive Sessions** 页面，点击 **Connect** 查看 SSH 连接说明。
 
         <img
           src="/Images/qdc/qdc-1.png"
-          alt="QDC portal showing the Connect button for SSH instructions"
+          alt="QDC 门户中用于查看 SSH 连接说明的 Connect 按钮"
           style={{ borderRadius: '0.5rem' }}
         />
 
@@ -97,7 +97,7 @@ import Feedback from "/snippets/page-feedback.mdx";
 
         <img
           src="/Images/qdc/qdc-2.png"
-          alt="SSH tunneling setup with private key and port forwarding"
+          alt="使用私钥和端口转发配置 SSH 隧道"
           style={{ borderRadius: '0.5rem' }}
         />
 
@@ -119,7 +119,7 @@ import Feedback from "/snippets/page-feedback.mdx";
 
         <img
           src="/Images/qdc/qdc-3.png"
-          alt="Successful SSH connection to the QDC device"
+          alt="已成功通过 SSH 连接到 QDC 设备"
           style={{ borderRadius: '0.5rem' }}
         />
       </Step>
@@ -127,7 +127,7 @@ import Feedback from "/snippets/page-feedback.mdx";
   </Accordion>
 
   <Accordion title="没有实体设备如何测试 Android demo？" id="how-do-i-test-the-android-demo-without-a-physical-device">
-    在 QDC 上使用 **Snapdragon 8 Elite** 或 **8 Elite Gen 5** 的 Interactive Session，并安装预构建的 demo APK。
+    在 QDC 上使用 **骁龙 8 Elite** 或 **8 Elite Gen 5** 的交互式会话，并安装预构建的 demo APK。
 
     <Card title="geniex-demo.apk" icon="download" href="https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/geniex-demo.apk">
       最新的 GenieX Android demo APK。已签名的 debug 构建。
@@ -135,7 +135,7 @@ import Feedback from "/snippets/page-feedback.mdx";
 
     <Steps>
       <Step title="选择设备">
-        登录 [Qualcomm Device Cloud](https://qdc.qualcomm.com/)，选择 **Snapdragon 8 Elite** 或 **Snapdragon 8 Elite Gen 5**，并选择 **Interactive session**。
+        登录 [Qualcomm Device Cloud](https://qdc.qualcomm.com/)，选择 **骁龙 8 Elite** 或 **骁龙 8 Elite Gen 5**，并选择 **Interactive session（交互式会话）**。
       </Step>
       <Step title="配置会话">
         启用 **Wi-Fi**（让 demo 能下载模型）和 **Keep screen on**（避免下载中途锁屏）。**无需** SSH。
@@ -174,7 +174,7 @@ import Feedback from "/snippets/page-feedback.mdx";
 
 <AccordionGroup>
   <Accordion title="check.sh 报告缺少库——我该安装什么？">
-    预检脚本 (`check.sh`) 与 Docker 入口脚本 (`entrypoint.sh`) 会提示系统库或高通驱动缺失。请在**宿主机**上运行以下命令——如果当前在 geniex 容器内，请先 `exit`。在 Ubuntu / Debian 上用两条 `apt` 命令安装。
+    预检脚本 (`check.sh`) 与 Docker 入口脚本 (`entrypoint.sh`) 会提示系统库或高通驱动缺失。请在**主机**上运行以下命令——如果当前在 geniex 容器内，请先 `exit`。在 Ubuntu / Debian 上用两条 `apt` 命令安装。
 
     **1. 基础系统库（来自 Ubuntu 官方源）：**
 
@@ -186,7 +186,7 @@ import Feedback from "/snippets/page-feedback.mdx";
       ocl-icd-libopencl1
     ```
 
-    **2. 高通驱动包（Adreno GPU + FastRPC NPU 桥）：**
+    **2. 高通驱动包（Adreno GPU + FastRPC NPU bridge）：**
 
     ```bash
     sudo apt-get install -y qcom-adreno1 qcom-fastrpc1
