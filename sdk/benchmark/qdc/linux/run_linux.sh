@@ -11,7 +11,8 @@
 # reference; the cached copy is reused across the ctx sweep.
 #
 # We sweep ctx in {512, 1024, 4096} per cell to align with test-llama.cpp's
-# PERFORMANCE SESSION; each ctx gets its own pre-trimmed prompt file.
+# PERFORMANCE SESSION; geniex-bench prefills exactly N=ctx random token ids
+# (mirrors llama-bench `pp{N}`) so each ctx is also the prefill length.
 
 set +e
 umask 022
@@ -21,7 +22,6 @@ OUT=$LOG/results
 MM_CACHE=/data/local/tmp/geniex-cache
 TC=/data/local/tmp/TestContent
 BUNDLE=$TC/pkg-geniex
-PROMPTS=$TC/prompts
 
 mkdir -p "$LOG" "$OUT" "$MM_CACHE"
 exec > "$LOG/script.log" 2>&1
@@ -64,11 +64,10 @@ EOF
 for ctx in 512 1024 4096; do
   tsv_var="TSV$ctx"
   tsv="${!tsv_var}"
-  prompt="$PROMPTS/sample_prompt_${ctx}.txt"
   echo "=== matrix ctx=$ctx ==="
   cat "$tsv"
   ./bin/geniex-bench --matrix-file "$tsv" --output-json-dir "$OUT" -r 3 \
-    -c "$ctx" --prompt-file "$prompt" --reset-between-runs \
+    -c "$ctx" -p "$ctx" \
     --mm-data-dir "$MM_CACHE" --chipset "{CHIPSET}"
   echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
 done

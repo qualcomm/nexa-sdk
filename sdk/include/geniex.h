@@ -569,6 +569,38 @@ typedef struct {
 GENIEX_API int32_t geniex_llm_generate(
     geniex_LLM* handle, const geniex_LlmGenerateInput* input, geniex_LlmGenerateOutput* output);
 
+/* ====================  Model Metadata  =================================== */
+
+/** Static, plugin-reported metadata about the loaded LLM. All fields are
+ *  zero-initialized by the bridge before the plugin populates them, so
+ *  plugins that only know a subset can leave the rest at their default. */
+typedef struct {
+    int32_t vocab_size; /** Number of tokens in the model vocabulary (>=1 on success). */
+    int32_t bos_token;  /** BOS token id, or -1 if the model has no BOS. */
+    int32_t add_bos;    /** 1 = caller should prepend BOS at position 0 when feeding raw input_ids. */
+    int32_t reserved0;  /** Reserved, must be 0. */
+} geniex_LlmModelInfo;
+
+/**
+ * @brief Query static metadata about the loaded LLM (vocabulary, BOS handling).
+ *
+ * Cheap and side-effect free; safe to call many times. Intended for callers
+ * that construct raw input_ids (e.g. benchmarks doing random-id prefill) and
+ * therefore need vocab_size / bos_token without going through a tokenizer.
+ *
+ * @param handle[in]:  LLM handle.
+ * @param output[out]: Filled-in metadata. Zero-initialized before the plugin populates it.
+ *
+ * @return geniex_ErrorCode:
+ *   - GENIEX_SUCCESS                          on success.
+ *   - GENIEX_ERROR_COMMON_NOT_INITIALIZED     when handle is NULL.
+ *   - GENIEX_ERROR_COMMON_INVALID_INPUT       when output is NULL.
+ *   - GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED when the plugin cannot report the metadata
+ *                                             (today: qairt). Callers that need vocab_size
+ *                                             must treat this as a hard failure.
+ */
+GENIEX_API int32_t geniex_llm_get_model_info(geniex_LLM* handle, geniex_LlmModelInfo* output);
+
 /* ========================================================================== */
 /*                              MULTIMODAL MODELS (VLM)                          */
 /* ========================================================================== */

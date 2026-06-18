@@ -31,11 +31,9 @@ from utils import (
     BUNDLE_PATH,
     HOST_CHIPSET,
     HOST_IMAGE,
-    HOST_PROMPTS,
     HOST_ROWS,
     IMAGE_PATH,
     MM_CACHE_PATH,
-    PROMPTS_PATH,
     RESULTS_PATH,
     push_bundle_if_needed,
     run_adb_command,
@@ -46,10 +44,9 @@ CTXS = (512, 1024, 4096)
 
 def test_bench():
     push_bundle_if_needed()
-    run_adb_command(f"mkdir -p {MM_CACHE_PATH} {RESULTS_PATH} {PROMPTS_PATH}")
+    run_adb_command(f"mkdir -p {MM_CACHE_PATH} {RESULTS_PATH}")
 
     subprocess.run(["adb", "push", HOST_IMAGE, IMAGE_PATH], check=True)
-    subprocess.run(["adb", "push", f"{HOST_PROMPTS}/.", PROMPTS_PATH], check=True)
 
     chipset = Path(HOST_CHIPSET).read_text().strip()
     rows = [r for r in Path(HOST_ROWS).read_text().splitlines() if r.strip()]
@@ -77,7 +74,6 @@ def test_bench():
     failures = []
     for ctx in CTXS:
         tsv_path = f"/data/local/tmp/matrix-{ctx}.tsv"
-        prompt = f"{PROMPTS_PATH}/sample_prompt_{ctx}.txt"
         run_adb_command(
             "printf '%s\\n' "
             + " ".join(f"'{ln}'" for ln in tsv_by_ctx[ctx])
@@ -86,7 +82,7 @@ def test_bench():
         res = run_adb_command(
             f"cd {BUNDLE_PATH} && {env} ./bin/geniex-bench "
             f"--matrix-file {tsv_path} --output-json-dir {RESULTS_PATH} -r 3 "
-            f"-c {ctx} --prompt-file {prompt} --reset-between-runs "
+            f"-c {ctx} -p {ctx} "
             f"--mm-data-dir {MM_CACHE_PATH} --chipset '{chipset}'",
             check=False,
         )
@@ -95,7 +91,9 @@ def test_bench():
     listing = run_adb_command(f"ls {RESULTS_PATH}", check=False).stdout
     n_json = sum(1 for ln in listing.splitlines() if ln.strip().endswith(".json"))
     assert not failures, f"geniex-bench failed for ctx={failures}"
-    assert n_json > 0, f"no cell JSON produced on device (ls {RESULTS_PATH}: {listing!r})"
+    assert (
+        n_json > 0
+    ), f"no cell JSON produced on device (ls {RESULTS_PATH}: {listing!r})"
 
 
 if __name__ == "__main__":

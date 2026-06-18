@@ -257,6 +257,28 @@ func (l *LLM) Reset() error {
 	return nil
 }
 
+type LlmModelInfo struct {
+	VocabSize int32
+	BosToken  int32
+	AddBos    bool
+}
+
+func (l *LLM) GetModelInfo() (LlmModelInfo, error) {
+	if l.ptr == nil {
+		return LlmModelInfo{}, SDKError(-1)
+	}
+	var cInfo C.geniex_LlmModelInfo
+	res := C.geniex_llm_get_model_info(l.ptr, &cInfo)
+	if res < 0 {
+		return LlmModelInfo{}, SDKError(res)
+	}
+	return LlmModelInfo{
+		VocabSize: int32(cInfo.vocab_size),
+		BosToken:  int32(cInfo.bos_token),
+		AddBos:    cInfo.add_bos != 0,
+	}, nil
+}
+
 type LlmSaveKVCacheInput struct {
 	Path string
 }

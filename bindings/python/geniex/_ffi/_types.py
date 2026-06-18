@@ -178,6 +178,15 @@ class geniex_LlmGenerateOutput(Structure):
     ]
 
 
+class geniex_LlmModelInfo(Structure):
+    _fields_ = [
+        ('vocab_size', c_int32),
+        ('bos_token', c_int32),
+        ('add_bos', c_int32),
+        ('reserved0', c_int32),
+    ]
+
+
 class geniex_LlmChatMessage(Structure):
     _fields_ = [
         ('role', c_char_p),

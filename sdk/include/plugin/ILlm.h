@@ -42,6 +42,14 @@ class ILlm {
 
     virtual int32_t generate(const geniex_LlmGenerateInput*, geniex_LlmGenerateOutput*) = 0;
 
+    /**
+     * @brief Report static model metadata (vocab size, BOS handling).
+     *
+     * Default returns PARAM_NOT_SUPPORTED so plugins that cannot expose this
+     * information keep building. Plugins able to report it MUST override.
+     */
+    virtual int32_t get_model_info(geniex_LlmModelInfo*) { return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED; }
+
    protected:
     /**
      * @brief Pure virtual method for actual model creation implementation

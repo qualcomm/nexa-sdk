@@ -152,3 +152,19 @@ int32_t geniex_llm_generate(geniex_LLM* h, const geniex_LlmGenerateInput* input,
         return GENIEX_ERROR_COMMON_UNKNOWN;
     }
 }
+
+int32_t geniex_llm_get_model_info(geniex_LLM* h, geniex_LlmModelInfo* output) {
+    GENIEX_LOG_TRACE("llm get_model_info");
+
+    if (!output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+    std::memset(output, 0, sizeof(*output));
+
+    try {
+        auto backend = reinterpret_cast<ILlm*>(h);
+        if (!backend) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
+        return backend->get_model_info(output);
+    } catch (const std::exception& e) {
+        GENIEX_LOG_ERROR("llm get_model_info error: {}", e.what());
+        return GENIEX_ERROR_COMMON_UNKNOWN;
+    }
+}

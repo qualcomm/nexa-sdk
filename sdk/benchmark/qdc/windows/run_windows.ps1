@@ -21,7 +21,6 @@ $OUT = "$LOG\results"
 $MM_CACHE = "C:\Temp\geniex-cache"
 $TC = "C:\Temp\TestContent"
 $BUNDLE = "$TC\pkg-geniex"
-$PROMPTS = "$TC\prompts"
 
 New-Item -ItemType Directory -Force -Path $LOG, $OUT, $MM_CACHE | Out-Null
 Start-Transcript -Path "$LOG\script.log" -Force | Out-Null
@@ -68,11 +67,10 @@ foreach ($row in $rows) {
 
 foreach ($ctx in $ctxList) {
     $tsv = $tsvByCtx[$ctx]
-    $prompt = "$PROMPTS\sample_prompt_$ctx.txt"
     Write-Output "=== matrix ctx=$ctx ==="
     if (Test-Path $tsv) { Get-Content $tsv }
     & "$BUNDLE\bin\geniex-bench.exe" --matrix-file $tsv --output-json-dir "$OUT" -r 3 `
-        -c $ctx --prompt-file $prompt --reset-between-runs `
+        -c $ctx -p $ctx `
         --mm-data-dir $MM_CACHE --chipset "{CHIPSET}"
     Write-Output "rc=$LASTEXITCODE  ($((Get-ChildItem $OUT).Count) cell json files so far)"
 }

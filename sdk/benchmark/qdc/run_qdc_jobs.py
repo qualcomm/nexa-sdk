@@ -173,7 +173,6 @@ def build_linux_artifact(
     script_path.chmod(0o755)
 
     shutil.copy(TEST_IMAGE, stage / "test.png")
-    shutil.copytree(HERE / "prompts", stage / "prompts")
 
     return Path(shutil.make_archive(str(tmp / "artifact"), "zip", stage))
 
@@ -196,7 +195,6 @@ def build_windows_artifact(
     shutil.copy(cert, stage / "ggml-htp-v1.cer")
 
     shutil.copy(TEST_IMAGE, stage / "test.png")
-    shutil.copytree(HERE / "prompts", stage / "prompts")
 
     return Path(shutil.make_archive(str(tmp / "artifact"), "zip", stage))
 
@@ -226,7 +224,6 @@ def build_android_artifact(
     shutil.copytree(HERE / "tests", stage / "tests")
     shutil.copy(HERE / "tests" / "requirements.txt", stage / "requirements.txt")
     shutil.copy(TEST_IMAGE, stage / "test.png")
-    shutil.copytree(HERE / "prompts", stage / "prompts")
     (stage / "pytest.ini").write_text("[pytest]\naddopts = --junitxml=results.xml\n")
 
     return Path(shutil.make_archive(str(tmp / "artifact"), "zip", stage))
@@ -398,9 +395,7 @@ def render_aggregate(cells_dir: Path, device: str, models_file: Path) -> int:
     )
     label = detect_geniex_label(_short_sha())
     if not cells:
-        write_summary(
-            f"## QDC Bench — {device} — {label}\n\nNo results recovered.\n"
-        )
+        write_summary(f"## QDC Bench — {device} — {label}\n\nNo results recovered.\n")
         return 0
     models = json.loads(models_file.read_text()) if models_file.exists() else None
     write_summary(render(cells, device, label, models))

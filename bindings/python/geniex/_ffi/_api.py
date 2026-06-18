@@ -34,6 +34,7 @@ from ._types import (
     geniex_LlmCreateInput,
     geniex_LlmGenerateInput,
     geniex_LlmGenerateOutput,
+    geniex_LlmModelInfo,
     geniex_ModelListDetailedOutput,
     geniex_ModelPaths,
     geniex_ModelPullInput,
@@ -190,6 +191,9 @@ def _bind_all() -> None:
 
     lib.geniex_llm_generate.argtypes = [c_void_p, POINTER(geniex_LlmGenerateInput), POINTER(geniex_LlmGenerateOutput)]
     lib.geniex_llm_generate.restype = c_int32
+
+    lib.geniex_llm_get_model_info.argtypes = [c_void_p, POINTER(geniex_LlmModelInfo)]
+    lib.geniex_llm_get_model_info.restype = c_int32
 
     lib.geniex_llm_apply_chat_template.argtypes = [
         c_void_p,

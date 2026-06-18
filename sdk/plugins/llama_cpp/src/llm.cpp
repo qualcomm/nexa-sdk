@@ -411,6 +411,16 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
 
     return res;
 }
+
+int32_t LlamaLlm::get_model_info(geniex_LlmModelInfo* output) {
+    if (!this->model) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
+    const llama_vocab* vocab = llama_model_get_vocab(this->model);
+    output->vocab_size       = llama_vocab_n_tokens(vocab);
+    const llama_token bos    = llama_vocab_bos(vocab);
+    output->bos_token        = (bos == LLAMA_TOKEN_NULL) ? -1 : static_cast<int32_t>(bos);
+    output->add_bos          = llama_vocab_get_add_bos(vocab) ? 1 : 0;
+    return GENIEX_SUCCESS;
+}
 }  // namespace geniex
 
 // Private
