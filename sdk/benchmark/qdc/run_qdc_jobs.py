@@ -173,6 +173,7 @@ def build_linux_artifact(
     script_path.chmod(0o755)
 
     shutil.copy(TEST_IMAGE, stage / "test.png")
+    shutil.copytree(HERE / "prompts", stage / "prompts")
 
     return Path(shutil.make_archive(str(tmp / "artifact"), "zip", stage))
 
@@ -195,6 +196,7 @@ def build_windows_artifact(
     shutil.copy(cert, stage / "ggml-htp-v1.cer")
 
     shutil.copy(TEST_IMAGE, stage / "test.png")
+    shutil.copytree(HERE / "prompts", stage / "prompts")
 
     return Path(shutil.make_archive(str(tmp / "artifact"), "zip", stage))
 
@@ -224,6 +226,7 @@ def build_android_artifact(
     shutil.copytree(HERE / "tests", stage / "tests")
     shutil.copy(HERE / "tests" / "requirements.txt", stage / "requirements.txt")
     shutil.copy(TEST_IMAGE, stage / "test.png")
+    shutil.copytree(HERE / "prompts", stage / "prompts")
     (stage / "pytest.ini").write_text("[pytest]\naddopts = --junitxml=results.xml\n")
 
     return Path(shutil.make_archive(str(tmp / "artifact"), "zip", stage))

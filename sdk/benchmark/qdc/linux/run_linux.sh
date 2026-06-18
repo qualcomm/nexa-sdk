@@ -11,8 +11,13 @@
 # reference; the cached copy is reused across the ctx sweep.
 #
 # We sweep ctx in {512, 1024, 4096} per cell to align with test-llama.cpp's
-# PERFORMANCE SESSION; geniex-bench prefills exactly N=ctx random token ids
-# (mirrors llama-bench `pp{N}`) so each ctx is also the prefill length.
+# PERFORMANCE SESSION. Two prefill modes coexist:
+#   - llama_cpp cells use random-ids prefill (`-p N`, mirrors llama-bench
+#     `pp{N}`), so reported pp is exactly the ctx value;
+#   - qairt cells go through prompt_utf8 (the plugin doesn't accept
+#     pre-tokenized input_ids — see issue #1008), with a pre-trimmed
+#     `sample_prompt_${ctx}.txt` per ctx so prompt length is bounded.
+# Each plugin gets its own per-ctx TSV so the two invocations don't mix.
 
 set +e
 umask 022
@@ -22,6 +27,7 @@ OUT=$LOG/results
 MM_CACHE=/data/local/tmp/geniex-cache
 TC=/data/local/tmp/TestContent
 BUNDLE=$TC/pkg-geniex
+PROMPTS=$TC/prompts
 
 mkdir -p "$LOG" "$OUT" "$MM_CACHE"
 exec > "$LOG/script.log" 2>&1
@@ -35,25 +41,29 @@ export GENIEX_PLUGIN_PATH="$BUNDLE/lib"
 
 IMG=$TC/test.png
 
-TSV512=/data/local/tmp/matrix-512.tsv
-TSV1024=/data/local/tmp/matrix-1024.tsv
-TSV4096=/data/local/tmp/matrix-4096.tsv
-: > "$TSV512" > "$TSV1024" > "$TSV4096"
+for ctx in 512 1024 4096; do
+  : > "/data/local/tmp/matrix-llama-${ctx}.tsv"
+  : > "/data/local/tmp/matrix-qairt-${ctx}.tsv"
+done
 
 while IFS='|' read -r name plugin devs model_id vlm image; do
   [ -z "$name" ] && continue
   echo "=== plan $name id=$model_id ==="
   imgpath=""
   [ "$image" = "1" ] && imgpath="$IMG"
+  case "$plugin" in
+    qairt)     bucket=qairt ;;
+    llama_cpp) bucket=llama ;;
+    *) echo "WARN: unknown plugin $plugin in $name, skipping"; continue ;;
+  esac
   IFS=','
   for d in $devs; do
     for ctx in 512 1024 4096; do
-      tsv_var="TSV$ctx"
       # Columns 5/6 (tokenizer/mmproj) intentionally blank: the model
       # manager fills both from the resolved manifest.
       printf '%s-%s-%s-c%s\t%s\t%s\t%s\t\t\t%s\t%s\n' \
         "$name" "$plugin" "$d" "$ctx" "$plugin" "$d" "$model_id" "$imgpath" "$vlm" \
-        >> "${!tsv_var}"
+        >> "/data/local/tmp/matrix-${bucket}-${ctx}.tsv"
     done
   done
   IFS='|'
@@ -62,14 +72,26 @@ done <<'EOF'
 EOF
 
 for ctx in 512 1024 4096; do
-  tsv_var="TSV$ctx"
-  tsv="${!tsv_var}"
-  echo "=== matrix ctx=$ctx ==="
-  cat "$tsv"
-  ./bin/geniex-bench --matrix-file "$tsv" --output-json-dir "$OUT" -r 3 \
-    -c "$ctx" -p "$ctx" \
-    --mm-data-dir "$MM_CACHE" --chipset "{CHIPSET}"
-  echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
+  llama_tsv="/data/local/tmp/matrix-llama-${ctx}.tsv"
+  qairt_tsv="/data/local/tmp/matrix-qairt-${ctx}.tsv"
+
+  if [ -s "$llama_tsv" ]; then
+    echo "=== matrix llama_cpp ctx=$ctx (random-ids prefill) ==="
+    cat "$llama_tsv"
+    ./bin/geniex-bench --matrix-file "$llama_tsv" --output-json-dir "$OUT" -r 3 \
+      -c "$ctx" -p "$ctx" \
+      --mm-data-dir "$MM_CACHE" --chipset "{CHIPSET}"
+    echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
+  fi
+
+  if [ -s "$qairt_tsv" ]; then
+    echo "=== matrix qairt ctx=$ctx (prompt-file) ==="
+    cat "$qairt_tsv"
+    ./bin/geniex-bench --matrix-file "$qairt_tsv" --output-json-dir "$OUT" -r 3 \
+      -c "$ctx" --prompt-file "$PROMPTS/sample_prompt_${ctx}.txt" \
+      --mm-data-dir "$MM_CACHE" --chipset "{CHIPSET}"
+    echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
+  fi
 done
 echo "=== done ==="
 exit 0

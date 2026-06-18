@@ -85,7 +85,8 @@ typedef struct {
     const char* audio_paths[MAX_PATHS];
     int32_t     audio_count;
 
-    int32_t n_prompt; /* LLM random-ids prefill length (llama-bench -p) */
+    int32_t n_prompt;   /* LLM random-ids prefill length (llama-bench -p), used when prompt_buf is NULL */
+    char*   prompt_buf; /* heap-owned text prompt loaded via --prompt-file; NULL = use random-ids */
     int32_t max_new_tokens;
     float   temperature;
     int32_t seed;
@@ -194,6 +195,11 @@ static void usage(const char* argv0) {
         "  --no-warmup            equivalent to --warmup 0\n"
         "  --temperature F        default 0.0\n"
         "  --seed N               default 42; also seeds rand() for prompt ids\n"
+        "  --prompt-file PATH     opt out of random-ids prefill: read a UTF-8 prompt\n"
+        "                         from PATH and feed it via prompt_utf8 instead. The\n"
+        "                         only way to bench plugins that don't support\n"
+        "                         input_ids (today: qairt). With this flag, reported\n"
+        "                         `pp` is the tokenizer's count, NOT --n-prompt.\n"
         "  --no-reset-between-runs\n"
         "                         keep KV cache across measured runs (default is\n"
         "                         to call geniex_llm_reset() before every run so\n"
@@ -438,6 +444,34 @@ static char* resolve_local_anchor(const char* path) {
     return best;
 }
 
+/* Load whole file into a heap buffer (caller frees). Used by --prompt-file
+ * for plugins that don't support input_ids (qairt). */
+static char* slurp(const char* path) {
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        fprintf(stderr, "ERROR: cannot open %s\n", path);
+        exit(1);
+    }
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char* buf = (char*)malloc((size_t)sz + 1);
+    if (!buf) {
+        fclose(f);
+        fprintf(stderr, "ERROR: oom slurping %s\n", path);
+        exit(1);
+    }
+    if (fread(buf, 1, (size_t)sz, f) != (size_t)sz) {
+        fclose(f);
+        free(buf);
+        fprintf(stderr, "ERROR: short read on %s\n", path);
+        exit(1);
+    }
+    fclose(f);
+    buf[sz] = '\0';
+    return buf;
+}
+
 static const char* arg_value(int argc, char** argv, int* i, const char* flag) {
     if (*i + 1 >= argc) {
         fprintf(stderr, "ERROR: %s requires a value\n", flag);
@@ -466,6 +500,7 @@ static void parse_args(int argc, char** argv, options_t* o) {
     o->image_count        = 0;
     o->audio_count        = 0;
     o->n_prompt           = 512;
+    o->prompt_buf         = NULL;
     o->max_new_tokens     = 128;
     o->temperature        = 0.0f;
     o->seed               = 42;
@@ -517,6 +552,8 @@ static void parse_args(int argc, char** argv, options_t* o) {
             o->audio_paths[o->audio_count++] = arg_value(argc, argv, &i, a);
         } else if (strcmp(a, "-p") == 0 || strcmp(a, "--n-prompt") == 0) {
             o->n_prompt = atoi(arg_value(argc, argv, &i, a));
+        } else if (strcmp(a, "--prompt-file") == 0) {
+            o->prompt_buf = slurp(arg_value(argc, argv, &i, a));
         } else if (strcmp(a, "-n") == 0 || strcmp(a, "--n-gen") == 0) {
             o->max_new_tokens = atoi(arg_value(argc, argv, &i, a));
         } else if (strcmp(a, "--temperature") == 0) {
@@ -809,38 +846,45 @@ static void run_llm(const options_t* o, const char* device_id, int32_t ngl, run_
     geniex_LLM* llm = NULL;
     check(geniex_llm_create(&cin, &llm), "geniex_llm_create");
 
-    /* Random-ids prefill (mirrors third-party/llama.cpp/tools/llama-bench
-     * test_prompt): ask the plugin for vocab + BOS, build an n_prompt-sized
-     * array of `rand() %% vocab_size`, overwrite pos 0 with BOS when the
-     * model wants one, feed via input_ids — bypasses the tokenizer and pp
-     * is exactly n_prompt for every model. */
-    geniex_LlmModelInfo info;
-    int32_t             rc_info = geniex_llm_get_model_info(llm, &info);
-    if (rc_info != GENIEX_SUCCESS || info.vocab_size <= 0) {
-        const char* msg = geniex_get_error_message((geniex_ErrorCode)rc_info);
-        fprintf(stderr,
-            "ERROR: %s plugin does not support random-ids prefill "
-            "(geniex_llm_get_model_info: %s, code=%d). "
-            "Tracking: https://github.com/qcom-ai-hub/geniex/issues/1008\n",
-            o->plugin,
-            msg ? msg : "?",
-            rc_info);
-        geniex_llm_destroy(llm);
-        exit(1);
-    }
+    /* Two prefill modes, picked by whether --prompt-file was passed:
+     *   - prompt_buf != NULL: feed prompt_utf8 verbatim (the plugin tokenizes).
+     *     `pp` is the tokenizer's count, NOT n_prompt. Required for plugins
+     *     that don't accept input_ids (today: qairt).
+     *   - prompt_buf == NULL: random-ids mode (mirrors llama-bench
+     *     test_prompt) — query vocab + BOS via geniex_llm_get_model_info,
+     *     fill n_prompt positions with rand() % vocab_size, overwrite pos 0
+     *     with BOS when add_bos. `pp` is exactly n_prompt. */
+    int32_t* tokens = NULL;
+    if (!o->prompt_buf) {
+        geniex_LlmModelInfo info;
+        int32_t             rc_info = geniex_llm_get_model_info(llm, &info);
+        if (rc_info != GENIEX_SUCCESS || info.vocab_size <= 0) {
+            const char* msg = geniex_get_error_message((geniex_ErrorCode)rc_info);
+            fprintf(stderr,
+                "ERROR: %s plugin does not support random-ids prefill "
+                "(geniex_llm_get_model_info: %s, code=%d). "
+                "Pass --prompt-file PATH to use text-prompt mode instead, "
+                "or see https://github.com/qcom-ai-hub/geniex/issues/1008.\n",
+                o->plugin,
+                msg ? msg : "?",
+                rc_info);
+            geniex_llm_destroy(llm);
+            exit(1);
+        }
 
-    int32_t* tokens = (int32_t*)malloc((size_t)o->n_prompt * sizeof(int32_t));
-    if (!tokens) {
-        fprintf(stderr, "ERROR: oom allocating %d prompt tokens\n", o->n_prompt);
-        geniex_llm_destroy(llm);
-        exit(1);
-    }
-    srand((unsigned)o->seed);
-    for (int32_t k = 0; k < o->n_prompt; ++k) {
-        tokens[k] = (int32_t)(rand() % info.vocab_size);
-    }
-    if (info.add_bos && info.bos_token >= 0 && o->n_prompt > 0) {
-        tokens[0] = info.bos_token;
+        tokens = (int32_t*)malloc((size_t)o->n_prompt * sizeof(int32_t));
+        if (!tokens) {
+            fprintf(stderr, "ERROR: oom allocating %d prompt tokens\n", o->n_prompt);
+            geniex_llm_destroy(llm);
+            exit(1);
+        }
+        srand((unsigned)o->seed);
+        for (int32_t k = 0; k < o->n_prompt; ++k) {
+            tokens[k] = (int32_t)(rand() % info.vocab_size);
+        }
+        if (info.add_bos && info.bos_token >= 0 && o->n_prompt > 0) {
+            tokens[0] = info.bos_token;
+        }
     }
 
     geniex_SamplerConfig    sampler;
@@ -861,11 +905,14 @@ static void run_llm(const options_t* o, const char* device_id, int32_t ngl, run_
         geniex_LlmGenerateOutput gout;
         memset(&gin, 0, sizeof(gin));
         memset(&gout, 0, sizeof(gout));
-        gin.prompt_utf8     = NULL;
-        gin.input_ids       = tokens;
-        gin.input_ids_count = o->n_prompt;
-        gin.config          = &gconfig;
-        gin.on_token        = on_token;
+        if (o->prompt_buf) {
+            gin.prompt_utf8 = o->prompt_buf;
+        } else {
+            gin.input_ids       = tokens;
+            gin.input_ids_count = o->n_prompt;
+        }
+        gin.config   = &gconfig;
+        gin.on_token = on_token;
 
         int32_t rc = geniex_llm_generate(llm, &gin, &gout);
         if (rc != GENIEX_SUCCESS) {
@@ -1473,6 +1520,7 @@ int main(int argc, char** argv) {
         rc = run_one_cell(&o);
     }
 
+    if (o.prompt_buf) free(o.prompt_buf);
     if (g_mm_inited) {
         /* Best-effort: release the model-manager runtime before geniex_deinit.
          * Failure here is non-fatal — we already produced the JSON the
