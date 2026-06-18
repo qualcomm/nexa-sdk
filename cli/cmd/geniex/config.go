@@ -71,11 +71,17 @@ func configGetCmd() *cobra.Command {
 		Args:      cobra.MatchAll(cobra.ExactArgs(1), validConfigKeyArg),
 		ValidArgs: store.ConfigKeys,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			value, _, err := store.Get().ConfigGet(args[0])
+			key := args[0]
+			value, _, err := store.Get().ConfigGet(key)
 			if err != nil {
 				return fmt.Errorf("failed to get configuration: %w", err)
 			}
-			// Unset keys print nothing so the output is easy to use in
+			// The chipset key falls back to host autodetection when unset,
+			// reporting "unknown" if the host cannot be probed.
+			if key == store.ConfigKeyChipset && value == "" {
+				value = resolveChipset()
+			}
+			// Other unset keys print nothing so the output is easy to use in
 			// scripts (e.g. `$(geniex config get chipset)`).
 			if value != "" {
 				fmt.Println(value)
@@ -118,6 +124,16 @@ func configSetCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// resolveChipset returns the host's autodetected chipset, or "unknown" when the
+// host cannot be probed. Used as the fallback for the unset "chipset" key.
+func resolveChipset() string {
+	detected, err := geniex_sdk.ModelDetectChipset()
+	if err != nil || detected == "" {
+		return "unknown"
+	}
+	return detected
 }
 
 // pickChipset lists the chipsets Qualcomm AI Hub supports and lets the user
@@ -192,6 +208,9 @@ func configListCmd() *cobra.Command {
 
 			for _, key := range keys {
 				value := cfg[key]
+				if key == store.ConfigKeyChipset && value == "" {
+					value = resolveChipset()
+				}
 				fmt.Println(render.GetTheme().Info.Sprintf("%s: %s", key, value))
 			}
 			return nil
