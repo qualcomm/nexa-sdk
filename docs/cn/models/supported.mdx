@@ -105,6 +105,45 @@ geniex infer "local/$model"
 
 <Note>Qualcomm AI Engine Direct 仅支持 NPU。传入 `--compute npu` 或省略该标志。</Note>
 
+## **设置 Hugging Face 令牌**
+
+Hugging Face 上的部分模型是**受限模型（gated）**——你需要在 Hugging Face 网站上接受模型许可协议，并提供访问令牌，GenieX 才能下载它们。
+
+<Steps>
+  <Step title="创建令牌">
+    前往 [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)，创建一个具有 **Read** 权限的新令牌。
+  </Step>
+  <Step title="接受模型许可协议">
+    访问模型的 Hugging Face 页面（例如 `https://huggingface.co/<org>/<model>`），如有提示请接受许可/协议。
+  </Step>
+  <Step title="向 GenieX 提供令牌">
+    GenieX 按以下顺序检查令牌来源——选择最方便的方式即可：
+
+    **方式 A —— 环境变量（推荐）：**
+
+    <CodeGroup>
+    ```powershell windows
+    $env:HF_TOKEN = "hf_..."
+    ```
+
+    ```bash linux
+    export HF_TOKEN="hf_..."
+    ```
+    </CodeGroup>
+
+    **方式 B —— Hugging Face CLI 登录（持久化到磁盘）：**
+
+    ```bash
+    pip install huggingface_hub
+    huggingface-cli login
+    ```
+
+    该命令会将令牌写入 `~/.cache/huggingface/token`，GenieX 会自动读取。
+  </Step>
+</Steps>
+
+<Tip>如果 `HF_TOKEN` 环境变量和 `~/.cache/huggingface/token` 同时存在，环境变量优先。</Tip>
+
 ## **运行 Hugging Face 上的 GGUF 模型**
 
 Hugging Face 上任意兼容的 GGUF 仓库都可以使用。复制仓库路径并传给 `geniex infer`：

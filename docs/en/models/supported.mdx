@@ -20,6 +20,45 @@ geniex infer ai-hub-models/Qwen3-4B
 
 <Note>Qualcomm AI Engine Direct is NPU-only. Pass `--compute npu` or omit the flag.</Note>
 
+## **Set up a Hugging Face token**
+
+Some models on Hugging Face are **gated** — you must accept the model's license on the Hugging Face website and provide an access token before GenieX can download them.
+
+<Steps>
+  <Step title="Create a token">
+    Go to [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) and create a new token with **Read** access.
+  </Step>
+  <Step title="Accept the model license">
+    Visit the model's page on Hugging Face (e.g. `https://huggingface.co/<org>/<model>`) and accept the license/agreement if prompted.
+  </Step>
+  <Step title="Provide the token to GenieX">
+    GenieX checks the following sources in order — use whichever is most convenient:
+
+    **Option A — environment variable (recommended):**
+
+    <CodeGroup>
+    ```powershell windows
+    $env:HF_TOKEN = "hf_..."
+    ```
+
+    ```bash linux
+    export HF_TOKEN="hf_..."
+    ```
+    </CodeGroup>
+
+    **Option B — Hugging Face CLI login (persists to disk):**
+
+    ```bash
+    pip install huggingface_hub
+    huggingface-cli login
+    ```
+
+    This writes the token to `~/.cache/huggingface/token`, which GenieX reads automatically.
+  </Step>
+</Steps>
+
+<Tip>If both `HF_TOKEN` and `~/.cache/huggingface/token` exist, the environment variable wins.</Tip>
+
 ## **Run a GGUF model from Hugging Face**
 
 Any compatible GGUF repo on Hugging Face works. Copy the repo path and pass it to `geniex infer`:
