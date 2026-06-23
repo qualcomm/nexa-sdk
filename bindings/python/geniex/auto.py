@@ -400,6 +400,7 @@ class AutoModelForCausalLM:
         config = _build_model_config(plugin_id, n_ctx, n_gpu_layers, **kwargs)
         resolved_tok_path = tokenizer_path or _tok
         meta = {
+            'model_name': resolved_name,
             'backend': plugin_id,
             'device': device_id,
             'quant': precision,
@@ -489,6 +490,7 @@ class AutoModelForVision2Seq:
         config = _build_model_config(plugin_id, n_ctx, n_gpu_layers, **kwargs)
         resolved_tok_path = tokenizer_path or _tok
         meta = {
+            'model_name': resolved_name,
             'backend': plugin_id,
             'device': device_id,
             'quant': precision,

@@ -128,6 +128,22 @@ class GenieXLLM:
         self._meta = meta
         self.tokenizer = ModelTokenizer(self)
 
+    def __repr__(self) -> str:
+        lines = []
+        if self._meta:
+            if self._meta.get('model_name'):
+                lines.append(f"  model='{self._meta['model_name']}'")
+            if self._meta.get('backend'):
+                lines.append(f"  backend='{self._meta['backend']}'")
+            if self._meta.get('device'):
+                lines.append(f"  device='{self._meta['device']}'")
+            if self._meta.get('quant'):
+                lines.append(f"  quant='{self._meta['quant']}'")
+        if lines:
+            inner = ',\n'.join(lines)
+            return f'GenieXLLM(\n{inner},\n)'
+        return 'GenieXLLM()'
+
     @property
     def supports_thinking(self) -> bool:
         """Whether the loaded model has a thinking mode (parsed once at load
@@ -372,6 +388,22 @@ class GenieXVLM:
         self._last_template_has_image = False
         self._last_template_has_audio = False
         self.tokenizer = ModelTokenizer(self)
+
+    def __repr__(self) -> str:
+        lines = []
+        if self._meta:
+            if self._meta.get('model_name'):
+                lines.append(f"  model='{self._meta['model_name']}'")
+            if self._meta.get('backend'):
+                lines.append(f"  backend='{self._meta['backend']}'")
+            if self._meta.get('device'):
+                lines.append(f"  device='{self._meta['device']}'")
+            if self._meta.get('quant'):
+                lines.append(f"  quant='{self._meta['quant']}'")
+        if lines:
+            inner = ',\n'.join(lines)
+            return f'GenieXVLM(\n{inner},\n)'
+        return 'GenieXVLM()'
 
     @property
     def supports_thinking(self) -> bool:
