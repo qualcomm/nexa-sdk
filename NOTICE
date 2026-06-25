@@ -126,7 +126,7 @@ This document provides information about third-party libraries used in the Genie
 - **URL**: https://github.com/yhirose/cpp-httplib
 - **Description**: C++ single-file header-only HTTP/HTTPS library
 - **Used in**: llama.cpp
-- **License File**: [geniex-bridge/third-party/llama.cpp/licenses/LICENSE-httplib](https://github.com/ggerganov/llama.cpp/blob/master/licenses/LICENSE-httplib)
+- **License File**: [third-party/llama.cpp/licenses/LICENSE-httplib](https://github.com/ggerganov/llama.cpp/blob/master/licenses/LICENSE-httplib)
 
 ### nlohmann/json
 
