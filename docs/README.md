@@ -1,4 +1,4 @@
-# Getting Started with Mintlify
+# GenieX Docs — Local Preview
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ npm i -g mint
 mint dev
 ```
 
-Alternatively, without installing the CLI globally :
+Alternatively, without installing the CLI globally:
 
 ```bash
 npx mint dev
