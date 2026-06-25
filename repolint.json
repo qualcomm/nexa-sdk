@@ -1,0 +1,390 @@
+{
+  "$schema": "https://raw.githubusercontent.com/todogroup/repolinter/master/rulesets/schema.json",
+  "version": 2,
+  "axioms": {
+    "linguist": "language",
+    "licensee": "license",
+    "packagers": "packager"
+  },
+  "rules": {
+    "license-file-exists": {
+      "level": "error",
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "LICENSE*",
+            "COPYING*",
+            "NOTICE*"
+          ],
+          "nocase": true
+        }
+      }
+    },
+    "readme-file-exists": {
+      "level": "error",
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "README*"
+          ],
+          "nocase": true
+        }
+      }
+    },
+    "contributing-file-exists": {
+      "level": "warning",
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "{docs/,.github/,}CONTRIB*"
+          ],
+          "nocase": true
+        }
+      }
+    },
+    "code-of-conduct-file-exists": {
+      "level": "warning",
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "{docs/,.github/,}CODEOFCONDUCT*",
+            "{docs/,.github/,}CODE-OF-CONDUCT*",
+            "{docs/,.github/,}CODE_OF_CONDUCT*"
+          ],
+          "nocase": true
+        }
+      }
+    },
+    "changelog-file-exists": {
+      "level": "warning",
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "CHANGELOG*"
+          ],
+          "nocase": true
+        }
+      }
+    },
+    "readme-references-license": {
+      "level": "error",
+      "rule": {
+        "type": "file-contents",
+        "options": {
+          "globsAll": [
+            "README*"
+          ],
+          "content": "license|notice",
+          "flags": "i"
+        }
+      }
+    },
+    "binaries-not-present": {
+      "level": "warning",
+      "rule": {
+        "type": "file-type-exclusion",
+        "options": {
+          "type": [
+            "**/*.exe",
+            "**/*.dll",
+            "**/*.o",
+            "**/*.so",
+            "!node_modules/**"
+          ]
+        }
+      }
+    },
+    "test-directory-exists": {
+      "level": "warning",
+      "rule": {
+        "type": "directory-existence",
+        "options": {
+          "globsAny": [
+            "**/test*",
+            "**/specs",
+            "**/*test*"
+          ],
+          "nocase": true
+        }
+      }
+    },
+    "integrates-with-ci": {
+      "level": "warning",
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            ".gitlab-ci.yml",
+            ".travis.yml",
+            "appveyor.yml",
+            ".appveyor.yml",
+            "circle.yml",
+            ".circleci/config.yml",
+            "Jenkinsfile",
+            ".drone.yml",
+            ".github/workflows/*",
+            "azure-pipelines.yml"
+          ]
+        }
+      }
+    },
+    "source-license-headers-exist": {
+      "level": "error",
+      "rule": {
+        "type": "file-starts-with",
+        "options": {
+          "globsAll": [
+            "**/*.py",
+            "**/*.js",
+            "**/*.c",
+            "**/*.cc",
+            "**/*.cpp",
+            "**/*.h",
+            "**/*.ts",
+            "**/*.rs",
+            "**/*.java",
+            "**/*.go",
+            "**/*.bbclass",
+            "**/*.S",
+            "**/*.hpp"
+          ],
+          "skip-paths-matching": {
+            "patterns": [
+              "babel.config.js",
+              "build\/",
+              "jest.config.js",
+              "node_modules\/",
+              "types\/",
+              "uthash.h",
+              "sdk\/include\/external\/",
+              "third-party\/"
+            ]
+          },
+          "lineCount": 200,
+          "patterns": [
+            "Copyright(\\s)*(\\(c\\)|©)?",
+            "SPDX-License-Identifier|Redistribution and use in source and binary forms, with or without"
+          ],
+          "flags": "i",
+          "succeed-on-non-existent": true
+        }
+      }
+    },
+    "source-qualcomm-license-headers-exist": {
+      "level": "warning",
+      "rule": {
+        "type": "file-starts-with",
+        "options": {
+          "globsAll": [
+            "**/*.py",
+            "**/*.js",
+            "**/*.c",
+            "**/*.cc",
+            "**/*.cpp",
+            "**/*.h",
+            "**/*.ts",
+            "**/*.sh",
+            "**/*.rs",
+            "**/*.java",
+            "**/*.go",
+            "**/*.bbclass",
+            "**/*.S",
+            "**/*.hpp"
+          ],
+          "skip-paths-matching": {
+            "patterns": [
+              "babel.config.js",
+              "build\/",
+              "jest.config.js",
+              "node_modules\/",
+              "types\/",
+              "uthash.h",
+              "sdk\/include\/external\/",
+              "third-party\/"
+            ]
+          },
+          "lineCount": 200,
+          "patterns": [
+            "(Copyright|©).*Qualcomm Innovation Center, Inc|Qualcomm Technologies, Inc|Copyright (\\(c\\)|©) (20(1[2-9]|2[0-2])(-|,|\\s)*)+ The Linux Foundation"
+          ],
+          "flags": "i"
+        }
+      }
+    },
+    "github-issue-template-exists": {
+      "level": "warning",
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "ISSUE_TEMPLATE*",
+            "ISSUE_TEMPLATE/**",
+            ".github/ISSUE_TEMPLATE*",
+            ".github/ISSUE_TEMPLATE/**"
+          ]
+        }
+      }
+    },
+    "github-pull-request-template-exists": {
+      "level": "warning",
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "PULL_REQUEST_TEMPLATE*",
+            "PULL_REQUEST_TEMPLATE/**",
+            ".github/PULL_REQUEST_TEMPLATE*",
+            ".github/PULL_REQUEST_TEMPLATE/**"
+          ]
+        }
+      }
+    },
+    "javascript-package-metadata-exists": {
+      "level": "warning",
+      "where": [
+        "language=javascript"
+      ],
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "package.json"
+          ]
+        }
+      }
+    },
+    "ruby-package-metadata-exists": {
+      "level": "warning",
+      "where": [
+        "language=ruby"
+      ],
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "Gemfile"
+          ]
+        }
+      }
+    },
+    "java-package-metadata-exists": {
+      "level": "warning",
+      "where": [
+        "language=java"
+      ],
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "pom.xml",
+            "build.xml",
+            "build.gradle"
+          ]
+        }
+      }
+    },
+    "python-package-metadata-exists": {
+      "level": "warning",
+      "where": [
+        "language=python"
+      ],
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "setup.py",
+            "requirements.txt"
+          ]
+        }
+      }
+    },
+    "rust-package-metadata-exists": {
+      "level": "error",
+      "where": [
+         "language=rust"
+      ],
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "**/Cargo.toml",
+            "**/Cargo.lock"
+          ]
+        }
+      }
+    },
+    "objective-c-package-metadata-exists": {
+      "level": "warning",
+      "where": [
+        "language=objective-c"
+      ],
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "Cartfile",
+            "Podfile",
+            "**/*.podspec"
+          ]
+        }
+      }
+    },
+    "swift-package-metadata-exists": {
+      "level": "warning",
+      "where": [
+        "language=swift"
+      ],
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "Package.swift"
+          ]
+        }
+      }
+    },
+    "erlang-package-metadata-exists": {
+      "level": "warning",
+      "where": [
+        "language=erlang"
+      ],
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "rebar.config"
+          ]
+        }
+      }
+    },
+    "elixir-package-metadata-exists": {
+      "level": "warning",
+      "where": [
+        "language=elixir"
+      ],
+      "rule": {
+        "type": "file-existence",
+        "options": {
+          "globsAny": [
+            "mix.exs"
+          ]
+        }
+      }
+    },
+    "license-detectable-by-licensee": {
+      "level": "off",
+      "where": [
+        "license=*"
+      ],
+      "rule": {
+        "type": "license-detectable-by-licensee",
+        "options": {}
+      }
+    }
+  }
+}
