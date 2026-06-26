@@ -230,3 +230,5 @@ Thanks to everyone building GenieX 💙
 ## 📄 License
 
 BSD 3-Clause — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Use of this project is also subject to Qualcomm's [Terms of Use](https://www.qualcomm.com/site/terms-of-use).
