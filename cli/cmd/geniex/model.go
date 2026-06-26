@@ -31,9 +31,9 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
-	geniex_sdk "github.com/qualcomm/nexa-sdk/bindings/go"
-	"github.com/qualcomm/nexa-sdk/cli/internal/render"
-	"github.com/qualcomm/nexa-sdk/cli/internal/store"
+	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
+	"github.com/qualcomm/GenieX/cli/internal/render"
+	"github.com/qualcomm/GenieX/cli/internal/store"
 )
 
 var (

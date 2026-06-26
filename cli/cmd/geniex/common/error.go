@@ -20,8 +20,8 @@ import (
 	"log/slog"
 	"os"
 
-	geniex_sdk "github.com/qualcomm/nexa-sdk/bindings/go"
-	"github.com/qualcomm/nexa-sdk/cli/internal/render"
+	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
+	"github.com/qualcomm/GenieX/cli/internal/render"
 )
 
 // errorHints maps known sentinel errors to a multi-line hint shown in

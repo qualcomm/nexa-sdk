@@ -6,7 +6,7 @@ go_library(
         "record.go",
         "stream_record.go",
     ],
-    importpath = "github.com/qualcomm/nexa-sdk/cli/internal/record",
+    importpath = "github.com/qualcomm/GenieX/cli/internal/record",
     visibility = ["//cli:__subpackages__"],
 )
 

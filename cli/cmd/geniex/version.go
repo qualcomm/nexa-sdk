@@ -23,8 +23,8 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/spf13/cobra"
 
-	geniex_sdk "github.com/qualcomm/nexa-sdk/bindings/go"
-	"github.com/qualcomm/nexa-sdk/cli/internal/store"
+	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
+	"github.com/qualcomm/GenieX/cli/internal/store"
 )
 
 var Version string

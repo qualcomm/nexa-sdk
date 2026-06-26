@@ -25,7 +25,7 @@ go_library(
     ],
     cdeps = ["//sdk"],
     cgo = True,
-    importpath = "github.com/qualcomm/nexa-sdk/bindings/go",
+    importpath = "github.com/qualcomm/GenieX/bindings/go",
     visibility = ["//visibility:public"],
 )
 

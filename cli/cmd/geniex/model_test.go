@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	geniex_sdk "github.com/qualcomm/nexa-sdk/bindings/go"
-	"github.com/qualcomm/nexa-sdk/cli/internal/testutil"
+	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
+	"github.com/qualcomm/GenieX/cli/internal/testutil"
 )
 
 var sampleListModels = []geniex_sdk.ModelDetail{

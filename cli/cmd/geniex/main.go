@@ -25,10 +25,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	geniex_sdk "github.com/qualcomm/nexa-sdk/bindings/go"
-	"github.com/qualcomm/nexa-sdk/cli/cmd/geniex/common"
-	"github.com/qualcomm/nexa-sdk/cli/internal/render"
-	"github.com/qualcomm/nexa-sdk/cli/internal/store"
+	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
+	"github.com/qualcomm/GenieX/cli/cmd/geniex/common"
+	"github.com/qualcomm/GenieX/cli/internal/render"
+	"github.com/qualcomm/GenieX/cli/internal/store"
 )
 
 var (

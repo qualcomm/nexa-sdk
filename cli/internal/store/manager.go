@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/qualcomm/nexa-sdk/cli/internal/config"
+	"github.com/qualcomm/GenieX/cli/internal/config"
 )
 
 // Store resolves the geniex data directory for the CLI. Model storage itself

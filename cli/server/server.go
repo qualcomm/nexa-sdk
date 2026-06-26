@@ -20,9 +20,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/qualcomm/nexa-sdk/cli/internal/config"
-	"github.com/qualcomm/nexa-sdk/cli/internal/render"
-	"github.com/qualcomm/nexa-sdk/cli/server/service"
+	"github.com/qualcomm/GenieX/cli/internal/config"
+	"github.com/qualcomm/GenieX/cli/internal/render"
+	"github.com/qualcomm/GenieX/cli/server/service"
 )
 
 // @Title		GenieX Server

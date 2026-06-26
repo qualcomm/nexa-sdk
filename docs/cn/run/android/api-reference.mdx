@@ -21,7 +21,7 @@ val runtime_id: String?   // "llama_cpp" | "qairt" | null
 | `"qairt"`     | Qualcomm® AI Engine Direct        | Qualcomm AI Hub 预编译 bin | 仅 Hexagon NPU                |
 | `null`        | SDK 根据模型路径自动判断           | —                        | —                               |
 
-常量定义见 [`RuntimeIdValue`](https://github.com/qualcomm/nexa-sdk/blob/main/bindings/android/app/src/main/java/com/geniex/sdk/bean/InputPluginBase.kt)（`LLAMA_CPP`、`QAIRT`）。
+常量定义见 [`RuntimeIdValue`](https://github.com/qualcomm/GenieX/blob/main/bindings/android/app/src/main/java/com/geniex/sdk/bean/InputPluginBase.kt)（`LLAMA_CPP`、`QAIRT`）。
 
 ### 计算单元
 
@@ -443,7 +443,7 @@ vlmWrapper.applyChatTemplate(chat.toTypedArray(), null, false).onSuccess { t ->
 ## **需要帮助？**
 
 <CardGroup cols={2}>
-  <Card title="GitHub Issues" icon="github" href="https://github.com/qualcomm/nexa-sdk/issues">
+  <Card title="GitHub Issues" icon="github" href="https://github.com/qualcomm/GenieX/issues">
     提交 bug、提需求或浏览开放的 Issue。
   </Card>
   <Card title="Slack" icon="slack" href="https://join.slack.com/t/nexa-ai-community/shared_invite/zt-3837k9xpe-LEty0disTTUnTUQ4O3uuNw">
