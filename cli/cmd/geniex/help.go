@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/qualcomm/nexa-sdk/cli/internal/render"
+	"github.com/qualcomm/GenieX/cli/internal/render"
 )
 
 var (

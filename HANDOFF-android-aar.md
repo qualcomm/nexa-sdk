@@ -42,7 +42,7 @@ AAR will compile.
 ### 1. Clone and check out
 
 ```bash
-git clone github-work:qualcomm/nexa-sdk.git
+git clone github-work:qualcomm/GenieX.git
 cd geniex
 git fetch origin perry/refactor/android-app-align
 git checkout perry/refactor/android-app-align

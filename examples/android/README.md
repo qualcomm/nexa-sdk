@@ -31,7 +31,7 @@ The GenieX AI Android SDK enables on-device AI inference for Android application
 1. Clone the repository
 
 ```bash
-git clone --recursive git@github.com:qualcomm/nexa-sdk.git
+git clone --recursive git@github.com:qualcomm/GenieX.git
 ```
 
 2. Open this folder `examples/android` in Android Studio

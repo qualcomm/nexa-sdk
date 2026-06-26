@@ -4,6 +4,6 @@ go_library(
     name = "testutil",
     testonly = True,
     srcs = ["capture.go"],
-    importpath = "github.com/qualcomm/nexa-sdk/cli/internal/testutil",
+    importpath = "github.com/qualcomm/GenieX/cli/internal/testutil",
     visibility = ["//cli:__subpackages__"],
 )

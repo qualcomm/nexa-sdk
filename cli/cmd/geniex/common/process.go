@@ -27,8 +27,8 @@ import (
 
 	"github.com/bytedance/sonic"
 
-	geniex_sdk "github.com/qualcomm/nexa-sdk/bindings/go"
-	"github.com/qualcomm/nexa-sdk/cli/internal/render"
+	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
+	"github.com/qualcomm/GenieX/cli/internal/render"
 )
 
 var (

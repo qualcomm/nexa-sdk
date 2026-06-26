@@ -17,7 +17,7 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/qualcomm/nexa-sdk/cli/internal/config"
+	"github.com/qualcomm/GenieX/cli/internal/config"
 )
 
 func CORS(c *gin.Context) {

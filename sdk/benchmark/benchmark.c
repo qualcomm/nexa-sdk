@@ -910,7 +910,7 @@ static void run_llm(const options_t* o, const char* device_id, int32_t ngl, run_
                 "ERROR: %s plugin does not support random-ids prefill "
                 "(geniex_llm_get_model_info: %s, code=%d). "
                 "Pass --prompt-file PATH to use text-prompt mode instead, "
-                "or see https://github.com/qualcomm/nexa-sdk/issues/1008.\n",
+                "or see https://github.com/qualcomm/GenieX/issues/1008.\n",
                 o->plugin,
                 msg ? msg : "?",
                 rc_info);

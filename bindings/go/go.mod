@@ -1,3 +1,3 @@
-module github.com/qualcomm/nexa-sdk/bindings/go
+module github.com/qualcomm/GenieX/bindings/go
 
 go 1.25.9

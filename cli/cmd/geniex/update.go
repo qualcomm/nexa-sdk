@@ -32,13 +32,13 @@ import (
 	"golang.org/x/mod/semver"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/qualcomm/nexa-sdk/cli/internal/downloader"
-	"github.com/qualcomm/nexa-sdk/cli/internal/render"
-	"github.com/qualcomm/nexa-sdk/cli/internal/store"
+	"github.com/qualcomm/GenieX/cli/internal/downloader"
+	"github.com/qualcomm/GenieX/cli/internal/render"
+	"github.com/qualcomm/GenieX/cli/internal/store"
 )
 
 const (
-	githubAPIURL = "https://api.github.com/repos/qualcomm/nexa-sdk/releases/latest"
+	githubAPIURL = "https://api.github.com/repos/qualcomm/GenieX/releases/latest"
 	userAgent    = "GenieX-Updater/1.0"
 
 	updateCheckInterval  = 24 * time.Hour

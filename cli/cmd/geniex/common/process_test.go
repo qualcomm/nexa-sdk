@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	geniex_sdk "github.com/qualcomm/nexa-sdk/bindings/go"
+	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
 )
 
 func TestProcessContextLengthExceeded(t *testing.T) {

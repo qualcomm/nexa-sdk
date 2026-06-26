@@ -1,4 +1,4 @@
-module github.com/qualcomm/nexa-sdk/cli
+module github.com/qualcomm/GenieX/cli
 
 go 1.25.9
 
@@ -13,7 +13,7 @@ require (
 	github.com/lmittmann/tint v1.1.2
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/openai/openai-go/v3 v3.17.0
-	github.com/qualcomm/nexa-sdk/bindings/go v0.0.0
+	github.com/qualcomm/GenieX/bindings/go v0.0.0
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
@@ -26,7 +26,7 @@ require (
 	golang.org/x/term v0.37.0
 )
 
-replace github.com/qualcomm/nexa-sdk/bindings/go => ../bindings/go
+replace github.com/qualcomm/GenieX/bindings/go => ../bindings/go
 
 require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
