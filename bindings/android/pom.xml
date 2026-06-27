@@ -11,7 +11,12 @@
 <licenses>
   <license>
     <name>BSD 3-Clause License</name>
-    <url>https://opensource.org/licenses/BSD-3-Clause</url>
+    <url>https://github.com/qcom-ai-hub/geniex/blob/main/LICENSE</url>
+    <distribution>repo</distribution>
+  </license>
+  <license>
+    <name>Qualcomm Terms of Use</name>
+    <url>https://www.qualcomm.com/site/terms-of-use</url>
     <distribution>repo</distribution>
   </license>
 </licenses>
