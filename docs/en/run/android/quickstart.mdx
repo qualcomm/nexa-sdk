@@ -5,7 +5,7 @@ description: "Run your first model from the GenieX Android SDK in Kotlin."
 
 import Feedback from "/snippets/page-feedback.mdx";
 
-This page walks through running your first model from a Kotlin app, then swapping in a different model. For a complete reference app with chat UI, model picker, and VLM support, see the [sample app](https://github.com/qualcomm/GenieX/tree/main/examples/android).
+This page walks through running your first model from a Kotlin app, then swapping in a different model. For a complete reference app with chat UI, model picker, and VLM support, see the [sample app](https://github.com/qualcomm/ai-hub-apps/blob/release/geniex_chat_android/README.md).
 
 ## **Prerequisites**
 
@@ -155,14 +155,14 @@ The full Android snippets for importing a local GGUF model and a local Qualcomm 
 
 ## **Using the sample app**
 
-The [sample app](https://github.com/qualcomm/GenieX/tree/main/examples/android) at `examples/android/` is a fully wired chat client built on top of the snippets above. A few patterns worth borrowing when you build your own UI:
+The [sample app](https://github.com/qualcomm/ai-hub-apps/blob/release/geniex_chat_android/README.md) is a fully wired chat client built on top of the snippets above. A few patterns worth borrowing when you build your own UI:
 
-- **Model picker UI** — the dropdown is driven by `examples/android/app/src/main/assets/model_list.json`. Each entry pins a `model_name`, `hub`, and (for Qualcomm AI Engine Direct) a `chipset`. Edit this file to add new models without touching code.
+- **Model picker UI** — the dropdown is driven by `app/src/main/assets/model_list.json`. Each entry pins a `model_name`, `hub`, and (for Qualcomm AI Engine Direct) a `chipset`. Edit this file to add new models without touching code.
 - **Resumable downloads with progress** — the `Progress` events from `pullFlow` carry per-file byte counts; the sample wires them straight into a `LinearProgressIndicator`.
 - **Runtime-aware compute-unit picker** — when the selected model uses Qualcomm AI Engine Direct, the picker hides GPU/CPU options. See `LoadDialog.kt`.
 - **VLM image picker** — for VLMs, the sample passes the absolute file path into `VlmContent("image", path)`. Don't pass content URIs — the native side reads the file directly.
 
-Open `examples/android/` in Android Studio (not `bindings/android/` — that's the SDK source) and hit **Run ▶**.
+Clone [`qualcomm/ai-hub-apps`](https://github.com/qualcomm/ai-hub-apps/blob/release/geniex_chat_android/README.md), open it in Android Studio, and hit **Run ▶**.
 
 ## **Next steps**
 

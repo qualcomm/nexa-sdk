@@ -138,11 +138,9 @@ import Feedback from "/snippets/page-feedback.mdx";
   </Accordion>
 
   <Accordion title="没有实体设备如何测试 Android demo？" id="how-do-i-test-the-android-demo-without-a-physical-device">
-    在 QDC 上使用 **骁龙 8 Elite** 或 **8 Elite Gen 5** 的交互式会话，并安装预构建的 demo APK。
+    在 QDC 上使用 **骁龙 8 Elite** 或 **8 Elite Gen 5** 的交互式会话，并安装你从源码构建的 demo APK。
 
-    <Card title="geniex-demo.apk" icon="download" href="https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/geniex-demo.apk">
-      最新的 GenieX Android demo APK。已签名的 debug 构建。
-    </Card>
+    从 [`qualcomm/ai-hub-apps`](https://github.com/qualcomm/ai-hub-apps/blob/release/geniex_chat_android/README.md) 在 Android Studio 中构建示例应用（**Build → Build APK(s)**）以生成 `.apk`。
 
     <Steps>
       <Step title="选择设备">
@@ -152,7 +150,7 @@ import Feedback from "/snippets/page-feedback.mdx";
         启用 **Wi-Fi**（让 demo 能下载模型）和 **Keep screen on**（避免下载中途锁屏）。**无需** SSH。
       </Step>
       <Step title="上传 APK">
-        在会话设置页用 **Upload file** 把 `geniex-demo.apk` 推送到设备——该文件必须在会话开始**之前**上传。
+        在会话设置页用 **Upload file** 把你构建的 `.apk` 推送到设备——该文件必须在会话开始**之前**上传。
       </Step>
       <Step title="启动并测试">
         启动会话。在镜像屏幕中点击已上传的 APK 进行安装，然后从应用抽屉打开 **GenieX Demo**。

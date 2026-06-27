@@ -138,11 +138,9 @@ import Feedback from "/snippets/page-feedback.mdx";
   </Accordion>
 
   <Accordion title="How do I test the Android demo without a physical device?" id="how-do-i-test-the-android-demo-without-a-physical-device">
-    Use a **Snapdragon 8 Elite** or **8 Elite Gen 5** Interactive Session on QDC and install the prebuilt demo APK.
+    Use a **Snapdragon 8 Elite** or **8 Elite Gen 5** Interactive Session on QDC and install the demo APK you build from source.
 
-    <Card title="geniex-demo.apk" icon="download" href="https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/geniex-demo.apk">
-      Latest GenieX Android demo APK. Signed debug build.
-    </Card>
+    Build the sample app from [`qualcomm/ai-hub-apps`](https://github.com/qualcomm/ai-hub-apps/blob/release/geniex_chat_android/README.md) in Android Studio (**Build → Build APK(s)**) to produce a `.apk`.
 
     <Steps>
       <Step title="Pick a device">
@@ -152,7 +150,7 @@ import Feedback from "/snippets/page-feedback.mdx";
         Enable **Wi-Fi** (so the demo can download models) and **Keep screen on** (so the screen doesn't lock mid-download). SSH is **not** required.
       </Step>
       <Step title="Upload the APK">
-        Use **Upload file** in the session setup page to push `geniex-demo.apk` onto the device — the file must be uploaded **before** the session begins.
+        Use **Upload file** in the session setup page to push your built `.apk` onto the device — the file must be uploaded **before** the session begins.
       </Step>
       <Step title="Start and test">
         Start the session. In the mirrored screen, tap the uploaded APK to install, then open **GenieX Demo** from the app drawer.
